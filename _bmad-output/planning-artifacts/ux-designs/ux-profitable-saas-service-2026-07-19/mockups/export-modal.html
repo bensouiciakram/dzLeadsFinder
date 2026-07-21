@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen — Export modal, free tier (UJ-1 climax)</title>
+<style>
+/* Governed by: DESIGN.md (export-modal, reveal-button, credits-pill, colors) · EXPERIENCE.md (Export Gating & Watermark, Component Patterns/Export modal, Key Flow UJ-1 climax, FR-17/FR-19) */
+:root{
+  --primary:#0F766E; --bg:#FFF; --fg:#0F172A; --muted:#F1F5F9; --muted-fg:#64748B; --muted-strong:#334155; --border:#E2E8F0;
+  --font-arabic:"Noto Kufi Arabic","Segoe UI",Tahoma,Arial,sans-serif;
+  --font-latin:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{background:rgba(15,23,42,.45);font-family:var(--font-arabic);color:var(--fg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:var(--bg);border-radius:12px;max-width:560px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+h1{font-size:20px;font-weight:600;margin-bottom:14px}
+.rowline{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--muted)}
+.cost{font-variant-numeric:tabular-nums;font-weight:500}
+.cost b{font-family:var(--font-latin)}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;margin:12px 0}
+.preview{background:var(--muted);border-radius:6px;padding:12px;font-size:12.5px;line-height:1.8;color:var(--muted-strong);direction:ltr;text-align:left;font-family:var(--font-latin);margin:12px 0;overflow-x:auto;white-space:pre}
+.wm{color:#7F1D1D;font-weight:600}
+.buttons{display:flex;gap:10px;margin-top:16px}
+.confirm{flex:1;height:40px;border:0;border-radius:6px;background:var(--primary);color:#fff;font-weight:600;font-size:15px;font-family:var(--font-arabic)}
+.xlsx{height:40px;padding-inline:16px;border-radius:6px;background:var(--muted);color:var(--muted-strong);border:1px solid var(--border);font-size:14px;font-family:var(--font-arabic)}
+.tooltip{font-size:12px;color:var(--muted-strong);margin-top:6px;text-align:center}
+.note{font:400 13px/1.7 var(--font-latin);color:var(--muted-strong);margin-top:14px;direction:ltr}
+b.num{font-family:var(--font-latin);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="t">
+  <h1 id="t">تصدير النتائج — CSV (مجاني)</h1>
+  <div class="rowline"><span>الصفوف (الحد المجاني: أول 5 حسب الترتيب الحالي)</span><span class="cost"><b>5</b></span></div>
+  <div class="rowline"><span>التكلفة: 0 مُظهَر + 5 غير مُظهَر</span><span class="cost"><b>5</b> أرصدة</span></div>
+  <div class="rowline"><span>الرصيد بعد التصدير</span><span class="cost"><b>9</b></span></div>
+  <label class="check"><input type="checkbox" checked> تضمين الصفوف التي لم أُظهرها بعد (تُحتسب أرصدة)</label>
+
+  <div style="font-size:13px;margin-top:8px">هكذا سيبدو ملف CSV تماماً — بما في ذلك العلامة المائية:</div>
+  <div class="preview"><span class="wm"># DZLeads Free — upgrade to remove — نسخة مجانية</span>
+name,role,company,wilaya
+Amina B.,Owner,Studio Ziban,Oran (31)
+Youcef K.,CEO,Media D'Or,Oran (31)
+…
+<span class="wm"># DZLeads Free — upgrade to remove — نسخة مجانية</span></div>
+
+  <div class="buttons">
+    <button class="confirm">تأكيد التصدير (−5 أرصدة)</button>
+    <button class="xlsx" aria-disabled="true">Excel .xlsx</button>
+  </div>
+  <div class="tooltip">Excel .xlsx — الترقية لاستخدام تصدير Excel ↑</div>
+
+  <p class="note"><b>What this mock pins (UJ-1 climax):</b> literal watermark mini-preview (localized header + footer rows) shown <i>before</i> download — zero surprise in Excel; free tier capped at first 5 rows by current sort; unrevealed-rows opt-in checked by default with per-line cost; balance-after visible pre-confirm; xlsx visibly disabled (tonal, aria-disabled) with the localized upgrade tooltip; all numerals Western (FR-15) even inside Arabic UI; dialog traps focus and returns it to the Export button on close.</p>
+</div>
+</body>
+</html>

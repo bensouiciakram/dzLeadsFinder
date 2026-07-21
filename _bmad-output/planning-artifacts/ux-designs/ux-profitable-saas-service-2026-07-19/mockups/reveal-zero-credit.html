@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen — Reveal at 0 credits (UJ-2 entry state)</title>
+<style>
+/* Governed by: DESIGN.md (reveal-button incl. tonal aria-disabled + revealed badge, credits-pill zero state, banner danger, results-table) · EXPERIENCE.md (Credit Metering & Reveal States, Component Patterns/reveal-button + banner, State Patterns/0-credit + already-revealed, Key Flow UJ-2) */
+:root{
+  --primary:#0F766E; --bg:#FFF; --fg:#0F172A; --muted:#F1F5F9; --muted-fg:#64748B; --muted-strong:#334155; --border:#E2E8F0;
+  --danger-c:#FEF2F2; --danger-on:#7F1D1D; --success-c:#ECFDF5; --success-on:#064E3B;
+  --font:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#E5E7EB;font-family:var(--font);color:var(--fg);padding:24px;display:flex;justify-content:center}
+.frame{background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;width:860px}
+.caption{font:600 13px var(--font);color:var(--muted-strong);padding:10px 14px;background:var(--muted);border-bottom:1px solid var(--border)}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.logo{font-weight:600}.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding-inline:12px;border-radius:9999px;font-variant-numeric:tabular-nums;font-weight:500;font-size:14px;background:var(--danger-c);color:var(--danger-on)}
+.chip{display:inline-flex;align-items:center;height:28px;padding-inline:12px;border-radius:9999px;background:var(--primary);color:#fff;font-size:13px}
+.switcher{display:inline-flex;align-items:center;gap:6px;height:36px;padding-inline:10px;border:1px solid var(--border);border-radius:6px;font-size:14px}
+.banner{display:flex;align-items:center;gap:10px;background:var(--danger-c);color:var(--danger-on);padding:10px 16px;font-size:14px}
+.banner a{color:var(--danger-on);font-weight:600;text-decoration:underline;margin-inline-start:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;color:var(--muted-fg);text-align:start;padding:8px 14px;border-bottom:1px solid var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.reveal{height:32px;padding-inline:14px;border:0;border-radius:6px;background:var(--primary);color:#fff;font-size:13px;font-weight:600}
+.reveal[aria-disabled="true"]{background:var(--muted);color:var(--muted-strong);border:1px solid var(--border);cursor:default}
+.tooltip{display:inline-block;margin-top:6px;font-size:12px;color:var(--muted-strong);background:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 8px}
+.badge{display:inline-flex;align-items:center;height:22px;padding-inline:10px;border-radius:9999px;background:var(--success-c);color:var(--success-on);font-size:12px;font-weight:500}
+.fields{margin-top:8px;font-size:13px;line-height:1.7;color:var(--muted-strong)}
+.fields b{color:var(--fg);font-variant-numeric:tabular-nums}
+b.num{font-variant-numeric:tabular-nums}
+.note{font:400 13px/1.6 var(--font);color:var(--muted-strong);padding:12px 16px;border-top:1px dashed var(--border)}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="caption">UJ-2 STEP 1 — Karim, Starter, day 12: 0-credit results page (FR)</div>
+  <header>
+    <span class="logo">DZ Leads</span><span class="spacer"></span>
+    <span class="pill">🪙 <b class="num">0</b> crédit</span>
+    <span class="chip">Starter — renouvelle le 02/08/2026</span>
+    <span class="switcher">🌐 Français ▾</span>
+  </header>
+  <div class="banner">⚠ <b class="num">0</b> crédit restant — <a href="#">Recharger</a></div>
+  <table>
+    <tr><th>Nom</th><th>Rôle</th><th>Entreprise</th><th>Wilaya</th><th>Action</th></tr>
+    <tr>
+      <td>Sonia M.</td><td>Directrice</td><td>Pharma Est Distribution</td><td>Constantine (25)</td>
+      <td><span class="reveal" aria-disabled="true">Révéler</span><br><span class="tooltip">0 crédit — rechargez pour révéler (clic ouvre la recharge)</span></td>
+    </tr>
+    <tr>
+      <td>Rachid B.</td><td>Gérant</td><td>Cité Pharma</td><td>Constantine (25)</td>
+      <td><span class="reveal" aria-disabled="true">Révéler</span></td>
+    </tr>
+    <tr>
+      <td>Lina H. <span class="badge">Déjà révélé</span></td><td>Propriétaire</td><td>Labo Confort</td><td>Constantine (25)</td>
+      <td><div class="fields">📞 <b>+213 550 12 34 56</b> · ✉ lina@laboconfort.dz<br>📍 Rue Didouche Mourad, Constantine · Source : Pages Jaunes Algérie</div></td>
+    </tr>
+  </table>
+  <p class="note"><b>What this mock pins:</b> (1) reveal-button aria-disabled state is tonal (muted fill, muted-strong label ≥4.5:1) — never an opacity fade — and stays focusable; click/Enter opens the top-up recovery dialog. (2) The 0-credit banner is the danger variant with the Recharger CTA (UJ-2 entry). (3) Already-revealed ≤30d rows render contact fields auto-visible with the badge — free, idempotent, no re-click. (4) Credits pill shows the zero state in danger container tones with Western numerals.</p>
+</div>
+</body>
+</html>

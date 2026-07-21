@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: Algerian B2B Lead Platform V1</title>
+<style>
+  :root{--bg:#fafaf9;--surface:#fff;--border:#e7e5e4;--text:#1c1917;--muted:#78716c;
+  --verdict-strong:#16a34a;--verdict-adequate:#65a30d;--verdict-thin:#d97706;--verdict-broken:#dc2626;
+  --sev-low:#64748b;--sev-medium:#ca8a04;--sev-high:#ea580c;--sev-critical:#dc2626}
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+  .container{max-width:960px;margin:0 auto;padding:32px 24px 64px}
+  header.report-header{padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:24px}
+  .title h1{margin:0;font-size:22px;font-weight:600}
+  .title .subtitle{color:var(--muted);font-size:13px;margin-top:4px;font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  .synthesis{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--muted);border-radius:8px;padding:18px 22px;margin-bottom:24px}
+  .synthesis p{margin:0 0 10px}.synthesis p:last-child{margin-bottom:0}
+  section.dimension{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:12px}
+  section.dimension>summary{cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:12px;font-weight:600;list-style:none}
+  section.dimension>summary::-webkit-details-marker{display:none}
+  section.dimension .body{padding:0 18px 16px;border-top:1px solid var(--border)}
+  .pill{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:600;color:#fff}
+  .verdict-strong{background:var(--verdict-strong)}.verdict-adequate{background:var(--verdict-adequate)}.verdict-thin{background:var(--verdict-thin)}.verdict-broken{background:var(--verdict-broken)}
+  .badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;margin-right:8px}
+  .badge-sev-critical{background:var(--sev-critical)}.badge-sev-high{background:var(--sev-high)}.badge-sev-medium{background:var(--sev-medium)}.badge-sev-low{background:var(--sev-low)}
+  li{margin:6px 0}
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px;font-family:ui-monospace,"SF Mono",Menlo,monospace}
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="report-header">
+    <div class="title">
+      <h1>UX Design Validation — Algerian B2B Lead Platform V1</h1>
+      <div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-profitable-saas-service-2026-07-19 · 2026-07-19</div>
+    </div>
+  </header>
+
+  <div class="synthesis">
+    <p>The pair is buildable as a downstream contract: flows, states, and tokens are committed with real values, and the PRD hard constraints (RTL, numerals, watermark, metering) are encoded as rules rather than aspirations.</p>
+    <p>The accessibility lens found the RTL/screen-reader foundation unusually strong, with all 19 findings (1 critical, 5 high) resolved in-place before polish. Nothing architectural remains open.</p>
+  </div>
+
+  <section class="dimension" open><summary>Flow coverage <span class="pill verdict-strong">strong</span></summary>
+    <div class="body"><p>UJ-1/2/3 verbatim, named protagonists, numbered steps, labeled climaxes and failure paths. FR-5–FR-31 closure table complete.</p></div></section>
+  <section class="dimension"><summary>Token completeness <span class="pill verdict-adequate">adequate → resolved</span></summary>
+    <div class="body"><p>28 hex color tokens, full typography/rounded/spacing/components. spacing.4 added; footer pair re-tokened to muted-strong (9.5:1) and added to the verified contrast table.</p></div></section>
+  <section class="dimension"><summary>Component coverage <span class="pill verdict-thin">thin → resolved</span></summary>
+    <div class="body"><p>Cross-spine naming aligned to DESIGN kebab-case; confirm-banner pattern added; mapping claim corrected for shadcn-inherited composites.</p></div></section>
+  <section class="dimension"><summary>State coverage <span class="pill verdict-strong">strong</span></summary>
+    <div class="body"><p>17 state rows cover every IA surface's applicable states. Offline intentionally unspec'd (no PRD requirement).</p></div></section>
+  <section class="dimension"><summary>Visual reference coverage <span class="pill verdict-adequate">adequate</span></summary>
+    <div class="body"><p>4 key-screen mocks rendered and linked inline: locale-reflip, reveal-zero-credit, export-modal, chargily-return. Spine-wins-on-conflict stated once.</p></div></section>
+  <section class="dimension"><summary>Bloat &amp; overspecification <span class="pill verdict-strong">strong</span></summary>
+    <div class="body"><p>Tables carry the load; DESIGN prose carries editorial voice only; no PRD restatement.</p></div></section>
+  <section class="dimension"><summary>Inheritance discipline <span class="pill verdict-adequate">adequate → resolved</span></summary>
+    <div class="body"><p>Sources resolve; UJ/FR names verbatim; token references resolve by name post-fix.</p></div></section>
+  <section class="dimension"><summary>Shape fit <span class="pill verdict-strong">strong</span></summary>
+    <div class="body"><p>DESIGN.md canonical section order; EXPERIENCE.md required defaults + five earned invented sections.</p></div></section>
+
+  <section class="dimension"><summary>Reviewer: Accessibility lens <span class="pill verdict-adequate">1C · 5H · 8M · 5L — all resolved</span></summary>
+    <div class="body"><ul>
+      <li><span class="badge badge-sev-critical">critical</span>Locale-switch focus lifecycle + announcement — fixed (capture/restore by stable id, polite announcement).</li>
+      <li><span class="badge badge-sev-high">high</span>Forms AA spec + localized validation strings — fixed.</li>
+      <li><span class="badge badge-sev-high">high</span>Footer link contrast 4.35:1 → muted-strong 9.5:1 — fixed.</li>
+      <li><span class="badge badge-sev-high">high</span>aria-disabled 0.6-opacity → tonal treatment ≥4.5:1 — fixed.</li>
+      <li><span class="badge badge-sev-high">high</span>Rate-limited Apply aria-disabled + describedby — fixed.</li>
+      <li><span class="badge badge-sev-medium">medium</span>Touch tooltips, 44px reconciliation, aria-live gaps, per-fragment lang/dir, dialog focus, skip links, aria-sort, /wilayas table semantics — fixed.</li>
+      <li><span class="badge badge-sev-low">low</span>Warning-pill icon, reduced-motion extension, sheet dismiss, headshot alt rule, combobox keyboard model, heading hierarchy — fixed.</li>
+    </ul></div></section>
+
+  <footer>
+    DESIGN.md · EXPERIENCE.md · review-rubric.md · review-accessibility.md · validation-report.md — 2026-07-19
+  </footer>
+</div>
+</body>
+</html>

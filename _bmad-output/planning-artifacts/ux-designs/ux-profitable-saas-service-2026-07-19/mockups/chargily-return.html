@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen — Chargily return to /billing (UJ-2 climax)</title>
+<style>
+/* Governed by: DESIGN.md (status-card, pack-card, banner, credits-pill) · EXPERIENCE.md (Billing & Payment Reconciliation UX, Component Patterns/status-card + pack-card, State Patterns/webhook-pending, Key Flow UJ-2, FR-25/FR-27) */
+:root{
+  --primary:#0F766E; --bg:#FFF; --fg:#0F172A; --muted:#F1F5F9; --muted-fg:#64748B; --muted-strong:#334155; --border:#E2E8F0;
+  --info-c:#F0F9FF; --info-on:#0C4A6E; --success-c:#ECFDF5; --success-on:#064E3B; --success:#047857;
+  --font:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#E5E7EB;font-family:var(--font);color:var(--fg);padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.frame{background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.caption{font:600 13px var(--font);color:var(--muted-strong);padding:10px 14px;background:var(--muted);border-bottom:1px solid var(--border)}
+.pad{padding:16px}
+.status{border-radius:8px;padding:14px;font-size:14px;display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.polling{background:var(--info-c);color:var(--info-on)}
+.ok{background:var(--success-c);color:var(--success-on)}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--info-on);border-top-color:transparent;border-radius:50%}
+.plan{border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;font-size:14px}
+.plan b{font-variant-numeric:tabular-nums}
+.packs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pack{position:relative;border:1px solid var(--border);border-radius:8px;padding:16px;font-size:14px}
+.pack .n{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.pack .p{font-size:15px;font-weight:600;margin-top:2px}
+.pack .u{font-size:12px;color:var(--muted-fg);margin-top:2px;font-variant-numeric:tabular-nums}
+.pack .ne{font-size:12px;color:var(--success);margin-top:8px}
+.buy{margin-top:10px;width:100%;height:36px;border:0;border-radius:6px;background:var(--primary);color:#fff;font-weight:600}
+.bv{position:absolute;top:-10px;inset-inline-end:10px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:9999px}
+.pack.featured{border-color:var(--primary)}
+.note{grid-column:1/-1;font:400 13px/1.6 var(--font);color:var(--muted-strong);background:#fff;border:1px dashed var(--border);border-radius:8px;padding:12px 16px}
+b.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="caption">STATE A — return from Chargily: polling ≤60s (role="status", non-blocking)</div>
+  <div class="pad">
+    <div class="status polling"><span class="spin"></span> Confirmation du paiement…</div>
+    <div class="plan"><b>Starter</b> — renouvelle le 02/08/2026 · Crédits: <b class="num">0</b></div>
+    <div class="packs">
+      <div class="pack"><div class="n">75 crédits</div><div class="p">500 DZD</div><div class="u">6.7 DZD/crédit</div><div class="ne">✓ N'expirent jamais</div><button class="buy">Acheter</button></div>
+      <div class="pack featured"><span class="bv">Meilleure valeur</span><div class="n">250 crédits</div><div class="p">1 500 DZD</div><div class="u">6.0 DZD/crédit</div><div class="ne">✓ N'expirent jamais</div><button class="buy">Acheter</button></div>
+    </div>
+  </div>
+</div>
+<div class="frame">
+  <div class="caption">STATE B — webhook confirmed within window: card flips + toast (UJ-2 climax)</div>
+  <div class="pad">
+    <div class="status ok">✓ 75 crédits ajoutés — les crédits de pack n'expirent jamais.</div>
+    <div class="plan"><b>Starter</b> — renouvelle le 02/08/2026 · Crédits: <b class="num">75</b></div>
+    <div class="packs">
+      <div class="pack"><div class="n">75 crédits</div><div class="p">500 DZD</div><div class="u">6.7 DZD/crédit</div><div class="ne">✓ N'expirent jamais</div><button class="buy">Acheter</button></div>
+      <div class="pack featured"><span class="bv">Meilleure valeur</span><div class="n">250 crédits</div><div class="p">1 500 DZD</div><div class="u">6.0 DZD/crédit</div><div class="ne">✓ N'expirent jamais</div><button class="buy">Acheter</button></div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>What this mock pins:</b> the status card is inline and non-blocking — the rest of /billing stays interactive while it polls ≤60s; on success it flips to the success container pair and the same text lands as a toast (announced via role="status" + polite live region); on timeout it degrades to « paiement reçu, crédits postés dans une minute » — never an error, never a re-pay prompt (idempotent webhook reconciliation, FR-27). Pack cards show unit price + never-expires + Best-value badge per FR-25; free users see the same cards.</p>
+</body>
+</html>

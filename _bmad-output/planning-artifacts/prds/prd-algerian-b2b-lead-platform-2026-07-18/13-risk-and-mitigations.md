@@ -1,0 +1,9 @@
+# 13. Risk and Mitigations
+
+- **Risk: data-subject complaints on Pages Jaunes-sourced records.** Mitigation: rate-limited scrape, /privacy takedown process, 72h removal SLA, per-source disable switch in the scraper pipeline.
+- **Risk: Chargily webhook delays cause user-perceived payment failures.** Mitigation: 60s polling on /billing with explanatory toast, idempotent reconciliation via webhook event id (FR-27). [ASSUMPTION: 60s polling frequency tunable at ops config; confirm with PM.]
+- **Risk: a competitor cuts price below 1,500 DZD before V1 reaches 100 paid users.** Mitigation: anchor on the trilingual + 58-wilaya + founder-narrative wedge, not on price alone; the wedge survives a price cut by competitors because the wedge is multi-axis.
+- **Risk: a major data source disappears (e.g., Google Places API pricing changes, Pages Jaunes bans the scraper).** Mitigation: the V1 scraper pipeline treats each source as an independent module (per the legality brief's architectural note), so disabling one source does not collapse the product; surfaced to the user as a reduced coverage notice, not as an outage.
+- **Risk: AR/French copy quality is uneven at launch.** Mitigation: native-speaker review of the marketing pages (FR-30 assumption) before launch; CI gate on missing-translation keys (NFR-4).
+- **Risk: an Algerian competitor launches an Arabic UI during the incumbent reaction window.** Mitigation: the 58-wilaya credibility edge and the founder narrative are independent of UI language and still differentiate.
+- **Risk: credit-card on Chargily is declined at renewal due to expired CIB cards.** Mitigation: failed-renewal banner prompts re-payment via Chargily (FR-28); previous-cycle credits remain usable until the next cycle would have begun, so the user is not interrupted mid-work.

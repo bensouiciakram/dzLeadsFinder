@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen — Locale re-flip (AR→FR mid-session)</title>
+<style>
+/* Governed by: DESIGN.md (colors, typography, locale-switcher, filter-sidebar, filter-chip, credits-pill, results-table) · EXPERIENCE.md (Trilingual & RTL Interaction Model §4 Switch, Component Patterns/Locale switcher incl. focus contract, Key Flow UJ-3) */
+:root{
+  --primary:#0F766E; --primary-fg:#FFFFFF; --ring:#0F766E;
+  --bg:#FFFFFF; --fg:#0F172A; --card:#FFFFFF; --muted:#F1F5F9; --muted-fg:#64748B; --muted-strong:#334155; --border:#E2E8F0;
+  --font-latin:Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-arabic:"Noto Kufi Arabic","Segoe UI",Tahoma,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#E5E7EB;font-family:var(--font-latin);color:var(--fg);padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.frame{background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.caption{font:600 13px var(--font-latin);color:var(--muted-strong);padding:10px 14px;background:var(--muted);border-bottom:1px solid var(--border)}
+[lang=ar]{font-family:var(--font-arabic)}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.logo{font-weight:600;font-size:15px}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding-inline:12px;border-radius:9999px;background:var(--muted);font-variant-numeric:tabular-nums;font-weight:500;font-size:14px}
+.chip{display:inline-flex;align-items:center;height:28px;padding-inline:12px;border-radius:9999px;border:1px solid var(--primary);color:var(--primary);font-size:13px;background:transparent}
+.switcher{display:inline-flex;align-items:center;gap:6px;height:36px;padding-inline:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:14px}
+.body{display:flex}
+.sidebar{width:200px;border-inline-end:1px solid var(--border);padding:14px;font-size:13px;flex:none}
+.grouplabel{font-size:12px;font-weight:500;color:var(--muted-fg);margin-bottom:6px}
+.field{border:1px solid var(--border);border-radius:6px;padding:7px 9px;margin-bottom:14px;font-size:13px;background:var(--card)}
+.apply{width:100%;height:36px;border:0;border-radius:6px;background:var(--primary);color:var(--primary-fg);font-weight:600;font-size:14px}
+.results{flex:1;padding:14px}
+.chips{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.fchip{display:inline-flex;align-items:center;gap:6px;height:28px;padding-inline:12px;border-radius:9999px;background:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;color:var(--muted-fg);text-align:start;padding:8px;border-bottom:1px solid var(--border)}
+td{padding:10px 8px;border-bottom:1px solid var(--border)}
+.reveal{height:32px;padding-inline:14px;border:0;border-radius:6px;background:var(--primary);color:#fff;font-size:13px;font-weight:600}
+.note{grid-column:1/-1;font:400 13px/1.6 var(--font-latin);color:var(--muted-strong);background:#fff;border:1px dashed var(--border);border-radius:8px;padding:12px 16px}
+b.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="frame" dir="rtl" lang="ar">
+  <div class="caption">STATE A — قبل: AR / RTL (saved query + filters + scroll preserved)</div>
+  <header>
+    <span class="logo">DZ Leads</span><span class="spacer"></span>
+    <span class="pill">🪙 <b class="num">9</b></span>
+    <span class="chip">Free — ترقية</span>
+    <span class="switcher">🌐 العربية ▾</span>
+  </header>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="grouplabel">القطاع</div><div class="field">الإعلان</div>
+      <div class="grouplabel">الولاية</div><div class="field">31 — وهران</div>
+      <div class="grouplabel">الأقدمية</div><div class="field">مالك / مدير تنفيذي</div>
+      <button class="apply">تطبيق</button>
+    </aside>
+    <div class="results">
+      <div class="chips"><span class="fchip">الإعلان ✕</span><span class="fchip">وهران (31) ✕</span><span class="fchip">مالك/مدير تنفيذي ✕</span></div>
+      <table><tr><th>الاسم</th><th>الدور</th><th>الشركة</th><th>الولاية</th><th></th></tr>
+      <tr><td>أمينة ب.</td><td>مالكة</td><td>ستوديو زيبان</td><td>وهران (31)</td><td><span class="reveal">إظهار</span></td></tr>
+      <tr><td>يوسف ق.</td><td>مدير تنفيذي</td><td>ميديا دور</td><td>وهران (31)</td><td><span class="reveal">إظهار</span></td></tr></table>
+    </div>
+  </div>
+</div>
+
+<div class="frame" dir="ltr" lang="fr">
+  <div class="caption">STATE B — après: FR / LTR — même session, rien perdu (UJ-3)</div>
+  <header>
+    <span class="logo">DZ Leads</span><span class="spacer"></span>
+    <span class="pill">🪙 <b class="num">9</b></span>
+    <span class="chip">Free — Upgrade</span>
+    <span class="switcher">🌐 Français ▾</span>
+  </header>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="grouplabel">Secteur</div><div class="field">Publicité</div>
+      <div class="grouplabel">Wilaya</div><div class="field">31 — Oran</div>
+      <div class="grouplabel">Ancienneté</div><div class="field">Propriétaire / CEO</div>
+      <button class="apply">Appliquer</button>
+    </aside>
+    <div class="results">
+      <div class="chips"><span class="fchip">Publicité ✕</span><span class="fchip">Oran (31) ✕</span><span class="fchip">Propriétaire/CEO ✕</span></div>
+      <table><tr><th>Nom</th><th>Rôle</th><th>Entreprise</th><th>Wilaya</th><th></th></tr>
+      <tr><td>Amina B.</td><td>Propriétaire</td><td>Studio Ziban</td><td>Oran (31)</td><td><span class="reveal">Révéler</span></td></tr>
+      <tr><td>Youcef K.</td><td>CEO</td><td>Media D'Or</td><td>Oran (31)</td><td><span class="reveal">Révéler</span></td></tr></table>
+    </div>
+  </div>
+</div>
+
+<p class="note"><b>What this mock pins:</b> same result set, same staged filters, same chip row, same credit balance (<b class="num">9</b>, Western numerals in both locales), same row order and scroll anchor — only strings, facet labels, and <code>dir</code> changed. No reload, no skeleton, no query re-run. Focus is restored to the same logical control post-flip and a visually-hidden live region announces « Langue de l'interface : Français ». Sidebar is inline-start: right in AR, left in FR, via logical properties only.</p>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+npm-debug.log*
+
+# Env & secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# BMad tooling (not source)
+_bmad/
+.agents/
+
+# BMad temp artifacts
+_bmad-output/planning-artifacts/**/.working
+_bmad-output/planning-artifacts/**/.memlog.md
+_bmad-output/planning-artifacts/**/*.pdf
