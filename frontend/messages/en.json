@@ -1,0 +1,302 @@
+{
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "email_label": "Email",
+      "email_placeholder": "you@company.dz",
+      "password_label": "Password",
+      "password_placeholder": "Enter your password",
+      "submit": "Login",
+      "forgot_password": "Forgot password?",
+      "no_account": "Don't have an account?",
+      "signup_link": "Sign up",
+      "error_invalid": "Invalid email or password",
+      "error_rate_limited": "Too many attempts. Please try again later."
+    },
+    "signup": {
+      "title": "Create Your Account",
+      "subtitle": "Start with 15 free credits — no credit card required",
+      "email_label": "Email",
+      "email_placeholder": "you@company.dz",
+      "password_label": "Password",
+      "password_placeholder": "At least 8 characters",
+      "submit": "Create Account",
+      "free_credits": "You'll receive 15 free credits on signup",
+      "has_account": "Already have an account?",
+      "login_link": "Login",
+      "terms_notice": "By signing up, you agree to our Terms of Service and Privacy Policy",
+      "error_email_taken": "This email is already registered",
+      "error_weak_password": "Password is too weak"
+    },
+    "verify": {
+      "title": "Verify Your Email",
+      "description": "We've sent a verification link to {email}. Click the link to activate your account.",
+      "resend": "Resend verification email",
+      "resend_success": "Verification email sent!",
+      "skip_note": "Some features will be limited until you verify your email.",
+      "already_verified": "Email already verified. You can now use all features."
+    },
+    "password_reset": {
+      "title": "Reset Password",
+      "description": "Enter your email and we'll send you a reset link.",
+      "email_label": "Email",
+      "email_placeholder": "you@company.dz",
+      "submit": "Send Reset Link",
+      "success": "Reset link sent! Check your email.",
+      "new_password_title": "Set New Password",
+      "new_password_label": "New password",
+      "confirm_password_label": "Confirm new password",
+      "submit_new": "Reset Password",
+      "error_token_invalid": "This reset link is invalid or has expired."
+    }
+  },
+  "billing": {
+    "title": "Billing & Plans",
+    "current_plan": "Current Plan",
+    "free_plan": "Free",
+    "free_description": "15 free credits to get started",
+    "starter_plan": "Starter",
+    "starter_description": "200 credits per month — renews at 1,500 DZD/mo",
+    "renewal_date": "Renews on {date}",
+    "failed_renewal": "Payment failed. Update your payment method.",
+    "packs": {
+      "title": "Add-on Credit Packs",
+      "pack1_name": "Starter Pack",
+      "pack1_price": "500 DZD",
+      "pack1_credits": "75 credits",
+      "pack2_name": "Pro Pack",
+      "pack2_price": "1,500 DZD",
+      "pack2_credits": "250 credits",
+      "best_value": "Best Value",
+      "never_expire": "Credits never expire",
+      "buy": "Buy Now"
+    },
+    "history": {
+      "title": "Payment History",
+      "empty": "No payments yet",
+      "date": "Date",
+      "amount": "Amount",
+      "status": "Status",
+      "credits": "Credits"
+    },
+    "status": {
+      "pending": "Processing payment...",
+      "succeeded": "Payment successful!",
+      "failed": "Payment failed",
+      "timeout": "Payment received — credits will post shortly"
+    },
+    "cancel": {
+      "title": "Cancel Subscription",
+      "description": "Your credits remain usable until the end of the billing period. No refunds.",
+      "confirm": "I understand, cancel my subscription"
+    },
+    "dzone": {
+      "title": "Danger Zone",
+      "delete_account": "Delete Account",
+      "delete_description": "Permanently delete your account and all data. This action cannot be undone.",
+      "delete_confirm": "I understand, delete my account"
+    }
+  },
+  "common": {
+    "app": {
+      "name": "dzLeadsFinder",
+      "tagline": "Algerian B2B Lead Generation Platform"
+    },
+    "nav": {
+      "home": "Home",
+      "search": "Search",
+      "credits": "Credits",
+      "billing": "Billing",
+      "settings": "Settings",
+      "login": "Login",
+      "signup": "Sign Up",
+      "logout": "Logout"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "close": "Close",
+      "search": "Search",
+      "reveal": "Reveal",
+      "export": "Export",
+      "delete": "Delete",
+      "edit": "Edit",
+      "back": "Back",
+      "next": "Next",
+      "submit": "Submit",
+      "learn_more": "Learn More",
+      "try_now": "Try Now",
+      "subscribe": "Subscribe",
+      "buy": "Buy"
+    },
+    "locale": {
+      "switch": "Language",
+      "ar": "العربية",
+      "fr": "Français",
+      "en": "English",
+      "inferred": "We detected your language as {locale}. Is this correct?",
+      "confirm": "Yes, continue",
+      "change": "Switch to {locale}"
+    },
+    "states": {
+      "loading": "Loading...",
+      "error": "Something went wrong. Please try again.",
+      "empty": "No results found.",
+      "not_found": "Page not found.",
+      "rate_limited": "You have reached the daily limit. Please try again tomorrow.",
+      "maintenance": "We are performing maintenance. Back shortly."
+    },
+    "credits": {
+      "label": "Credits",
+      "remaining": "{count} credits remaining",
+      "buy": "Buy Credits",
+      "zero": "0 credits",
+      "warning": "Low on credits — only {count} left",
+      "ledger": "Credit Ledger"
+    },
+    "errors": {
+      "required": "This field is required",
+      "invalid_email": "Please enter a valid email address",
+      "invalid_password": "Password must be at least 8 characters",
+      "network": "Network error. Please check your connection.",
+      "unauthorized": "Please log in to continue",
+      "forbidden": "You don't have permission to perform this action"
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Find B2B Leads in Algeria",
+      "subtitle": "Access verified contacts from Algerian companies — importers, distributors, and decision-makers across 58 wilayas.",
+      "cta": "Start Searching"
+    },
+    "trust": {
+      "label": "Trusted by hundreds of Algerian businesses",
+      "item1": "Verified data from multiple sources",
+      "item2": "Updated every 30 days",
+      "item3": "Compliant with Algerian law 18-07"
+    },
+    "how_it_works": {
+      "title": "How It Works",
+      "step1": "Search by industry, wilaya, or keyword",
+      "step2": "Reveal contact details — 1 credit each",
+      "step3": "Export your leads to CSV or Excel"
+    },
+    "pricing": {
+      "title": "Simple Pricing",
+      "starter": {
+        "name": "Starter",
+        "price": "1,500 DZD/month",
+        "description": "200 credits monthly, renews automatically"
+      },
+      "pack1": {
+        "name": "Starter Pack",
+        "price": "500 DZD",
+        "description": "75 credits — never expire"
+      },
+      "pack2": {
+        "name": "Pro Pack",
+        "price": "1,500 DZD",
+        "description": "250 credits — never expire"
+      }
+    },
+    "founder": {
+      "note": "A word from the founder",
+      "text": "I built dzLeadsFinder because I saw how hard it is for Algerian businesses to find qualified leads. We combine multiple data sources to give you accurate, up-to-date contact information — so you can focus on growing your business."
+    }
+  },
+  "search": {
+    "title": "Search Leads",
+    "people_tab": "People",
+    "companies_tab": "Companies",
+    "placeholder": "Search by name, activity, or keyword...",
+    "filters": {
+      "title": "Filters",
+      "industry": "Industry",
+      "industry_placeholder": "Select industries...",
+      "wilaya": "Wilaya",
+      "wilaya_placeholder": "Select wilayas...",
+      "seniority": "Seniority",
+      "size": "Company Size",
+      "keyword": "Keyword",
+      "apply": "Apply Filters",
+      "clear": "Clear All",
+      "save": "Save Search"
+    },
+    "results": {
+      "count": "{count} results found",
+      "count_with_limit": "Showing first {shown} of {total} results — refine your search",
+      "empty": "No leads match your filters. Try widening your criteria.",
+      "truncated": "Refine your search — only the first 1,000 results are shown",
+      "refine_prompt": "Add more filters to narrow results",
+      "pagination": "Page {current} of {total}"
+    },
+    "sort": {
+      "label": "Sort by",
+      "relevance": "Relevance",
+      "name": "Name",
+      "wilaya": "Wilaya"
+    },
+    "seniority": {
+      "owner_founder": "Owner / Founder",
+      "c_level": "C-Level",
+      "director": "Director",
+      "manager": "Manager",
+      "individual_contributor": "Individual Contributor"
+    },
+    "size": {
+      "1_10": "1-10 employees",
+      "11_50": "11-50 employees",
+      "51_200": "51-200 employees",
+      "201_500": "201-500 employees",
+      "500_plus": "500+ employees"
+    },
+    "saved": {
+      "title": "Saved Searches",
+      "save": "Save Current Search",
+      "name_placeholder": "Name this search...",
+      "empty": "No saved searches yet",
+      "delete_confirm": "Delete this saved search?",
+      "max_capacity": "You have reached the saved search limit"
+    }
+  },
+  "trust": {
+    "how_we_verify": {
+      "title": "How We Verify",
+      "description": "We combine multiple data sources to provide accurate, up-to-date contact information for Algerian businesses.",
+      "sources": {
+        "title": "Data Sources",
+        "google_places": "Google Places API — public business listings",
+        "el_mouchir": "El Mouchir — Algerian business directory",
+        "pages_jaunes": "Pages Jaunes Algérie — yellow pages directory",
+        "note": "We do NOT source data from social media, private databases, or unauthorized sources."
+      },
+      "updates": "Every record is verified at least once every 30 days.",
+      "last_verified": "Last verified: {date}"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "We take your data privacy seriously. dzLeadsFinder complies with Algerian Law 18-07 on the Protection of Personal Data.",
+      "rights": {
+        "access": "You have the right to access your personal data",
+        "rectification": "You have the right to correct inaccurate data",
+        "deletion": "You have the right to request deletion of your data",
+        "portability": "You have the right to data portability"
+      },
+      "data_collected": "We collect only the data necessary to provide our service: email, name, and payment information.",
+      "contact": "For privacy-related inquiries, contact us at privacy@dzleadsfinder.dz"
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "description": "By using dzLeadsFinder, you agree to these terms. Our service is intended for B2B lead generation purposes only.",
+      "subscription": "Subscriptions renew automatically. You may cancel at any time.",
+      "refund": "All purchases are non-refundable as per our refund policy.",
+      "usage": "You may not scrape, resell, or redistribute data obtained through dzLeadsFinder."
+    },
+    "refund": {
+      "title": "Refund Policy",
+      "description": "All purchases on dzLeadsFinder are non-refundable by default. This includes subscription fees and credit pack purchases.",
+      "exception": "Exceptions may be made in cases of proven technical errors on our part. Contact support@dzleadsfinder.dz for assistance."
+    }
+  }
+}

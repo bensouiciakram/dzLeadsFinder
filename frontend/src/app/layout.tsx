@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages, getLocale } from 'next-intl/server'
 import { Inter, Noto_Kufi_Arabic } from 'next/font/google'
+import { getDir } from '@/i18n/routing'
 import './globals.css'
 
 const inter = Inter({
@@ -17,18 +20,26 @@ export const metadata: Metadata = {
   description: 'Algerian B2B Lead Generation Platform',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getLocale()
+  const dir = getDir(locale)
+  const messages = await getMessages()
+
   return (
     <html
-      lang="fr"
-      dir="ltr"
+      lang={locale}
+      dir={dir}
       className={`${inter.variable} ${notoKufiArabic.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   )
 }

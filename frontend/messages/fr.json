@@ -1,0 +1,302 @@
+{
+  "auth": {
+    "login": {
+      "title": "Bon retour",
+      "email_label": "Email",
+      "email_placeholder": "vous@entreprise.dz",
+      "password_label": "Mot de passe",
+      "password_placeholder": "Entrez votre mot de passe",
+      "submit": "Connexion",
+      "forgot_password": "Mot de passe oublié ?",
+      "no_account": "Pas encore de compte ?",
+      "signup_link": "Inscrivez-vous",
+      "error_invalid": "Email ou mot de passe invalide",
+      "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard."
+    },
+    "signup": {
+      "title": "Créez votre compte",
+      "subtitle": "Commencez avec 15 crédits gratuits — aucune carte bancaire requise",
+      "email_label": "Email",
+      "email_placeholder": "vous@entreprise.dz",
+      "password_label": "Mot de passe",
+      "password_placeholder": "Au moins 8 caractères",
+      "submit": "Créer un compte",
+      "free_credits": "Vous recevrez 15 crédits gratuits à l'inscription",
+      "has_account": "Vous avez déjà un compte ?",
+      "login_link": "Connectez-vous",
+      "terms_notice": "En vous inscrivant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité",
+      "error_email_taken": "Cet email est déjà enregistré",
+      "error_weak_password": "Le mot de passe est trop faible"
+    },
+    "verify": {
+      "title": "Vérifiez votre email",
+      "description": "Nous avons envoyé un lien de vérification à {email}. Cliquez sur le lien pour activer votre compte.",
+      "resend": "Renvoyer l'email de vérification",
+      "resend_success": "Email de vérification envoyé !",
+      "skip_note": "Certaines fonctionnalités seront limitées jusqu'à la vérification de votre email.",
+      "already_verified": "Email déjà vérifié. Vous pouvez maintenant utiliser toutes les fonctionnalités."
+    },
+    "password_reset": {
+      "title": "Réinitialiser le mot de passe",
+      "description": "Entrez votre email et nous vous enverrons un lien de réinitialisation.",
+      "email_label": "Email",
+      "email_placeholder": "vous@entreprise.dz",
+      "submit": "Envoyer le lien",
+      "success": "Lien de réinitialisation envoyé ! Vérifiez votre email.",
+      "new_password_title": "Définir un nouveau mot de passe",
+      "new_password_label": "Nouveau mot de passe",
+      "confirm_password_label": "Confirmer le nouveau mot de passe",
+      "submit_new": "Réinitialiser le mot de passe",
+      "error_token_invalid": "Ce lien de réinitialisation est invalide ou a expiré."
+    }
+  },
+  "billing": {
+    "title": "Facturation et forfaits",
+    "current_plan": "Forfait actuel",
+    "free_plan": "Gratuit",
+    "free_description": "15 crédits gratuits pour commencer",
+    "starter_plan": "Starter",
+    "starter_description": "200 crédits par mois — renouvellement à 1 500 DZD/mois",
+    "renewal_date": "Renouvellement le {date}",
+    "failed_renewal": "Paiement échoué. Mettez à jour votre moyen de paiement.",
+    "packs": {
+      "title": "Packs de crédits supplémentaires",
+      "pack1_name": "Pack Starter",
+      "pack1_price": "500 DZD",
+      "pack1_credits": "75 crédits",
+      "pack2_name": "Pack Pro",
+      "pack2_price": "1 500 DZD",
+      "pack2_credits": "250 crédits",
+      "best_value": "Meilleur rapport qualité-prix",
+      "never_expire": "Les crédits n'expirent jamais",
+      "buy": "Acheter maintenant"
+    },
+    "history": {
+      "title": "Historique des paiements",
+      "empty": "Aucun paiement pour le moment",
+      "date": "Date",
+      "amount": "Montant",
+      "status": "Statut",
+      "credits": "Crédits"
+    },
+    "status": {
+      "pending": "Traitement du paiement...",
+      "succeeded": "Paiement réussi !",
+      "failed": "Paiement échoué",
+      "timeout": "Paiement reçu — les crédits seront crédités sous peu"
+    },
+    "cancel": {
+      "title": "Annuler l'abonnement",
+      "description": "Vos crédits restent utilisables jusqu'à la fin de la période de facturation. Aucun remboursement.",
+      "confirm": "Je comprends, annuler mon abonnement"
+    },
+    "dzone": {
+      "title": "Zone de danger",
+      "delete_account": "Supprimer le compte",
+      "delete_description": "Supprimez définitivement votre compte et toutes les données. Cette action est irréversible.",
+      "delete_confirm": "Je comprends, supprimer mon compte"
+    }
+  },
+  "common": {
+    "app": {
+      "name": "dzLeadsFinder",
+      "tagline": "Plateforme algérienne de génération de leads B2B"
+    },
+    "nav": {
+      "home": "Accueil",
+      "search": "Recherche",
+      "credits": "Crédits",
+      "billing": "Facturation",
+      "settings": "Paramètres",
+      "login": "Connexion",
+      "signup": "Inscription",
+      "logout": "Déconnexion"
+    },
+    "actions": {
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "close": "Fermer",
+      "search": "Rechercher",
+      "reveal": "Révéler",
+      "export": "Exporter",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "back": "Retour",
+      "next": "Suivant",
+      "submit": "Envoyer",
+      "learn_more": "En savoir plus",
+      "try_now": "Essayer maintenant",
+      "subscribe": "S'abonner",
+      "buy": "Acheter"
+    },
+    "locale": {
+      "switch": "Langue",
+      "ar": "العربية",
+      "fr": "Français",
+      "en": "English",
+      "inferred": "Nous avons détecté votre langue comme {locale}. Est-ce correct ?",
+      "confirm": "Oui, continuer",
+      "change": "Passer à {locale}"
+    },
+    "states": {
+      "loading": "Chargement...",
+      "error": "Une erreur est survenue. Veuillez réessayer.",
+      "empty": "Aucun résultat trouvé.",
+      "not_found": "Page non trouvée.",
+      "rate_limited": "Vous avez atteint la limite quotidienne. Veuillez réessayer demain.",
+      "maintenance": "Nous effectuons une maintenance. De retour sous peu."
+    },
+    "credits": {
+      "label": "Crédits",
+      "remaining": "{count} crédits restants",
+      "buy": "Acheter des crédits",
+      "zero": "0 crédit",
+      "warning": "Crédits faibles — il ne reste que {count}",
+      "ledger": "Historique des crédits"
+    },
+    "errors": {
+      "required": "Ce champ est requis",
+      "invalid_email": "Veuillez entrer une adresse email valide",
+      "invalid_password": "Le mot de passe doit contenir au moins 8 caractères",
+      "network": "Erreur réseau. Veuillez vérifier votre connexion.",
+      "unauthorized": "Veuillez vous connecter pour continuer",
+      "forbidden": "Vous n'avez pas la permission d'effectuer cette action"
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Trouvez des leads B2B en Algérie",
+      "subtitle": "Accédez aux contacts vérifiés des entreprises algériennes — importateurs, distributeurs et décideurs dans les 58 wilayas.",
+      "cta": "Commencer la recherche"
+    },
+    "trust": {
+      "label": "Approuvé par des centaines d'entreprises algériennes",
+      "item1": "Données vérifiées provenant de multiples sources",
+      "item2": "Mises à jour tous les 30 jours",
+      "item3": "Conforme à la loi algérienne 18-07"
+    },
+    "how_it_works": {
+      "title": "Comment ça marche",
+      "step1": "Recherchez par secteur, wilaya ou mot-clé",
+      "step2": "Révélez les coordonnées — 1 crédit chacune",
+      "step3": "Exportez vos leads en CSV ou Excel"
+    },
+    "pricing": {
+      "title": "Tarification simple",
+      "starter": {
+        "name": "Starter",
+        "price": "1 500 DZD/mois",
+        "description": "200 crédits par mois, renouvellement automatique"
+      },
+      "pack1": {
+        "name": "Pack Starter",
+        "price": "500 DZD",
+        "description": "75 crédits — n'expirent jamais"
+      },
+      "pack2": {
+        "name": "Pack Pro",
+        "price": "1 500 DZD",
+        "description": "250 crédits — n'expirent jamais"
+      }
+    },
+    "founder": {
+      "note": "Mot du fondateur",
+      "text": "J'ai créé dzLeadsFinder parce que j'ai vu à quel point il est difficile pour les entreprises algériennes de trouver des leads qualifiés. Nous combinons plusieurs sources de données pour vous fournir des coordonnées précises et à jour — pour que vous puissiez vous concentrer sur le développement de votre entreprise."
+    }
+  },
+  "search": {
+    "title": "Recherche de leads",
+    "people_tab": "Personnes",
+    "companies_tab": "Entreprises",
+    "placeholder": "Rechercher par nom, activité ou mot-clé...",
+    "filters": {
+      "title": "Filtres",
+      "industry": "Secteur d'activité",
+      "industry_placeholder": "Sélectionnez des secteurs...",
+      "wilaya": "Wilaya",
+      "wilaya_placeholder": "Sélectionnez des wilayas...",
+      "seniority": "Ancienneté",
+      "size": "Taille d'entreprise",
+      "keyword": "Mot-clé",
+      "apply": "Appliquer les filtres",
+      "clear": "Tout effacer",
+      "save": "Enregistrer la recherche"
+    },
+    "results": {
+      "count": "{count} résultats trouvés",
+      "count_with_limit": "Affichage des {shown} premiers résultats sur {total} — affinez votre recherche",
+      "empty": "Aucun lead ne correspond à vos filtres. Essayez d'élargir vos critères.",
+      "truncated": "Affinez votre recherche — seuls les 1 000 premiers résultats sont affichés",
+      "refine_prompt": "Ajoutez plus de filtres pour affiner les résultats",
+      "pagination": "Page {current} sur {total}"
+    },
+    "sort": {
+      "label": "Trier par",
+      "relevance": "Pertinence",
+      "name": "Nom",
+      "wilaya": "Wilaya"
+    },
+    "seniority": {
+      "owner_founder": "Propriétaire / Fondateur",
+      "c_level": "Cadre dirigeant",
+      "director": "Directeur",
+      "manager": "Responsable",
+      "individual_contributor": "Contributeur individuel"
+    },
+    "size": {
+      "1_10": "1-10 employés",
+      "11_50": "11-50 employés",
+      "51_200": "51-200 employés",
+      "201_500": "201-500 employés",
+      "500_plus": "500+ employés"
+    },
+    "saved": {
+      "title": "Recherches enregistrées",
+      "save": "Enregistrer la recherche actuelle",
+      "name_placeholder": "Nommez cette recherche...",
+      "empty": "Aucune recherche enregistrée",
+      "delete_confirm": "Supprimer cette recherche enregistrée ?",
+      "max_capacity": "Vous avez atteint la limite de recherches enregistrées"
+    }
+  },
+  "trust": {
+    "how_we_verify": {
+      "title": "Comment nous vérifions",
+      "description": "Nous combinons plusieurs sources de données pour fournir des coordonnées précises et à jour des entreprises algériennes.",
+      "sources": {
+        "title": "Sources de données",
+        "google_places": "Google Places API — annuaires d'entreprises publics",
+        "el_mouchir": "El Mouchir — annuaire des entreprises algériennes",
+        "pages_jaunes": "Pages Jaunes Algérie — annuaire pages jaunes",
+        "note": "Nous ne nous approvisionnons PAS à partir des réseaux sociaux, de bases de données privées ou de sources non autorisées."
+      },
+      "updates": "Chaque enregistrement est vérifié au moins une fois tous les 30 jours.",
+      "last_verified": "Dernière vérification : {date}"
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "description": "Nous prenons la confidentialité de vos données au sérieux. dzLeadsFinder est conforme à la loi algérienne 18-07 sur la protection des données personnelles.",
+      "rights": {
+        "access": "Vous avez le droit d'accéder à vos données personnelles",
+        "rectification": "Vous avez le droit de corriger des données inexactes",
+        "deletion": "Vous avez le droit de demander la suppression de vos données",
+        "portability": "Vous avez le droit à la portabilité des données"
+      },
+      "data_collected": "Nous collectons uniquement les données nécessaires à la fourniture de notre service : email, nom et informations de paiement.",
+      "contact": "Pour toute question relative à la confidentialité, contactez-nous à privacy@dzleadsfinder.dz"
+    },
+    "terms": {
+      "title": "Conditions d'utilisation",
+      "description": "En utilisant dzLeadsFinder, vous acceptez ces conditions. Notre service est destiné uniquement à la génération de leads B2B.",
+      "subscription": "Les abonnements se renouvellent automatiquement. Vous pouvez annuler à tout moment.",
+      "refund": "Tous les achats sont non remboursables conformément à notre politique de remboursement.",
+      "usage": "Vous n'êtes pas autorisé à extraire, revendre ou redistribuer les données obtenues via dzLeadsFinder."
+    },
+    "refund": {
+      "title": "Politique de remboursement",
+      "description": "Tous les achats sur dzLeadsFinder sont non remboursables par défaut. Cela inclut les frais d'abonnement et les achats de packs de crédits.",
+      "exception": "Des exceptions peuvent être faites en cas d'erreurs techniques avérées de notre part. Contactez support@dzleadsfinder.dz pour obtenir de l'aide."
+    }
+  }
+}

@@ -36,5 +36,8 @@ _bmad-output/planning-artifacts/**/*.pdf
 mypy_cache/
 .ruff_cache/
 
+# opencode tooling
+.opencode/commands/
+
 # Docker
 *.pid

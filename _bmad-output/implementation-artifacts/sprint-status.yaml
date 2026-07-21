@@ -43,8 +43,8 @@ development_status:
   # Epic 1: Platform Foundation & Public Surfaces
   epic-1: in-progress
   1-1-project-scaffolding: in-progress
-  1-2-design-token-system: in-progress
-  1-3-locale-system-rtl: backlog
+  1-2-design-token-system: done
+  1-3-locale-system-rtl: done
   1-4-locale-switcher-confirm-banner: backlog
   1-5-public-marketing-pages: backlog
   1-6-58-wilaya-taxonomy-page: backlog

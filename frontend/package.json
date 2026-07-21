@@ -8,11 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "lint:css": "stylelint \"src/**/*.css\"",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "typecheck": "tsc --noEmit",
     "test": "echo 'No tests yet' && exit 0"
   },
   "dependencies": {
     "next": "^14.2.0",
+    "next-intl": "^4.13.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },
