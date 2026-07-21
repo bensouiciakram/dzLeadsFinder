@@ -33,7 +33,7 @@
 #   - done: Completed
 
 generated: 2026-07-21T12:52:00+01:00
-last_updated: 2026-07-21T12:52:00+01:00
+last_updated: 2026-07-21T13:42:00+01:00
 project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 project_key: NOKEY
 tracking_system: file-system
@@ -41,8 +41,8 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Platform Foundation & Public Surfaces
-  epic-1: backlog
-  1-1-project-scaffolding: backlog
+  epic-1: in-progress
+  1-1-project-scaffolding: in-progress
   1-2-design-token-system: backlog
   1-3-locale-system-rtl: backlog
   1-4-locale-switcher-confirm-banner: backlog

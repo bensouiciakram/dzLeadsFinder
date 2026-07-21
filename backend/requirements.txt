@@ -1,0 +1,13 @@
+django>=5.0,<5.1
+djangorestframework>=3.14,<3.16
+django-cors-headers>=4.3,<4.5
+djoser>=2.2,<2.3
+djangorestframework-simplejwt>=5.3,<5.5
+celery[redis]>=5.3,<5.5
+gunicorn>=22.0,<23.0
+psycopg2-binary>=2.9,<2.10
+redis>=5.0,<5.1
+ruff>=0.4,<0.6
+mypy>=1.9,<1.12
+pytest-django>=4.8,<4.10
+pytest>=8.2,<8.4
