@@ -1,1 +1,89 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #0f766e;
+  --color-primary-foreground: #fff;
+  --color-primary-hover: #115e59;
+  --color-ring: #0f766e;
+  --color-background: #fff;
+  --color-foreground: #0f172a;
+  --color-card: #fff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #fff;
+  --color-popover-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #fff;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-success: #16a34a;
+  --color-success-foreground: #fff;
+  --color-success-container: #dcfce7;
+  --color-success-on-container: #166534;
+  --color-warning: #d97706;
+  --color-warning-foreground: #fff;
+  --color-warning-container: #fef3c7;
+  --color-warning-on-container: #92400e;
+  --color-danger: #dc2626;
+  --color-danger-foreground: #fff;
+  --color-danger-container: #fee2e2;
+  --color-danger-on-container: #991b1b;
+  --color-info: #2563eb;
+  --color-info-foreground: #fff;
+  --color-info-container: #dbeafe;
+  --color-info-on-container: #1e40af;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-arabic: var(--font-noto-kufi-arabic), "Noto Kufi Arabic", sans-serif;
+  --font-size-display: 36px;
+  --font-size-display--line-height: 1.1;
+  --font-size-display--font-weight: 700;
+  --font-size-headline: 24px;
+  --font-size-headline--line-height: 1.2;
+  --font-size-headline--font-weight: 600;
+  --font-size-title: 18px;
+  --font-size-title--line-height: 1.3;
+  --font-size-title--font-weight: 600;
+  --font-size-body: 16px;
+  --font-size-body--line-height: 1.5;
+  --font-size-body--font-weight: 400;
+  --font-size-small: 14px;
+  --font-size-small--line-height: 1.4;
+  --font-size-small--font-weight: 400;
+  --font-size-caption: 12px;
+  --font-size-caption--line-height: 1.4;
+  --font-size-caption--font-weight: 500;
+  --font-size-data: 14px;
+  --font-size-data--line-height: 1.4;
+  --font-size-data--font-weight: 500;
+  --spacing-gutter: 16px;
+  --spacing-gutter-desktop: 24px;
+  --spacing-sidebar-width: 288px;
+  --spacing-content-max-app: 1280px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility font-arabic {
+  font-family: var(--font-noto-kufi-arabic), "Noto Kufi Arabic", sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+}

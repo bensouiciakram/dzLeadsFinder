@@ -1,0 +1,29 @@
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-tailwindcss"],
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": ["theme", "utility", "layer", "apply", "config"]
+      }
+    ],
+    "import-notation": "string",
+    "color-hex-length": "short",
+    "custom-property-empty-line-before": null,
+    "custom-property-pattern": null,
+    "property-disallowed-list": [
+      ["/^(margin|padding)-(left|right)$/", "^left$", "^right$"],
+      {
+        "message": "Use logical properties (ms-*, me-*, ps-*, pe-*, inset-inline-start/end) instead of physical ones"
+      }
+    ],
+    "declaration-property-value-disallowed-list": [
+      {
+        "text-align": ["/^left$/", "/^right$/"]
+      },
+      {
+        "message": "Use text-start/text-end instead of text-left/text-right"
+      }
+    ]
+  }
+}
