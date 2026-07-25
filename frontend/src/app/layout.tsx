@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, getLocale } from 'next-intl/server'
 import { Inter, Noto_Kufi_Arabic } from 'next/font/google'
 import { getDir } from '@/i18n/routing'
+import { AppShell } from '@/components/layout/AppShell'
 import './globals.css'
 
 const inter = Inter({
@@ -36,8 +37,8 @@ export default async function RootLayout({
       className={`${inter.variable} ${notoKufiArabic.variable}`}
     >
       <body>
-        <NextIntlClientProvider messages={messages}>
-          {children}
+          <NextIntlClientProvider key={locale} locale={locale} messages={messages}>
+          <AppShell>{children}</AppShell>
         </NextIntlClientProvider>
       </body>
     </html>

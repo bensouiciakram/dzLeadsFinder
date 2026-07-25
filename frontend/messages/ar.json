@@ -137,7 +137,10 @@
       "en": "English",
       "inferred": "لقد اكتشفنا أن لغتك هي {locale}. هل هذا صحيح؟",
       "confirm": "نعم، استمر",
-      "change": "التبديل إلى {locale}"
+      "change": "التبديل إلى {locale}",
+      "announcement": "لغة الواجهة: {locale}",
+      "inferred_banner": "لقد خمنا لغتك — تبديل؟",
+      "inferred_switch": "تبديل"
     },
     "states": {
       "loading": "جارٍ التحميل...",

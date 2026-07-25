@@ -137,7 +137,10 @@
       "en": "English",
       "inferred": "Nous avons détecté votre langue comme {locale}. Est-ce correct ?",
       "confirm": "Oui, continuer",
-      "change": "Passer à {locale}"
+      "change": "Passer à {locale}",
+      "announcement": "Langue de l'interface : {locale}",
+      "inferred_banner": "Nous avons deviné votre langue — changer ?",
+      "inferred_switch": "Changer"
     },
     "states": {
       "loading": "Chargement...",
