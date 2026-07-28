@@ -2,7 +2,7 @@
 title: Story 1.7 — App Shell (Header + Footer)
 story_id: 1.7
 epic: 1
-status: draft
+status: review
 frs: [FR-1, FR-2, FR-15, FR-28]
 ads: [AD-2, AD-10]
 ux_drs: [UX-DR5, UX-DR6, UX-DR7, UX-DR15, UX-DR21, UX-DR22]
@@ -60,3 +60,18 @@ So that **I can orient myself, switch language, see my balance, and access key p
 **When** the app initialises
 **Then** locale and `dir` are set on `<html>` before any visible render
 **And** the layout is responsive: mobile gutters at {spacing.gutter}, desktop at {spacing.gutter-desktop}
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-28 | Implemented Story 1.7 — redesigned Header (sticky, nav links, guest/authenticated states), redesigned Footer (3-column Product/Trust/Legal, "Made by Akram in Algiers"), created provider wrappers (SessionProvider, LocaleProvider, CreditProvider), updated AppShell to wrap with providers. |
+
+## File List
+
+- `frontend/src/components/layout/Header.tsx` — modified: sticky header with nav links, guest CTAs, authenticated nav placeholders
+- `frontend/src/components/layout/Footer.tsx` — modified: 3-column footer (Product/Trust/Legal) with "Made by Akram in Algiers" and LocaleSwitcher
+- `frontend/src/components/layout/AppShell.tsx` — modified: wrapped children with SessionProvider, LocaleProvider, CreditProvider
+- `frontend/src/components/providers/SessionProvider.tsx` — new: client context provider for auth state
+- `frontend/src/components/providers/LocaleProvider.tsx` — new: client context provider for locale
+- `frontend/src/components/providers/CreditProvider.tsx` — new: client context provider for credit balance
