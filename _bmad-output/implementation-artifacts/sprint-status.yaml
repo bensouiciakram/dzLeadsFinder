@@ -33,7 +33,7 @@
 #   - done: Completed
 
 generated: 2026-07-21T12:52:00+01:00
-last_updated: 2026-07-21T13:42:00+01:00
+last_updated: 2026-07-25T15:56:00+01:00
 project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   1-2-design-token-system: done
   1-3-locale-system-rtl: done
   1-4-locale-switcher-confirm-banner: backlog
-  1-5-public-marketing-pages: backlog
+  1-5-public-marketing-pages: review
   1-6-58-wilaya-taxonomy-page: backlog
   1-7-app-shell-header-footer: backlog
   1-8-email-system-foundation: backlog

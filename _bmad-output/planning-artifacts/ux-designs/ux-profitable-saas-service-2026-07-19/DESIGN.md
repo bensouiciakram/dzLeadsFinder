@@ -15,6 +15,8 @@ colors:
   primary-foreground: '#FFFFFF'
   primary-hover: '#115E59'        # Tailwind teal-800
   ring: '#0F766E'
+  warm: '#9C4221'                 # deep rust/ochre — marketing accent, Algerian warmth
+  warm-foreground: '#FFFFFF'
   # Neutral slate surfaces
   background: '#FFFFFF'
   foreground: '#0F172A'           # slate-900
@@ -30,10 +32,10 @@ colors:
   success-foreground: '#FFFFFF'
   success-container: '#ECFDF5'    # emerald-50
   success-on-container: '#064E3B' # emerald-900
-  warning: '#B45309'              # amber-700
+  warning: '#BE4A36'              # terracotta — ownable warning accent
   warning-foreground: '#FFFFFF'
-  warning-container: '#FEF3C7'    # amber-100
-  warning-on-container: '#78350F' # amber-900
+  warning-container: '#FFF1F2'    # rose-50
+  warning-on-container: '#9F1239' # rose-900
   danger: '#B91C1C'               # red-700, brick — overrides shadcn `destructive`
   danger-foreground: '#FFFFFF'
   danger-container: '#FEF2F2'     # red-50
@@ -44,37 +46,37 @@ colors:
   info-on-container: '#0C4A6E'    # sky-900
 typography:
   font-latin:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"'
   font-arabic:
-    fontFamily: '"Noto Kufi Arabic", "Segoe UI", Tahoma, Arial, sans-serif'
+    fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Noto Naskh Arabic", "Noto Kufi Arabic", sans-serif'
   display:
     fontSize: 36px                # Tailwind text-4xl
-    fontWeight: '700'
-    lineHeight: '1.2'
-    letterSpacing: -0.01em        # Latin only — never on Arabic
+    fontWeight: '800'
+    lineHeight: '1.1'
+    letterSpacing: -0.02em        # Latin only — never on Arabic
   headline:
     fontSize: 24px                # text-2xl
-    fontWeight: '600'
-    lineHeight: '1.3'
+    fontWeight: '700'
+    lineHeight: '1.2'
   title:
     fontSize: 18px                # text-lg
-    fontWeight: '600'
-    lineHeight: '1.4'
+    fontWeight: '700'
+    lineHeight: '1.3'
   body:
     fontSize: 16px                # text-base — delta: shadcn default is 14px
-    fontWeight: '400'
+    fontWeight: '500'             # bumped from 400 — Plus Jakarta Sans at 400 reads thin
     lineHeight: '1.6'
   small:
     fontSize: 14px                # text-sm
-    fontWeight: '400'
+    fontWeight: '500'             # bumped from 400
     lineHeight: '1.5'
   caption:
     fontSize: 12px                # text-xs
-    fontWeight: '500'
+    fontWeight: '600'             # bumped from 500
     lineHeight: '1.4'
   data:
     fontSize: 14px
-    fontWeight: '500'
+    fontWeight: '600'             # bumped from 500
     lineHeight: '1.4'             # always rendered with tabular-nums
 rounded:
   sm: 4px
@@ -271,8 +273,8 @@ When the founder brand lands, it enters **through token values only** — see th
 
 **Stacks.** Two font families, switched by locale, never mixed within a string:
 
-- **Latin stack — {typography.font-latin.fontFamily}** — Inter first, system fallbacks after. Used for FR and EN, and for every UI numeral in every locale (see numeral rule).
-- **Arabic stack — {typography.font-arabic.fontFamily}** — Noto Kufi Arabic first, then Segoe UI / Tahoma. **Rule: all Arabic-script text always renders in the Arabic stack** — no exceptions, including Arabic text inside otherwise-Latin UI (e.g., wilaya fallback names in the FR interface).
+- **Latin stack — {typography.font-latin.fontFamily}** — System native sans-serif stack, no custom fonts. Used for FR and EN, and for every UI numeral in every locale (see numeral rule).
+- **Arabic stack — {typography.font-arabic.fontFamily}** — System native stack with Arabic-optimized fallbacks (Segoe UI on Windows, San Francisco on Apple, Noto Naskh/Kufi on other platforms). **Rule: all Arabic-script text always renders in the Arabic stack** — no exceptions, including Arabic text inside otherwise-Latin UI (e.g., wilaya fallback names in the FR interface).
 
 Tailwind mapping: `font-sans` := {typography.font-latin.fontFamily}; a `font-arabic` utility := {typography.font-arabic.fontFamily}, applied automatically by the `lang="ar"` subtree.
 

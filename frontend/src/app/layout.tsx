@@ -1,19 +1,14 @@
 import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, getLocale } from 'next-intl/server'
-import { Inter, Noto_Kufi_Arabic } from 'next/font/google'
+import { Space_Grotesk } from 'next/font/google'
 import { getDir } from '@/i18n/routing'
 import { AppShell } from '@/components/layout/AppShell'
 import './globals.css'
 
-const inter = Inter({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-inter',
-})
-
-const notoKufiArabic = Noto_Kufi_Arabic({
-  subsets: ['arabic'],
-  variable: '--font-noto-kufi-arabic',
+  variable: '--font-space-grotesk',
 })
 
 export const metadata: Metadata = {
@@ -31,11 +26,7 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html
-      lang={locale}
-      dir={dir}
-      className={`${inter.variable} ${notoKufiArabic.variable}`}
-    >
+    <html lang={locale} dir={dir} className={spaceGrotesk.variable}>
       <body>
           <NextIntlClientProvider key={locale} locale={locale} messages={messages}>
           <AppShell>{children}</AppShell>
