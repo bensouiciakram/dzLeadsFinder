@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'apps.credits',
     'apps.billing',
     'apps.exports',
+    'tasks',
 ]
 
 MIDDLEWARE = [

@@ -80,3 +80,20 @@ So that **I get a coherent experience across the web app and my inbox**.
 - `frontend/package.json` — added `@react-email/components`, `@react-email/render`
 - `frontend/tsconfig.json` — added `@/emails/*` path alias
 - `backend/config/celery.py` — added `beat_schedule` with `check-low-credits-daily`
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-28 | Implemented Story 1.8 — created BaseEmail wrapper, 4 email templates (SignupConfirm, PaymentReceipt, PackReceipt, LowCredit), render API route, Celery task stubs with daily beat schedule. |
+
+## File List
+
+- `frontend/emails/components/BaseEmail.tsx` — new: shared email wrapper with dir="auto" and inline styles
+- `frontend/emails/components/SignupConfirm.tsx` — new: verification email template
+- `frontend/emails/components/PaymentReceipt.tsx` — new: payment receipt email template
+- `frontend/emails/components/PackReceipt.tsx` — new: credit pack receipt email template
+- `frontend/emails/components/LowCredit.tsx` — new: low credit warning email template
+- `frontend/src/app/api/emails/render/route.ts` — new: POST /api/emails/render API route
+- `backend/tasks/email_tasks.py` — new: Celery task stubs (send_verification_email, send_payment_receipt, send_pack_receipt, check_low_credits)
+- `backend/config/celery.py` — modified: added beat_schedule for daily check_low_credits
+- `backend/config/settings/base.py` — modified: added 'tasks' to INSTALLED_APPS
