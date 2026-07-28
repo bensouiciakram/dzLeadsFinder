@@ -110,6 +110,7 @@
       "settings": "Settings",
       "login": "Login",
       "signup": "Sign Up",
+      "start_free": "Start Free",
       "logout": "Logout"
     },
     "actions": {

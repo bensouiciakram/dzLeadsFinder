@@ -1,11 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useSession } from '@/components/providers/SessionProvider'
 import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
 
 export function Header() {
   const { isAuthenticated } = useSession()
+  const t = useTranslations('common.nav')
 
   return (
     <header dir="ltr" className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-gutter px-gutter-desktop">
@@ -16,16 +18,16 @@ export function Header() {
         {isAuthenticated ? (
           <>
             <Link href="/search" className="text-small text-muted-foreground hover:text-foreground">
-              Search
+              {t('search')}
             </Link>
             <Link href="/credits" className="text-small text-muted-foreground hover:text-foreground">
-              Credits
+              {t('credits')}
             </Link>
             <Link href="/billing" className="text-small text-muted-foreground hover:text-foreground">
-              Billing
+              {t('billing')}
             </Link>
             <Link href="/settings" className="text-small text-muted-foreground hover:text-foreground">
-              Settings
+              {t('settings')}
             </Link>
             <span className="text-small text-muted-foreground">|</span>
           </>
@@ -35,13 +37,13 @@ export function Header() {
               href="/login"
               className="text-small text-muted-foreground hover:text-foreground"
             >
-              Login
+              {t('login')}
             </Link>
             <Link
               href="/signup"
               className="rounded-md bg-primary px-4 py-2 text-small font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
             >
-              Start Free
+              {t('start_free')}
             </Link>
           </>
         )}
