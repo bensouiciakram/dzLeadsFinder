@@ -2,7 +2,7 @@
 title: Story 1.8 — Email System Foundation
 story_id: 1.8
 epic: 1
-status: draft
+status: review
 frs: [FR-3]
 ads: [AD-14]
 ux_drs: [UX-DR23]
@@ -51,3 +51,32 @@ So that **I get a coherent experience across the web app and my inbox**.
 | Payment received | `send_payment_receipt.delay(txn_id)` | PaymentReceipt | amount, credits_granted, date |
 | Pack received | `send_pack_receipt.delay(txn_id)` | PackReceipt | pack_credits, amount, never_expires_note |
 | Low-credit warning | Daily Celery beat: `check_low_credits` | LowCredit | remaining_credits, top_up_link |
+
+## Status
+
+**review** — All acceptance criteria have been implemented.
+
+### What was implemented
+
+1. **Frontend dependencies** — `@react-email/components` and `@react-email/render` installed
+2. **BaseEmail.tsx** — Shared email wrapper with `dir="auto"`, inline-styled responsive layout using `@react-email/components` primitives
+3. **4 email templates** — `SignupConfirm.tsx`, `PaymentReceipt.tsx`, `PackReceipt.tsx`, `LowCredit.tsx` with full props, inline styles, and preview text
+4. **Render API route** — `POST /api/emails/render` accepts `{ template, locale, context }` and returns rendered HTML via `@react-email/render`
+5. **Celery email tasks** — `send_verification_email`, `send_payment_receipt`, `send_pack_receipt`, `check_low_credits` with `render_email()` helper; all stubbed with TODOs for later wiring
+6. **Celery beat schedule** — Daily `check_low_credits` task registered in `celery.py`
+
+### File List
+
+#### New files
+- `frontend/emails/components/BaseEmail.tsx`
+- `frontend/emails/components/SignupConfirm.tsx`
+- `frontend/emails/components/PaymentReceipt.tsx`
+- `frontend/emails/components/PackReceipt.tsx`
+- `frontend/emails/components/LowCredit.tsx`
+- `frontend/src/app/api/emails/render/route.ts`
+- `backend/tasks/email_tasks.py`
+
+#### Modified files
+- `frontend/package.json` — added `@react-email/components`, `@react-email/render`
+- `frontend/tsconfig.json` — added `@/emails/*` path alias
+- `backend/config/celery.py` — added `beat_schedule` with `check-low-credits-daily`

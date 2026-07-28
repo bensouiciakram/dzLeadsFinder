@@ -264,6 +264,20 @@
     }
   },
   "trust": {
+    "wilayas": {
+      "meta_title": "Les 58 Wilayas d'Algérie — dzLeadsFinder",
+      "meta_description": "Taxonomie officielle des 58 wilayas — codes 1–58 avec noms en arabe, français et anglais.",
+      "heading": "Les 58 Wilayas d'Algérie",
+      "description": "L'Algérie est divisée en 58 wilayas (provinces), numérotées de 1 à 58. C'est la taxonomie officielle utilisée dans dzLeadsFinder.",
+      "table_caption": "Les 58 wilayas d'Algérie — codes 1–58 avec noms en arabe, français et anglais",
+      "column_code": "Code",
+      "column_arabic": "Arabe",
+      "column_french": "Français",
+      "column_english": "Anglais",
+      "filter_label": "Filtrer les wilayas",
+      "filter_placeholder": "Rechercher par code ou nom...",
+      "no_results": "Aucune wilaya ne correspond à votre recherche"
+    },
     "about": {
       "title": "\u00c0 propos de dzLeadsFinder",
       "meta_title": "\u00c0 propos \u2014 dzLeadsFinder",

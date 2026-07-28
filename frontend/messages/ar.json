@@ -264,6 +264,20 @@
     }
   },
   "trust": {
+    "wilayas": {
+      "meta_title": "الولايات الـ58 للجزائر — dzLeadsFinder",
+      "meta_description": "التصنيف الرسمي للولايات الـ58 — الرموز 1–58 مع الأسماء بالعربية والفرنسية والإنجليزية.",
+      "heading": "الولايات الـ58 للجزائر",
+      "description": "تنقسم الجزائر إلى 58 ولاية، مرقمة من 1 إلى 58. هذا هو التصنيف الرسمي المستخدم في جميع أنحاء dzLeadsFinder.",
+      "table_caption": "الولايات الـ58 للجزائر — الرموز 1–58 مع الأسماء بالعربية والفرنسية والإنجليزية",
+      "column_code": "الرمز",
+      "column_arabic": "العربية",
+      "column_french": "الفرنسية",
+      "column_english": "الإنجليزية",
+      "filter_label": "تصفية الولايات",
+      "filter_placeholder": "ابحث بالرمز أو الاسم...",
+      "no_results": "لا توجد ولايات تطابق بحثك"
+    },
     "about": {
       "title": "حول dzLeadsFinder",
       "meta_title": "حول — dzLeadsFinder",

@@ -10,6 +10,7 @@ const PAGES = [
   '/privacy',
   '/terms',
   '/refund-policy',
+  '/wilayas',
 ] as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
