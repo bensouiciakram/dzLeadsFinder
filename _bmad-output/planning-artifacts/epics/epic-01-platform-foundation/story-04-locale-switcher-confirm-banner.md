@@ -2,7 +2,7 @@
 title: Story 1.4 — Locale Switcher & Confirm Banner
 story_id: 1.4
 epic: 1
-status: draft
+status: done
 frs: [FR-1, FR-2]
 ads: [AD-6]
 ux_drs: [UX-DR5, UX-DR17, UX-DR21, UX-DR23, UX-DR24, UX-DR25]
@@ -63,6 +63,28 @@ So that **I can switch languages at any time without losing my work, and know th
 **Then** the banner never shows again
 **And** the `x-locale-confirmed` cookie is set (1-year expiry)
 **And** authenticated users persist choice to `users.locale`
+
+## Dev Notes
+
+### Implementation
+
+- Created `LocaleSwitcher` client component with shadcn Select, native-name labels (`العربية / Français / English`), Globe icon
+- Full state preservation on switch (no page reload — `router.refresh()` only for i18n, filter/search state preserved via React state)
+- Created `ConfirmBanner` client component — one-time banner on inferred locale, uses `x-locale-confirmed` cookie for persistence
+- Locale switch updates `document.documentElement.dir` and `lang`, sets `x-locale` cookie
+- `aria-live="polite"` announces new locale
+- Focus management: stable element IDs for focus restoration
+
+### File List
+
+- `frontend/src/components/locale/LocaleSwitcher.tsx` — new: locale switcher with shadcn Select
+- `frontend/src/components/locale/ConfirmBanner.tsx` — new: one-time locale confirmation banner
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-21 | Locale Switcher + Confirm Banner — shadcn Select, native names, state preservation, cookie persistence |
 
 **Given** keyboard accessibility requirements
 **When** I navigate the locale switcher with keyboard

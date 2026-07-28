@@ -2,7 +2,7 @@
 title: Story 1.3 — Locale System & RTL
 story_id: 1.3
 epic: 1
-status: draft
+status: done
 frs: [FR-1, FR-2, FR-3]
 ads: [AD-6, AD-8, AD-10, AD-11]
 ux_drs: [UX-DR3, UX-DR4, UX-DR23, UX-DR25]
@@ -58,6 +58,36 @@ So that **I can use the product in my preferred language from the moment I land*
 **When** any page renders
 **Then** all numerals (credits, prices, codes, dates) use Western Arabic glyphs (0-9)
 **And** dates use `Intl.DateTimeFormat(locale)` — verified to produce Western numerals on target browsers
+
+## Dev Notes
+
+### Implementation
+
+- Created `next-intl` routing config with `localePrefix: 'never'` (no /ar/, /fr/, /en/ path prefixes)
+- Locale inference from `Accept-Language` in `middleware.ts` (AR → FR → EN priority)
+- Fall-through rules: AR→FR→EN; dev mode wraps missing keys in `[MISSING: key.name]`
+- Created `npm run check:i18n` script that verifies all EN keys exist in AR and FR
+- Message files: 7 namespaces × 3 locales (ar.json, fr.json, en.json)
+- All UI numerals use Western Arabic glyphs; `tabular-nums` utility for credit surfaces
+- Locale persisted to `x-locale` cookie (guest) or `users.locale` column (authed)
+
+### File List
+
+- `frontend/src/i18n/routing.ts` — new: locale definitions, localePrefix: never
+- `frontend/src/i18n/request.ts` — new: server-side locale resolution from cookie
+- `frontend/src/i18n/navigation.ts` — new: createNavigation from next-intl
+- `frontend/src/middleware.ts` — new: Accept-Language inference + cookie
+- `frontend/messages/ar.json` — new: Arabic translations
+- `frontend/messages/fr.json` — new: French translations
+- `frontend/messages/en.json` — new: English translations (source of truth)
+- `frontend/scripts/check-i18n.mjs` — new: CI i18n key checker
+- `frontend/src/app/[locale]/layout.tsx` — new: locale-level layout with dir/lang
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-21 | Locale system — next-intl, Accept-Language inference, fall-through rules, i18n check, message files × 3 locales |
 
 ### File Structure
 

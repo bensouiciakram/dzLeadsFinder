@@ -2,7 +2,7 @@
 title: Story 1.2 — Design Token System
 story_id: 1.2
 epic: 1
-status: draft
+status: done
 frs: [FR-1, FR-2]
 ads: [AD-2, AD-8, AD-9]
 ux_drs: [UX-DR1, UX-DR2, UX-DR3, UX-DR4]
@@ -52,6 +52,31 @@ So that **the entire UI is consistent, RTL-safe from day one, and rebrandable by
 **When** I inspect the global CSS
 **Then** `font-variant-numeric: tabular-nums` is applied via a `.tabular-nums` utility
 **And** no Eastern Arabic numeral ranges (U+0660–U+0669, U+06F0–U+06F9) are referenced in any style
+
+## Dev Notes
+
+### Implementation
+
+- Configured `@theme` in `globals.css` with all DESIGN.md tokens (colors, typography, spacing, radii)
+- Primary: `#0F766E` (teal-700), Warm: `#9C4221`, semantic scale (success/warning/danger/info) with container + on-container pairs
+- Font stack: Space Grotesk (Latin) + system Arabic stack; type scale: display 36px/800 → caption 12px/600
+- `@utility tabular-nums` for Western Arabic numerals
+- `@utility font-arabic` for Arabic script surfaces
+- Configured stylelint to ban physical CSS properties (margin-left, padding-left, left, right, text-align left/right)
+- shadcn/ui components (button, select) installed and configured
+
+### File List
+
+- `frontend/src/app/globals.css` — modified: all design tokens in `@theme`
+- `frontend/src/components/ui/button.tsx` — new: shadcn button with variants
+- `frontend/src/components/ui/select.tsx` — new: shadcn select with base-ui
+- `frontend/.stylelintrc` — new: logical-property enforcement rules
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-21 | Design token system — Tailwind `@theme` with all tokens, stylelint logical-property ban, shadcn/ui primitives |
 
 **Given** brand swap requirements
 **When** the founder supplies new brand colors
