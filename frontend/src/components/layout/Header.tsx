@@ -8,7 +8,7 @@ export function Header() {
   const { isAuthenticated } = useSession()
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-gutter px-gutter-desktop">
+    <header dir="ltr" className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-gutter px-gutter-desktop">
       <Link href="/" className="text-title font-semibold text-foreground no-underline">
         dzLeadsFinder
       </Link>
