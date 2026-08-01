@@ -224,15 +224,18 @@ class TestTokenRefresh:
         create_user: Any,
         user_data: Dict[str, str],
     ) -> None:
-        api_client.post('/api/auth/login/', {
+        login_resp = api_client.post('/api/auth/login/', {
             'email': user_data['email'],
             'password': user_data['password'],
         })
+        old_access = login_resp.cookies['access_token'].value
+        old_refresh = login_resp.cookies['refresh_token'].value
         response = api_client.post('/api/auth/jwt/refresh/')
         assert response.status_code == status.HTTP_200_OK
         assert 'access_token' in response.cookies
         assert 'refresh_token' in response.cookies
-        assert response.cookies['access_token'].value != ''
+        assert response.cookies['access_token'].value != old_access
+        assert response.cookies['refresh_token'].value != old_refresh
 
     def test_refresh_without_cookie_returns_401(self, api_client: Client) -> None:
         response = api_client.post('/api/auth/jwt/refresh/')

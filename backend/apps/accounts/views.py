@@ -1,4 +1,3 @@
-from datetime import timedelta
 from typing import Any, Dict, List
 
 from django.conf import settings
@@ -15,7 +14,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .auth import TokenWithVersionAccessToken, TokenWithVersionRefreshToken
+from .auth import (
+    TokenWithVersionAccessToken,
+    TokenWithVersionRefreshToken,
+    touch_activity,
+    validate_user_token,
+)
 
 User = get_user_model()
 
@@ -95,18 +99,8 @@ class TokenRefreshView(APIView):
         except TokenError:
             raise AuthenticationFailed('Invalid or expired refresh token', code='token_not_valid')
         user = User.objects.get(pk=refresh['user_id'])
-        if user.token_version != refresh.get('token_version', 0):
-            raise AuthenticationFailed('Token has been invalidated', code='token_not_valid')
-        if (
-            not user.is_active
-            or user.deleted_at is not None
-            or user.deletion_scheduled_at is not None
-        ):
-            raise AuthenticationFailed('Account is not active', code='account_inactive')
-        if user.last_active_at <= timezone.now() - timedelta(days=30):
-            raise AuthenticationFailed('Session expired due to inactivity', code='session_expired')
-        user.last_active_at = timezone.now()
-        user.save(update_fields=['last_active_at'])
+        validate_user_token(user, refresh)
+        touch_activity(user)
         access_token = TokenWithVersionAccessToken.for_user(user)
         new_refresh = TokenWithVersionRefreshToken.for_user(user)
         response = Response(
