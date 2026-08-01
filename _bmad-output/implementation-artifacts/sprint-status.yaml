@@ -1,5 +1,5 @@
 # generated: 2026-07-21T12:52:00+01:00
-# last_updated: 2026-07-21T12:52:00+01:00
+# last_updated: 2026-08-01T00:00:00+01:00
 # project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 #   - done: Completed
 
 generated: 2026-07-21T12:52:00+01:00
-last_updated: 2026-08-01T00:00:00+01:00
+last_updated: 2026-08-01T12:00:00+01:00
 project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   # Epic 2: User Authentication & Account Management
   epic-2: in-progress
   2-1-django-auth-setup: done
-  2-2-signup-free-credits: backlog
+  2-2-signup-free-credits: review
   2-3-login-session-management: backlog
   2-4-password-reset-flow: backlog
   2-5-auth-ui-components: backlog
