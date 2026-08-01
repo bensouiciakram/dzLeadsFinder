@@ -22,11 +22,54 @@ def render_email(template: str, locale: str, context: Dict[str, Any]) -> Tuple[s
 
 @shared_task  # type: ignore[misc]
 def send_verification_email(user_id: int) -> None:
-    """Send verification email after signup.
+    """Send verification email after signup with a fresh single-use link.
 
-    TODO: Story 2.x — fetch user by user_id, build context, render, send.
+    Django imports are deferred to runtime: config/celery.py imports this
+    module before the app registry is ready.
     """
-    logger.info('send_verification_email called for user_id=%s (not yet implemented)', user_id)
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.core.mail import EmailMultiAlternatives
+    from django.utils import timezone
+
+    from apps.accounts.models import SingleUseToken
+
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(pk=user_id)
+    except user_model.DoesNotExist:
+        logger.warning('send_verification_email: user %s not found', user_id)
+        return
+    token = (
+        SingleUseToken.objects.filter(
+            user=user,
+            purpose='verify',
+            consumed_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        )
+        .order_by('-created_at')
+        .first()
+    )
+    if token is None:
+        logger.warning('send_verification_email: no pending token for user %s', user_id)
+        return
+    verification_link = f'{settings.FRONTEND_PUBLIC_URL}/{user.locale}/verify-email/{token.token}'
+    html, plain_text = render_email(
+        'signup_confirm',
+        user.locale,
+        {'verificationLink': verification_link},
+    )
+    message = EmailMultiAlternatives(
+        subject='Verify your email — dzLeadsFinder',
+        body=plain_text or html,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    if plain_text:
+        message.attach_alternative(html, 'text/html')
+    else:
+        message.content_subtype = 'html'
+    message.send()
 
 
 @shared_task  # type: ignore[misc]

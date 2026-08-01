@@ -1,5 +1,6 @@
 from typing import Any, List, Optional
 
+from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
@@ -82,3 +83,29 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return str(self.email)
+
+
+TOKEN_PURPOSE_CHOICES = [
+    ('verify', 'Email verification'),
+    ('reset', 'Password reset'),
+]
+
+
+class SingleUseToken(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='single_use_tokens',
+    )
+    purpose = models.CharField(max_length=10, choices=TOKEN_PURPOSE_CHOICES, default='verify')
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'single_use_tokens'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'{self.purpose} token for {self.user_id} ({self.created_at:%Y-%m-%d})'

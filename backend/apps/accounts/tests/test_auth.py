@@ -3,10 +3,16 @@ from typing import Any, Dict
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
+from django.utils import timezone
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 
 User = get_user_model()
+
+
+def _verify_user(user: Any) -> None:
+    user.email_verified_at = timezone.now()
+    user.save(update_fields=['email_verified_at'])
 
 
 @pytest.mark.django_db
@@ -285,6 +291,7 @@ class TestTokenRefresh:
             'password': user_data['password'],
         })
         api_client.post('/api/auth/jwt/refresh/')
+        _verify_user(create_user)
         response = api_client.get('/api/health/')
         assert response.status_code == status.HTTP_200_OK
 
@@ -375,6 +382,7 @@ class TestTokenVersionInvalidation:
             'password': 'NewSecurePass456!',
         })
         assert response.status_code == status.HTTP_200_OK
+        _verify_user(create_user)
         good_resp = api_client.get('/api/health/')
         assert good_resp.status_code == status.HTTP_200_OK
 
@@ -417,6 +425,7 @@ class TestInactivityCheck:
             'email': user_data['email'],
             'password': user_data['password'],
         })
+        _verify_user(create_user)
         create_user.last_active_at = timezone.now() - timedelta(days=1)
         create_user.save()
         response = api_client.get('/api/health/')
@@ -435,6 +444,7 @@ class TestInactivityCheck:
             'email': user_data['email'],
             'password': user_data['password'],
         })
+        _verify_user(create_user)
         create_user.last_active_at = timezone.now() - timedelta(days=29)
         create_user.save()
         response = api_client.get('/api/health/')
@@ -453,6 +463,7 @@ class TestInactivityCheck:
             'email': user_data['email'],
             'password': user_data['password'],
         })
+        _verify_user(create_user)
         create_user.last_active_at = timezone.now() - timedelta(days=29, hours=23)
         create_user.save()
         response = api_client.get('/api/health/')

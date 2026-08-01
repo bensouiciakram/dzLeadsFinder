@@ -22,6 +22,11 @@ def validate_user_token(user: Any, token: Token) -> None:
         raise AuthenticationFailed('Session expired due to inactivity', code='session_expired')
 
 
+def check_email_verified(user: Any) -> None:
+    if user.email_verified_at is None:
+        raise AuthenticationFailed('Email not verified', code='email_not_verified')
+
+
 def touch_activity(user: Any) -> None:
     if user.last_active_at < timezone.now() - timedelta(minutes=1):
         user.last_active_at = timezone.now()
@@ -35,6 +40,7 @@ class CookieJWTAuthentication(JWTAuthentication):
             validated_token = self.get_validated_token(raw_token)
             user = self.get_user(validated_token)
             validate_user_token(user, validated_token)
+            check_email_verified(user)
             touch_activity(user)
             return user, validated_token
         result = super().authenticate(request)
@@ -42,6 +48,7 @@ class CookieJWTAuthentication(JWTAuthentication):
             return None
         user, validated_token = result
         validate_user_token(user, validated_token)
+        check_email_verified(user)
         touch_activity(user)
         return user, validated_token
 
