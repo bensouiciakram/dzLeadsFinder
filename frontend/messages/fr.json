@@ -11,7 +11,15 @@
       "no_account": "Pas encore de compte ?",
       "signup_link": "Inscrivez-vous",
       "error_invalid": "Email ou mot de passe invalide",
-      "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard."
+      "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard.",
+      "session_expired": "Votre session a expiré. Veuillez vous reconnecter."
+    },
+    "frozen": {
+      "title": "Compte gelé",
+      "description": "Votre compte est actuellement gelé car vous avez demandé sa suppression.",
+      "grace_note": "Vous pouvez récupérer votre compte dans les 7 jours. Ensuite, il sera définitivement supprimé.",
+      "logout": "Se déconnecter",
+      "support_note": "Besoin d'aide ? Contactez support@dzleadsfinder.dz"
     },
     "signup": {
       "title": "Créez votre compte",

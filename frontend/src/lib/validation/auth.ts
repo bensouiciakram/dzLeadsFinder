@@ -24,3 +24,16 @@ export const verifyEmailSchema = z.object({
 })
 
 export type VerifyEmailValues = z.infer<typeof verifyEmailSchema>
+
+export const loginSchema = z.object({
+  email: emailRule,
+  password: z
+    .string()
+    .min(1, 'common.errors.required')
+    .max(128, 'common.errors.invalid_password')
+    .refine((value) => [...value].length >= 8, {
+      message: 'common.errors.invalid_password',
+    }),
+})
+
+export type LoginValues = z.infer<typeof loginSchema>

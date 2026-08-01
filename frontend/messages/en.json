@@ -11,7 +11,15 @@
       "no_account": "Don't have an account?",
       "signup_link": "Sign up",
       "error_invalid": "Invalid email or password",
-      "error_rate_limited": "Too many attempts. Please try again later."
+      "error_rate_limited": "Too many attempts. Please try again later.",
+      "session_expired": "Your session has expired. Please log in again."
+    },
+    "frozen": {
+      "title": "Account Frozen",
+      "description": "Your account is currently frozen because you requested its deletion.",
+      "grace_note": "You can recover your account within 7 days. After that, it will be permanently deleted.",
+      "logout": "Log out",
+      "support_note": "Need help? Contact support@dzleadsfinder.dz"
     },
     "signup": {
       "title": "Create Your Account",

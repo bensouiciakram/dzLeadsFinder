@@ -326,6 +326,14 @@ Django sets httpOnly JWTs on `POST /api/auth/login/` — the browser stores the 
 
 ---
 
+## AD-19: axios HTTP client layer with service inheritance
+
+**Binds:** Client → Django API communication and session-aware error routing.
+**Prevents:** Per-component raw `fetch` calls with duplicated error handling; drift between how components interpret 401 responses; unhandled session/verification gates leaking into future story code.
+**Rule:** All client-side API access goes through a base `HttpClient` (`frontend/src/lib/api/http-client.ts`) wrapping an axios instance (`baseURL: '/api'`, `withCredentials: true`). Domain services **inherit** it (e.g. `AuthService` in `frontend/src/lib/api/auth-service.ts`: `login`/`logout`/`me`/`refresh`). A response interceptor routes 401 codes to the correct client surface — `email_not_verified` → `/verify-email`; `session_expired` → `/login?reason=session_expired`; `account_deleted` → `/frozen`; `token_not_valid`/`account_inactive` → `/login`; `not_authenticated` → no redirect (guest). Redirects use `window.location.assign` (full reload so session state re-derives) and skip when already on the target path. The code→target mapping is a pure exported function (`authRedirectFor`) so the routing contract is unit-testable. Session state itself is owned by `SessionProvider`, which probes `GET /api/auth/me/` on mount (`loading`/`authenticated`/`guest`) and exposes `refresh()`/`logout()`.
+
+---
+
 ## Component Tree
 
 **Frontend (Next.js) — React component hierarchy. Backend (Django) serves the data through Caddy.**
@@ -838,3 +846,4 @@ Every email component extends `BaseEmail` which sets `dir="auto"` for RTL suppor
 | AD-16 | Django Admin as ops panel for user/credit/payment management | [ADOPTED] |
 | AD-17 | Caddy reverse proxy — single domain, path-based routing, no BFF stubs, no CORS | [ADOPTED] |
 | AD-18 | Client forms: react-hook-form + zod (i18n-key messages, server errors via setError) | [ADOPTED] |
+| AD-19 | axios HTTP client layer, service inheritance, 401-code interceptor routing, SessionProvider /me probe | [ADOPTED] |

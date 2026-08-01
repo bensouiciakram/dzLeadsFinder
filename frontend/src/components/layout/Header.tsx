@@ -6,7 +6,7 @@ import { useSession } from '@/components/providers/SessionProvider'
 import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
 
 export function Header() {
-  const { isAuthenticated } = useSession()
+  const { isAuthenticated, status, logout } = useSession()
   const t = useTranslations('common.nav')
 
   return (
@@ -15,7 +15,7 @@ export function Header() {
         dzLeadsFinder
       </Link>
       <nav className="flex items-center gap-4">
-        {isAuthenticated ? (
+        {status === 'loading' ? null : isAuthenticated ? (
           <>
             <Link href="/search" className="text-small text-muted-foreground hover:text-foreground">
               {t('search')}
@@ -30,6 +30,13 @@ export function Header() {
               {t('settings')}
             </Link>
             <span className="text-small text-muted-foreground">|</span>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="text-small text-muted-foreground hover:text-foreground"
+            >
+              {t('logout')}
+            </button>
           </>
         ) : (
           <>
