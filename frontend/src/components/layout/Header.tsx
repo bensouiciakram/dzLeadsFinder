@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useSession } from '@/components/providers/SessionProvider'
@@ -8,6 +9,7 @@ import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
 export function Header() {
   const { isAuthenticated, status, logout } = useSession()
   const t = useTranslations('common.nav')
+  const [loggingOut, setLoggingOut] = useState(false)
 
   return (
     <header dir="ltr" className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-gutter px-gutter-desktop">
@@ -32,8 +34,12 @@ export function Header() {
             <span className="text-small text-muted-foreground">|</span>
             <button
               type="button"
-              onClick={() => void logout()}
-              className="text-small text-muted-foreground hover:text-foreground"
+              disabled={loggingOut}
+              onClick={() => {
+                setLoggingOut(true)
+                void logout()
+              }}
+              className="text-small text-muted-foreground hover:text-foreground disabled:opacity-50"
             >
               {t('logout')}
             </button>

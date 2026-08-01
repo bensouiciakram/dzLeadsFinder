@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: t('title'),
-    description: t('title'),
+    description: t('subtitle'),
   }
 }
 
@@ -33,6 +33,7 @@ export default async function LoginPage({ params }: Props) {
       >
         <div className="mx-auto w-full max-w-md rounded-lg border border-border bg-card p-6 md:p-8">
           <h1 className="text-title font-bold text-foreground">{t('title')}</h1>
+          <p className="mt-2 text-small text-muted-foreground">{t('subtitle')}</p>
           <div className="mt-6">
             <LoginForm />
           </div>

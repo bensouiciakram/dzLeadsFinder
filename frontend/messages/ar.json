@@ -2,6 +2,7 @@
   "auth": {
     "login": {
       "title": "مرحباً بعودتك",
+      "subtitle": "سجّل الدخول للوصول إلى بياناتك وبحوثك المحفوظة",
       "email_label": "البريد الإلكتروني",
       "email_placeholder": "you@company.dz",
       "password_label": "كلمة المرور",

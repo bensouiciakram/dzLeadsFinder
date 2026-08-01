@@ -2,6 +2,7 @@
   "auth": {
     "login": {
       "title": "Welcome Back",
+      "subtitle": "Log in to access your leads and saved searches",
       "email_label": "Email",
       "email_placeholder": "you@company.dz",
       "password_label": "Password",

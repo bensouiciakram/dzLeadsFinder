@@ -2,6 +2,7 @@
   "auth": {
     "login": {
       "title": "Bon retour",
+      "subtitle": "Connectez-vous pour accéder à vos leads et recherches enregistrées",
       "email_label": "Email",
       "email_placeholder": "vous@entreprise.dz",
       "password_label": "Mot de passe",

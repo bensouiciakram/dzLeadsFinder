@@ -32,13 +32,21 @@ export function LoginForm() {
     if (isSubmitting) return
     try {
       await authService.login(values.email, values.password)
-      const authenticated = await refresh()
-      if (authenticated) {
+      const result = await refresh()
+      if (result === 'authenticated') {
         router.push('/')
+      } else if (result === 'error') {
+        setError('root', { message: 'common.errors.network' })
       }
     } catch (error) {
       if (isAxiosError(error) && error.response) {
-        setError('root', { message: 'auth.login.error_invalid' })
+        if (error.response.status === 429) {
+          setError('root', { message: 'auth.login.error_rate_limited' })
+        } else if (error.response.status === 400) {
+          setError('root', { message: 'auth.login.error_invalid' })
+        } else {
+          setError('root', { message: 'common.states.error' })
+        }
       } else {
         setError('root', { message: 'common.errors.network' })
       }

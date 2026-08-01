@@ -9,7 +9,7 @@ baseline_commit: c75f64a
 
 # Story 2.3: Login & Session Management
 
-Status: review
+Status: done
 
 ## Story
 
@@ -154,7 +154,19 @@ So that **I can access my account without repeatedly re-entering credentials**.
 
 ## Review Findings
 
-(Empty — populated by code-review step)
+- [x] [Review][Patch] 30-day session dead on arrival: 60-min access token is never refreshed — `AuthService.refresh()` has zero call sites; users are hard-kicked to `/login` after ≤60 min; `session_expired` (30-day inactivity) is unreachable in production. Wire sliding-session refresh into the interceptor: on 401 `token_not_valid` (non-refresh request), single-flight `POST /api/auth/jwt/refresh/` once, replay the original request; only redirect when refresh itself fails (refresh errors flow through the existing code mapping — `session_expired`/`account_deleted`/`email_not_verified` become reachable) [frontend/src/lib/api/auth-service.ts:19, frontend/src/lib/api/http-client.ts:14]
+- [x] [Review][Patch] LoginForm labels every response-bearing axios error as "Invalid email or password" — 429/5xx mislabeled, `auth.login.error_rate_limited` dead key; branch on status: 400 → `error_invalid`, 429 → `error_rate_limited`, other ≥500 → generic server error [frontend/src/components/auth/LoginForm.tsx:39]
+- [x] [Review][Patch] SessionProvider probe swallows every failure as guest: silent post-login stall on network error (no redirect, no feedback); `refresh()` can return the stale in-flight mount probe (pre-login result); a probe resolving after `logout()` flips state back to authenticated. Fix: probe generation counter (ignore stale results), `refresh()` issues a fresh probe and returns tri-state `'authenticated' | 'guest' | 'error'`, LoginForm surfaces `common.errors.network` on `'error'` [frontend/src/components/providers/SessionProvider.tsx:44]
+- [x] [Review][Patch] Interceptor never integration-tested (tests bypass it; provider tests reject with plain `Error`, not AxiosError). Add a real-axios custom-adapter test asserting: token_not_valid → refresh replay succeeds; refresh failure → `window.location.assign('/login')`; `session_expired` on refresh → `/login?reason=session_expired`; spy on `location.assign` in `applyAuthRedirect` tests [frontend/src/__tests__/http-client.test.ts]
+- [x] [Review][Patch] `token_not_provided` 401 code unmapped (refresh path) — add to `authRedirectFor` → `/login` [frontend/src/lib/api/http-client.ts:6]
+- [x] [Review][Patch] `/login` metadata `description` uses the `title` key; card lacks subtitle. Add `auth.login.subtitle` in all three locales, use for meta description + card (mirroring signup page) [frontend/src/app/[locale]/login/page.tsx:15]
+- [x] [Review][Patch] Header logout has no in-flight guard and no test — disable while pending, add Header test asserting click calls `useSession().logout()` [frontend/src/components/layout/Header.tsx:33]
+
+- [x] [Review][Defer] "7 days" grace hardcoded in frozen copy; backend has no shared grace constant [frontend/messages/en.json] — deferred: story 2.6 owns the deletion-grace flow (recover action + constant)
+- [x] [Review][Defer] `SessionUser` cast blindly from `/api/auth/me/` response; a backend field change silently corrupts the Header [frontend/src/lib/api/auth-service.ts:22] — deferred: adopt zod response parsing (AD-18 pattern) in a later story touching session data
+- [x] [Review][Defer] `/frozen` renders the guest header (Login/Sign up links) since the probe degrades to guest there [frontend/src/components/layout/Header.tsx:18] — deferred: story 2.6 refines the frozen surface
+
+Dismissed as noise/handled: unverified → `/verify-email` 404 (pages exist from 2.2 — reviewer glob treated `[locale]` as a character class), axios 1.19.0 supply-chain claim (legitimate published release; `npm audit` flags only 13 pre-existing dev-toolchain vulns — vitest/vite/esbuild, eslint-config-next, hono/mcp — unrelated to axios; vitest upgrade blocked per AD-18), loginSchema min-8 at login (mission-mandated; every account-creation path enforces ≥8 server-side, so no legal short-password account exists), `applyAuthRedirect` localePrefix coupling (localePrefix is `'never'` by design — middleware 307s prefixed URLs, browser pathnames are always bare), `token_not_valid` → plain `/login` without reason (design: `session_expired` carries the reason param; refresh flow now covers the rest).
 
 ## Dev Agent Record
 
@@ -169,6 +181,8 @@ deepseek-v4-flash (opencode)
 - **Vitest false-failure**: `redirectTargetForError` test passed plain objects to a function using `axios.isAxiosError` — plain objects are never AxiosErrors, so the full suite failed 1 test (isolated runs masked it). Fixed with real `new AxiosError(..., response)` construction typed as `AxiosResponse` (also satisfies tsc strict).
 - **TS strict on test fixtures**: AxiosError 5th arg requires full `InternalAxiosRequestConfig` (incl. `headers`) — fixtures typed `as AxiosResponse` with `config: { headers: {} }`.
 - The 3 prettier serializer errors in `email-render-route.test.ts` are the documented story-1.8 pre-existing noise (exit 0, present at baseline — verified via git stash).
+- **Review-phase gotchas**: (a) jsdom's `window.location.assign` is non-configurable — `Object.defineProperty` spy throws "Cannot redefine property"; vitest module-mocks do NOT intercept a module's internal self-references; fixed with an exported `navigator.assign` seam patched via `vi.spyOn`. (b) A hand-built `AxiosError` must receive the request `config` as its 3rd constructor arg, or `error.config` is undefined and the interceptor misclassifies the refresh request → infinite refresh loop (test timeout). (c) PowerShell `Set-Content -NoNewline` on a `-replace`d line array collapsed the test file to one line (transform error) — rewrote the file instead.
+- `npm audit`: 13 pre-existing dev-toolchain vulns (vitest/vite/esbuild, eslint-config-next/glob, hono/mcp) — unrelated to axios 1.19.0 (legitimate release, not flagged); vitest upgrade blocked per AD-18.
 
 ### Completion Notes List
 
@@ -213,3 +227,4 @@ deepseek-v4-flash (opencode)
 
 - 2026-08-01: Story created (ready-for-dev) from epic 2.3 spec; user decisions resolved (axios HttpClient + AuthService inheritance, post-login redirect `/`, minimal `/frozen` screen, SessionProvider-owned logout, keep refresh minting for unverified users); validated against checklist.
 - 2026-08-01: Implemented (TDD): backend MeView + 7 tests (87 green); frontend axios client + 401 routing, SessionProvider, LoginForm, /login + /frozen pages, i18n, AD-19 (95 tests green); ruff/mypy/lint/typecheck/i18n clean; 2 commits (backend `90a611c`, frontend `697a0e0`); status → review.
+- 2026-08-01: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor — 33 raw findings, 0 decision-needed, 7 patches applied, 3 deferred, 5 dismissed). Review patches: sliding-session refresh wired into the interceptor (single-flight + replay, AC2/AC6 reachable), LoginForm status branching (400/429/5xx/network), SessionProvider generation counter + tri-state refresh (stale-probe and logout races), real-axios adapter integration tests for the interceptor (incl. `token_not_provided` mapping), `auth.login.subtitle` key ×3 locales, Header logout guard + tests. `navigateTo` replaced by exported `navigator.assign` seam (jsdom location non-configurable). 104 frontend tests green, backend 87 untouched, ruff/mypy/lint/typecheck/i18n clean; commit `8497d6a` (pending); status → done.
