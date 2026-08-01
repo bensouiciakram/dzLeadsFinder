@@ -1,8 +1,9 @@
+import type { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
 import { POST } from '@/app/api/emails/render/route'
 
 function mockRequest(body: unknown) {
-  return { json: () => Promise.resolve(body) } as unknown as Request
+  return { json: () => Promise.resolve(body) } as unknown as NextRequest
 }
 
 describe('POST /api/emails/render', () => {

@@ -21,20 +21,36 @@
       "password_label": "Mot de passe",
       "password_placeholder": "Au moins 8 caractères",
       "submit": "Créer un compte",
+      "no_card_required": "Aucune carte requise",
       "free_credits": "Vous recevrez 15 crédits gratuits à l'inscription",
       "has_account": "Vous avez déjà un compte ?",
       "login_link": "Connectez-vous",
       "terms_notice": "En vous inscrivant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité",
       "error_email_taken": "Cet email est déjà enregistré",
-      "error_weak_password": "Le mot de passe est trop faible"
+      "error_weak_password": "Le mot de passe est trop faible",
+      "error_generic": "Une erreur est survenue. Veuillez réessayer."
     },
     "verify": {
       "title": "Vérifiez votre email",
       "description": "Nous avons envoyé un lien de vérification à {email}. Cliquez sur le lien pour activer votre compte.",
+      "gate_title": "Vérifiez votre email pour continuer",
+      "gate_description": "Votre compte est créé. Avant de commencer vos recherches, vous devez vérifier votre adresse email.",
+      "email_label": "Email",
+      "email_placeholder": "vous@entreprise.dz",
+      "expiry_note": "Les liens de vérification expirent après 24 heures.",
       "resend": "Renvoyer l'email de vérification",
       "resend_success": "Email de vérification envoyé !",
+      "resend_failed": "Impossible d'envoyer l'email. Veuillez réessayer.",
       "skip_note": "Certaines fonctionnalités seront limitées jusqu'à la vérification de votre email.",
-      "already_verified": "Email déjà vérifié. Vous pouvez maintenant utiliser toutes les fonctionnalités."
+      "already_verified": "Email déjà vérifié. Vous pouvez maintenant utiliser toutes les fonctionnalités.",
+      "expired_title": "Lien expiré ou invalide",
+      "expired_description": "Ce lien de vérification est expiré ou invalide. Saisissez votre email pour en recevoir un nouveau.",
+      "used_title": "Lien déjà utilisé",
+      "used_description": "Ce lien de vérification a déjà été utilisé.",
+      "sign_in_prompt": "Votre email est vérifié. Connectez-vous pour continuer.",
+      "welcome_title": "Email vérifié — bienvenue !",
+      "welcome_description": "15 crédits gratuits ont été ajoutés à votre compte.",
+      "start_search": "Commencer la recherche"
     },
     "password_reset": {
       "title": "Réinitialiser le mot de passe",

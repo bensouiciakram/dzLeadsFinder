@@ -6,6 +6,7 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
 }))

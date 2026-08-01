@@ -21,20 +21,36 @@
       "password_label": "Password",
       "password_placeholder": "At least 8 characters",
       "submit": "Create Account",
+      "no_card_required": "No card required",
       "free_credits": "You'll receive 15 free credits on signup",
       "has_account": "Already have an account?",
       "login_link": "Login",
       "terms_notice": "By signing up, you agree to our Terms of Service and Privacy Policy",
       "error_email_taken": "This email is already registered",
-      "error_weak_password": "Password is too weak"
+      "error_weak_password": "Password is too weak",
+      "error_generic": "Something went wrong. Please try again."
     },
     "verify": {
       "title": "Verify Your Email",
       "description": "We've sent a verification link to {email}. Click the link to activate your account.",
+      "gate_title": "Verify your email to continue",
+      "gate_description": "Your account is created. Before you can start searching, you need to verify your email address.",
+      "email_label": "Email",
+      "email_placeholder": "you@company.dz",
+      "expiry_note": "Verification links expire after 24 hours.",
       "resend": "Resend verification email",
       "resend_success": "Verification email sent!",
+      "resend_failed": "Could not send the email. Please try again.",
       "skip_note": "Some features will be limited until you verify your email.",
-      "already_verified": "Email already verified. You can now use all features."
+      "already_verified": "Email already verified. You can now use all features.",
+      "expired_title": "Link expired or invalid",
+      "expired_description": "This verification link is expired or invalid. Enter your email to receive a new one.",
+      "used_title": "Link already used",
+      "used_description": "This verification link has already been used.",
+      "sign_in_prompt": "Your email is verified. Sign in to continue.",
+      "welcome_title": "Email verified — welcome!",
+      "welcome_description": "15 free credits have been added to your account.",
+      "start_search": "Start Searching"
     },
     "password_reset": {
       "title": "Reset Password",
