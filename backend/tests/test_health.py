@@ -1,15 +1,21 @@
 import pytest
-from django.contrib.auth import get_user_model
 from django.test import Client
 
-User = get_user_model()
+
+def test_health_live_is_public(api_client: Client) -> None:
+    response = api_client.get('/api/health/live/')
+    assert response.status_code == 200
+    assert response.json() == {'status': 'ok'}
 
 
-@pytest.mark.django_db(transaction=True)
-def test_health_endpoint_returns_ok():
-    user = User.objects.create_user(email='health@test.com', password='testpass123')
-    client = Client()
-    client.post('/api/auth/login/', {'email': 'health@test.com', 'password': 'testpass123'})
-    response = client.get('/api/health/')
+@pytest.mark.django_db
+def test_health_requires_auth(api_client: Client) -> None:
+    response = api_client.get('/api/health/')
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_health_endpoint_returns_ok(logged_in_client: Client) -> None:
+    response = logged_in_client.get('/api/health/')
     assert response.status_code == 200
     assert response.json() == {'status': 'ok'}

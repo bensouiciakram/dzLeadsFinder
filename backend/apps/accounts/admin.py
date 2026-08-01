@@ -14,7 +14,15 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('email', 'password')}),
         ('Profile', {'fields': ('locale', 'tier', 'credits_balance', 'email_verified_at')}),
         ('Activity', {'fields': ('last_active_at', 'token_version')}),
-        ('Account State', {'fields': ('deleted_at', 'deletion_scheduled_at', 'is_active', 'is_staff', 'is_superuser')}),
+        ('Account State', {
+            'fields': (
+                'deleted_at',
+                'deletion_scheduled_at',
+                'is_active',
+                'is_staff',
+                'is_superuser',
+            ),
+        }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
     readonly_fields = ('last_active_at', 'token_version', 'date_joined')

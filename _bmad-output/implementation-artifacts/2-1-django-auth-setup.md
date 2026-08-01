@@ -4,7 +4,7 @@ baseline_commit: 91a9fab3f4df7d6d93aafc640195657055b929b0
 
 # Story 2.1: Django Auth Setup
 
-Status: review
+Status: done
 
 ## Story
 
@@ -26,7 +26,7 @@ So that **I can build auth endpoints and authenticated surfaces on a secure foun
 
 6. **AC6: Django Admin** — Admin is enabled for staff users. Register only `User` and `UserProfile` models (NOT CreditLedger, PaymentTransaction, Subscription, daily_usage — deferred to Epics 4/5). All admin actions logged to Django's `LogEntry`.
 
-7. **AC7: Test coverage (TDD)** — pytest tests exist for: custom user model creation with defaults, login sets httpOnly cookie, login with wrong password returns 401, token_version increments on password change, expired inactivity returns 401, admin page accessible by staff only, admin shows registered models, unauthenticated request without cookie returns 401.
+7. **AC7: Test coverage (TDD)** — pytest tests exist for: custom user model creation with defaults, login sets httpOnly cookie, login with wrong password returns 400, token_version increments on password change, expired inactivity returns 401, admin page accessible by staff only, admin shows registered models, unauthenticated request without cookie returns 401.
 
 ## Tasks / Subtasks
 
@@ -119,6 +119,35 @@ This can be done as a custom simplejwt authentication class extending `JWTAuthen
 - [Source: _bmad-output/implementation-artifacts/retrospectives/epic-1-retro-2026-07-28.md] Retro action item #8 (TDD mandatory)
 - [Source: backend/config/settings/base.py] Current SIMPLE_JWT and INSTALLED_APPS
 - [Source: backend/requirements.txt] djoser 2.2.3, simplejwt 5.4.0
+
+## Review Findings
+
+- [x] [Review][Decision] Session/refresh design — RESOLVED: refresh-token rotation implemented. `POST /api/auth/jwt/refresh/` rotates a 30-day httpOnly refresh cookie + issues new access cookie; token_version/inactivity/soft-delete checks enforced on refresh. [backend/config/settings/base.py:98-99]
+- [x] [Review][Decision] AC7 "login with wrong password returns 401" — RESOLVED: AC updated to 400 (djoser TokenCreateSerializer convention). [backend/apps/accounts/tests/test_auth.py:118]
+- [x] [Review][Patch] Authorization-header JWTs bypass token_version + inactivity checks — fixed: `_check_user` now runs on both cookie and header paths, with regression tests [backend/apps/accounts/auth.py:24]
+- [x] [Review][Patch] AUTH_COOKIE_SECURE=False ships to prod — fixed: production.py forces True + fail-fast SECRET_KEY [backend/config/settings/production.py]
+- [x] [Review][Patch] Health endpoint: /api/health/ stays authenticated; /api/health/live/ added as unauthenticated liveness for ops; test_health.py covers both [backend/config/urls.py:8]
+- [x] [Review][Patch] Fixtures promoted to backend/conftest.py + logged_in_client; test_health.py and ~10 login flows deduped [backend/conftest.py]
+- [x] [Review][Patch] test_jwt_payload_contains_token_version asserts nothing — fixed: decodes cookie, asserts user_id/token_version/exp (AC2 coverage) [backend/apps/accounts/tests/test_auth.py:159]
+- [x] [Review][Patch] Logout 401s with stale/invalidated cookie — fixed: TokenDestroyView is AllowAny with no authentication; idempotent cookie clear + stale-cookie test [backend/apps/accounts/views.py:30]
+- [x] [Review][Patch] CI red: 15 new ruff + 49 new mypy errors — fixed: ruff 0 errors, mypy strict 0 errors (incl. pre-existing debt in tasks/email_tasks.py, config/celery.py, settings/test.py) [backend/apps/accounts/*]
+- [x] [Review][Patch] SECRET_KEY 'insecure-dev-key' fallback — fixed: production requires DJANGO_SECRET_KEY (KeyError fail-fast) [backend/config/settings/base.py:7]
+- [x] [Review][Patch] Hardcoded 'access_token' cookie name — fixed: reads settings.SIMPLE_JWT['AUTH_COOKIE'] [backend/apps/accounts/auth.py:11]
+- [x] [Review][Patch] Login never updates last_login / skips user_logged_in signal — fixed: login stamps last_login + last_active_at, sends signal [backend/apps/accounts/views.py:8]
+- [x] [Review][Patch] Case-sensitive email login + duplicate case-variant accounts — fixed: emails lowercased at create + case-insensitive login serializer [backend/apps/accounts/models.py:13]
+- [x] [Review][Patch] LOCALE_CHOICES/TIER_CHOICES are dead code — fixed: choices= attached (AC1 enforced) [backend/apps/accounts/models.py:46]
+- [x] [Review][Patch] Soft-deleted users (deleted_at set) still authenticate — fixed: auth + refresh reject deleted/deletion-scheduled accounts [backend/apps/accounts/auth.py:13]
+- [x] [Review][Patch] Unrequested DEFAULT_RENDERER_CLASSES JSONRenderer — removed (browsable API restored in dev) [backend/config/settings/base.py:91]
+- [x] [Review][Defer] djoser 2.2.3 has no register/password-reset endpoints — story 2.2/2.4 must use custom endpoints; dev notes corrected [backend/config/urls.py:15] — deferred, pre-existing; forward impact on stories 2.2/2.4
+- [x] [Review][Defer] No migrate step in deploy path (compose/Dockerfile/deploy.yml); AUTH_USER_MODEL switch risky on migrated DBs [docker-compose.yml:42] — deferred, pre-existing ops debt
+- [x] [Review][Defer] last_active_at per-request write amplification (UPDATE ≤1/min per user) [backend/apps/accounts/auth.py:20] — deferred, revisit with traffic
+
+## Review Actions Summary (2026-08-01)
+
+- All 15 patches applied and verified: pytest 46/46 passing (was 33), ruff clean, mypy strict clean.
+- Refresh rotation: `POST /api/auth/jwt/refresh/` (accounts/urls.py) — rotates httpOnly refresh cookie (30-day, path /api/auth/) + issues new access cookie; enforces token_version, soft-delete, is_active, 30-day inactivity. Refresh/logout views run without DRF authentication (validate their own cookie) and map AuthenticationFailed → 401 via handle_exception override.
+- New tests added: refresh rotation, refresh after password change/inactivity, stale-cookie logout, header-token invalidation, case-insensitive login, email lowercasing, JWT payload claims, health liveness public.
+- Note: refresh rotation does not blacklist old refresh tokens (no token_blacklist app); rotation + httpOnly + version check deemed sufficient for this story.
 
 ## Dev Agent Record
 

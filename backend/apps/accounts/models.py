@@ -1,3 +1,5 @@
+from typing import Any, List, Optional
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
@@ -7,21 +9,26 @@ from django.utils import timezone
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def _create_user(self, email, password, **extra_fields):
+    def _create_user(self, email: str, password: Optional[str], **extra_fields: Any) -> Any:
         if not email:
             raise ValueError('The given email must be set')
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email: str, password: Optional[str] = None, **extra_fields: Any) -> Any:
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
         return self._create_user(email, password, **extra_fields)
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(
+        self,
+        email: str,
+        password: Optional[str] = None,
+        **extra_fields: Any,
+    ) -> Any:
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         if extra_fields.get('is_staff') is not True:
@@ -43,8 +50,8 @@ TIER_CHOICES = [
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    locale = models.CharField(max_length=2, default='ar')
-    tier = models.CharField(max_length=10, default='free')
+    locale = models.CharField(max_length=2, choices=LOCALE_CHOICES, default='ar')
+    tier = models.CharField(max_length=10, choices=TIER_CHOICES, default='free')
     credits_balance = models.IntegerField(default=0)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     last_active_at = models.DateTimeField(default=timezone.now)
@@ -62,16 +69,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS: List[str] = []
 
     class Meta:
         db_table = 'users'
         ordering = ['-date_joined']
 
-    def set_password(self, raw_password):
+    def set_password(self, raw_password: str) -> None:
         super().set_password(raw_password)
         if self.pk is not None:
             self.token_version += 1
 
-    def __str__(self):
-        return self.email
+    def __str__(self) -> str:
+        return str(self.email)

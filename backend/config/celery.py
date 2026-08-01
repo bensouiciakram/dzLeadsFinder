@@ -9,7 +9,7 @@ app = Celery('dzleads')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
-import tasks.email_tasks  # noqa: F401 — explicit import so Celery registers tasks
+import tasks.email_tasks  # noqa: E402,F401 — explicit import so Celery registers tasks
 
 app.conf.beat_schedule = {
     'check-low-credits-daily': {
