@@ -61,7 +61,7 @@ class TestSendVerificationEmail:
         assert mail.outbox[0].to == [create_user.email]
         assert calls['template'] == 'signup_confirm'
         assert calls['locale'] == create_user.locale
-        assert calls['link'] == f'http://localhost:3000/{create_user.locale}/verify-email/{token.token}'
+        assert calls['link'] == f'http://localhost:3000/verify-email/{token.token}'
 
     def test_missing_user_logs_and_returns(self, monkeypatch: Any) -> None:
         monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))

@@ -72,3 +72,28 @@ class TestResendVerification:
         response = api_client.post(RESEND_URL, {'email': user_data['email']})
         assert response.status_code == status.HTTP_200_OK
         assert len(mail.outbox) == 0
+
+    def test_resend_for_soft_deleted_user_does_not_send(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Dict[str, str],
+    ) -> None:
+        create_user.deleted_at = timezone.now()
+        create_user.save(update_fields=['deleted_at'])
+        response = api_client.post(RESEND_URL, {'email': user_data['email']})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 0
+        assert not SingleUseToken.objects.filter(user=create_user).exists()
+
+    def test_resend_with_non_dict_body_returns_200(
+        self,
+        api_client: Client,
+    ) -> None:
+        response = api_client.post(
+            RESEND_URL,
+            data='[1, 2]',
+            content_type='application/json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 0

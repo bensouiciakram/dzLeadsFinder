@@ -31,7 +31,7 @@ export function SignupForm() {
     }
     if (!password) {
       next.password = common('errors.required')
-    } else if (password.length < 8) {
+    } else if ([...password].length < 8) {
       next.password = common('errors.invalid_password')
     }
     return next
@@ -39,6 +39,7 @@ export function SignupForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) return
     const fieldErrors = validate()
     setErrors(fieldErrors)
     if (fieldErrors.email || fieldErrors.password) return
@@ -54,18 +55,28 @@ export function SignupForm() {
         return
       }
       if (response.status === 400) {
-        const data = (await response.json()) as { email?: string[]; password?: string[] }
-        const next: FieldErrors = {}
-        if (data.email) {
-          const message = String(data.email[0])
-          next.email = message.toLowerCase().includes('already')
-            ? t('error_email_taken')
-            : common('errors.invalid_email')
+        let data: { email?: string[]; password?: string[]; code?: { email?: string[] } } = {}
+        try {
+          data = (await response.json()) as typeof data
+        } catch {
+          setErrors({ form: t('error_generic') })
+          return
         }
-        if (data.password) {
+        const next: FieldErrors = {}
+        if (data.email && data.email.length > 0) {
+          next.email =
+            data.code?.email?.[0] === 'email_taken'
+              ? t('error_email_taken')
+              : common('errors.invalid_email')
+        }
+        if (data.password && data.password.length > 0) {
           next.password = t('error_weak_password')
         }
-        setErrors(next)
+        if (next.email || next.password) {
+          setErrors(next)
+          return
+        }
+        setErrors({ form: t('error_generic') })
         return
       }
       setErrors({ form: t('error_generic') })

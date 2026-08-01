@@ -51,6 +51,12 @@ class TestSignup:
         response = _post_signup(api_client, email=user_data['email'])
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'email' in response.data
+        assert response.data['code']['email'] == ['email_taken']
+
+    def test_signup_rejects_password_over_128_chars(self, api_client: Client) -> None:
+        response = _post_signup(api_client, password='x' * 129)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
 
     def test_signup_rejects_invalid_email(self, api_client: Client) -> None:
         response = _post_signup(api_client, email='not-an-email')

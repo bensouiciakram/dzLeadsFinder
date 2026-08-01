@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from djoser.serializers import TokenCreateSerializer as DjoserTokenCreateSerializer
 from djoser.views import TokenCreateView as DjoserTokenCreateView
@@ -160,13 +160,20 @@ class SignupView(APIView):
         locale = request.COOKIES.get('x-locale') or 'ar'
         if locale not in dict(LOCALE_CHOICES):
             locale = 'ar'
-        user = User.objects.create_user(
-            email=data['email'],
-            password=data['password'],
-            locale=locale,
-        )
-        create_single_use_token(user, purpose='verify')
-        send_verification_email.delay(user.pk)
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    email=data['email'],
+                    password=data['password'],
+                    locale=locale,
+                )
+                create_single_use_token(user, purpose='verify')
+                send_verification_email.delay(user.pk)
+        except IntegrityError:
+            return Response(
+                {'email': ['A user with this email address already exists.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
             {'detail': 'Signup successful. Please verify your email.', 'email': user.email},
             status=status.HTTP_201_CREATED,
@@ -186,7 +193,24 @@ class VerifyEmailView(APIView):
             )
         with transaction.atomic():
             entry = SingleUseToken.objects.select_for_update().get(pk=entry.pk)
+            try:
+                user = User.objects.select_for_update().get(pk=entry.user_id)
+            except User.DoesNotExist:
+                return Response(
+                    {'detail': 'Invalid verification link', 'code': 'token_not_found'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if user.deleted_at is not None or user.deletion_scheduled_at is not None:
+                return Response(
+                    {'detail': 'Invalid verification link', 'code': 'token_not_found'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             if entry.consumed_at is not None:
+                if user.email_verified_at is not None:
+                    return Response(
+                        {'detail': 'Email already verified', 'code': 'already_verified'},
+                        status=status.HTTP_200_OK,
+                    )
                 return Response(
                     {'detail': 'Verification link has already been used', 'code': 'token_used'},
                     status=status.HTTP_410_GONE,
@@ -196,7 +220,6 @@ class VerifyEmailView(APIView):
                     {'detail': 'Verification link has expired', 'code': 'token_expired'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            user = User.objects.select_for_update().get(pk=entry.user_id)
             entry.consumed_at = timezone.now()
             entry.save(update_fields=['consumed_at'])
             if user.email_verified_at is None:
@@ -217,16 +240,17 @@ class ResendVerificationView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request: Request) -> Response:
-        email = str(request.data.get('email') or '').lower().strip()
-        if email:
-            user = User.objects.filter(email=email).first()
-            if user is not None and user.email_verified_at is None:
-                now = timezone.now()
-                SingleUseToken.objects.filter(
-                    user=user, purpose='verify', consumed_at__isnull=True,
-                ).update(consumed_at=now)
-                create_single_use_token(user, purpose='verify')
-                send_verification_email.delay(user.pk)
+        if isinstance(request.data, dict):
+            email = str(request.data.get('email') or '').lower().strip()
+            if email:
+                user = User.objects.filter(email=email, deleted_at__isnull=True).first()
+                if user is not None and user.email_verified_at is None:
+                    now = timezone.now()
+                    SingleUseToken.objects.filter(
+                        user=user, purpose='verify', consumed_at__isnull=True,
+                    ).update(consumed_at=now)
+                    create_single_use_token(user, purpose='verify')
+                    send_verification_email.delay(user.pk)
         return Response(
             {'detail': 'If an account exists for this email, a verification link has been sent.'},
             status=status.HTTP_200_OK,

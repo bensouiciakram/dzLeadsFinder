@@ -20,7 +20,11 @@ def render_email(template: str, locale: str, context: Dict[str, Any]) -> Tuple[s
     return data['html'], data.get('plainText', '')
 
 
-@shared_task  # type: ignore[misc]
+@shared_task(  # type: ignore[misc]
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 1},
+    retry_backoff=True,
+)
 def send_verification_email(user_id: int) -> None:
     """Send verification email after signup with a fresh single-use link.
 
@@ -53,7 +57,9 @@ def send_verification_email(user_id: int) -> None:
     if token is None:
         logger.warning('send_verification_email: no pending token for user %s', user_id)
         return
-    verification_link = f'{settings.FRONTEND_PUBLIC_URL}/{user.locale}/verify-email/{token.token}'
+    verification_link = (
+        f'{settings.FRONTEND_PUBLIC_URL.rstrip("/")}/verify-email/{token.token}'
+    )
     html, plain_text = render_email(
         'signup_confirm',
         user.locale,

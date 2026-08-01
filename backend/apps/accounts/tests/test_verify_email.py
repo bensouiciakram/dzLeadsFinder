@@ -54,10 +54,22 @@ class TestVerifyEmail:
         first = _verify(api_client, entry.token)
         assert first.status_code == status.HTTP_200_OK
         second = _verify(api_client, entry.token)
-        assert second.status_code == status.HTTP_410_GONE
-        assert second.data['code'] == 'token_used'
+        assert second.status_code == status.HTTP_200_OK
+        assert second.data['code'] == 'already_verified'
         create_user.refresh_from_db()
         assert create_user.credits_balance == 15
+
+    def test_verify_consumed_unverified_token_returns_used(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        entry = _make_token(create_user)
+        entry.consumed_at = timezone.now()
+        entry.save(update_fields=['consumed_at'])
+        response = _verify(api_client, entry.token)
+        assert response.status_code == status.HTTP_410_GONE
+        assert response.data['code'] == 'token_used'
 
     def test_verify_marks_token_consumed(
         self,
@@ -102,6 +114,36 @@ class TestVerifyEmail:
         assert create_user.credits_balance == 15
         second.refresh_from_db()
         assert second.consumed_at is not None
+
+    def test_verify_consumed_token_with_verified_user_returns_already_verified(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        entry = _make_token(create_user)
+        create_user.email_verified_at = timezone.now()
+        create_user.save(update_fields=['email_verified_at'])
+        entry.consumed_at = timezone.now()
+        entry.save(update_fields=['consumed_at'])
+        response = _verify(api_client, entry.token)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['code'] == 'already_verified'
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 0
+
+    def test_verify_soft_deleted_user_returns_404(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        entry = _make_token(create_user)
+        create_user.deleted_at = timezone.now()
+        create_user.save(update_fields=['deleted_at'])
+        response = _verify(api_client, entry.token)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        create_user.refresh_from_db()
+        assert create_user.email_verified_at is None
+        assert create_user.credits_balance == 0
 
     def test_verify_then_login_allows_api_access(
         self,

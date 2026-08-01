@@ -43,7 +43,9 @@ export function VerifyLinkHandler({ token }: Props) {
           return
         }
         if (response.status === 410) {
-          setState({ kind: 'used' })
+          setState((prev) =>
+            prev.kind === 'success' || prev.kind === 'already' ? prev : { kind: 'used' },
+          )
           return
         }
         setState({ kind: 'error' })

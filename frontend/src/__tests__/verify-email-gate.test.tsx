@@ -59,6 +59,5 @@ describe('VerifyEmailGate', () => {
     })
     fireEvent.click(screen.getByText('resend'))
     expect(await screen.findByText('resend_failed')).toBeInTheDocument()
-    expect(screen.getByLabelText('email_label')).toHaveAttribute('aria-invalid', 'true')
   })
 })

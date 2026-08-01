@@ -46,9 +46,7 @@ export function VerifyEmailGate() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            aria-describedby={state === 'error' ? 'verify-email-error' : undefined}
-            aria-invalid={state === 'error'}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30"
+            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
           />
         </div>
 
@@ -58,7 +56,7 @@ export function VerifyEmailGate() {
           </p>
         ) : null}
         {state === 'error' ? (
-          <p id="verify-email-error" role="alert" className="text-small text-destructive">
+          <p role="alert" className="text-small text-destructive">
             {t('resend_failed')}
           </p>
         ) : null}

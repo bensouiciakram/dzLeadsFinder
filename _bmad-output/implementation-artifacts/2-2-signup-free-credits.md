@@ -2,14 +2,14 @@
 story_id: 2.2
 epic: 2
 title: Story 2.2 — Signup with Free Credits
-status: review
+status: done
 frs: [FR-21]
 baseline_commit: dfd05d96c9ccb8cda88f97fedd61fdd3881ee052
 ---
 
 # Story 2.2: Signup with Free Credits
 
-Status: review
+Status: done
 
 ## Story
 
@@ -166,6 +166,30 @@ So that **I can try the product risk-free before committing to a paid plan**.
 - [Source: frontend/src/components/layout/Header.tsx] Existing /signup link
 - [Source: frontend/src/test/mocks.ts] Vitest mocks pattern
 
+## Review Findings
+
+- [x] [Review][Patch] Duplicate-email TOCTOU + non-atomic signup — signup now wraps create_user+token+task in `transaction.atomic()` and catches `IntegrityError` → 400 `email_taken` (was a race-condition 500 + orphaned user on task failure) [backend/apps/accounts/views.py:159, backend/apps/accounts/serializers.py:17]
+- [x] [Review][Patch] Unbounded password length → PBKDF2 CPU DoS on AllowAny endpoint — `max_length=128` on the serializer password field (Django 5.0 has no MaximumLengthValidator; DRF rejects before set_password) [backend/apps/accounts/serializers.py:12]
+- [x] [Review][Patch] Mail-scanner prefetch consumed the token → user saw "link already used" — VerifyEmailView now returns 200 `already_verified` when the token is consumed but the user IS verified (replay safe, no double grant); 410 `token_used` retained for consumed+unverified (resend invalidation) [backend/apps/accounts/views.py:186]
+- [x] [Review][Patch] Soft-deleted users could verify / receive resend emails — verify returns 404 for `deleted_at`/`deletion_scheduled_at` users; resend filters `deleted_at__isnull=True` [backend/apps/accounts/views.py:191, :229]
+- [x] [Review][Patch] Resend crashed with AttributeError on non-dict JSON body (`[1,2]`) — guarded with `isinstance(request.data, dict)`; always-200 contract preserved [backend/apps/accounts/views.py:225]
+- [x] [Review][Patch] `email_taken` machine code + frontend code-based mapping — serializer raises `ValidationError(code='email_taken')`; SignupForm reads `data.code.email[0]` instead of sniffing the English error string; empty-array guard prevents rendering "undefined" [backend/apps/accounts/serializers.py:17, frontend/src/components/auth/SignupForm.tsx:63]
+- [x] [Review][Patch] Email task no retry (violated AD-14 "1 retry for email") — added `autoretry_for=(Exception,)`, `max_retries=1`, backoff [backend/tasks/email_tasks.py:27]
+- [x] [Review][Patch] `FRONTEND_PUBLIC_URL` trailing slash produced `//` in the verification link — `rstrip('/')` [backend/tasks/email_tasks.py:64]
+- [x] [Review][Patch] Email link carried a `{locale}` path segment the router ignores (`localePrefix:'never'` 307s it away) — link is now `{FRONTEND_PUBLIC_URL}/verify-email/{token}`; `user.locale` still passed to the render endpoint [backend/tasks/email_tasks.py:64]
+- [x] [Review][Patch] Prod email misconfiguration silently locked users out (console backend default + gate) — production.py now fail-fasts on `FRONTEND_PUBLIC_URL` and `EMAIL_HOST` (SMTP backend), mirroring the 2.1 SECRET_KEY pattern [backend/config/settings/production.py:9]
+- [x] [Review][Patch] Frontend double-submit + emoji password length + non-JSON 400 body — `if (submitting) return`, `[...password].length`, guarded `response.json()` parse [frontend/src/components/auth/SignupForm.tsx:41]
+- [x] [Review][Patch] VerifyLinkHandler 410 could overwrite a successful verify (StrictMode double-fetch / two tabs) — `setState` now keeps success/already over a later `used`; 404/400 map to the "expired or invalid" screen [frontend/src/components/auth/VerifyLinkHandler.tsx:47]
+- [x] [Review][Patch] Resend gate marked the email field `aria-invalid` on server/network errors — removed (role=alert message retained) [frontend/src/components/auth/VerifyEmailGate.tsx:40]
+- [x] [Review][Defer] Rate limiting on signup/resend (anonymous email bombing of existing users) [backend/apps/accounts/views.py:159,225] — deferred: needs a new dependency (django-ratelimit) → user approval required; track for a pre-prod hardening story
+- [x] [Review][Defer] `select_for_update` is a silent no-op on SQLite — concurrent verify/grant is only correct on Postgres; CI runs no backend tests today [backend/apps/accounts/views.py:174] — deferred: add a Postgres-backed CI test job
+- [x] [Review][Defer] No client handling of 401 `email_not_verified` (and refresh keeps minting tokens for unverified users) — deferred to story 2.3 (Login & Session Management owns the session/fetch layer) [backend/apps/accounts/auth.py:27]
+- [x] [Review][Defer] `SingleUseToken` rows accumulate forever (resend invalidates by UPDATE, never deletes) — deferred: ops maintenance task (daily cleanup of expired/consumed rows)
+- [x] [Review][Defer] Verification token exposed in URL path/access logs — deferred: standard email-link tradeoff, mitigated by single-use + 24h TTL
+- [x] [Review][Defer] stylelint globals.css debt (136 pre-existing errors in story 1.x file) — deferred: unrelated to this story; lint:css not part of CI verification list
+
+Dismissed as noise/handled: task emails the latest pending token (benign, always delivers a valid link), autouse `render_email` fixture (documented test pattern), English email subject (recorded deviation), consumed-vs-expired check ordering (spec-undefined), anti-enumeration "sent" response for unknown email (by design), `logged_in_client` fixture semantics (documented), exception-handler `code` shape string-vs-dict (documented contract; frontend uses field-level codes), 3 vitest prettier serializer errors (pre-existing story-1.8 noise, tests pass).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -242,4 +266,5 @@ deepseek-v4-flash (opencode)
 
 - 2026-08-01: Story created (ready-for-dev) from epic 2.2 spec; validated against checklist.
 - 2026-08-01: Implemented backend (TDD red→green) + frontend; 74 backend tests, 46 frontend tests; ruff/mypy/lint/typecheck/i18n clean; 2 commits (backend, frontend); status → review.
+- 2026-08-01: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor — 51 raw findings, 0 decision-needed, 13 patches applied, 6 deferred, rest dismissed). Review patches: atomic signup + IntegrityError 400, password max_length 128, mail-scanner-safe verify (200 already_verified on consumed+verified), soft-delete guards, non-dict body guard, email_taken machine code end-to-end, AD-14 email retry, URL hygiene, locale-less email link, prod email fail-fast, frontend double-submit/emoji-length/JSON guard, 410-can't-overwrite-success, gate aria fix. 80 backend + 47 frontend tests green, ruff/mypy/lint/typecheck clean; status → done.
 

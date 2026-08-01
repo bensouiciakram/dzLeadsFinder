@@ -94,7 +94,13 @@ describe('SignupForm', () => {
 
   it('shows email taken error for duplicate email', async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse({ email: ['A user with this email address already exists.'] }, 400),
+      jsonResponse(
+        {
+          email: ['A user with this email address already exists.'],
+          code: { email: ['email_taken'] },
+        },
+        400,
+      ),
     )
     render(<SignupForm />)
     fireEvent.change(screen.getByLabelText('email_label'), {
@@ -133,5 +139,28 @@ describe('SignupForm', () => {
     })
     fireEvent.click(screen.getByText('submit'))
     expect(await screen.findByText('errors.network')).toBeInTheDocument()
+  })
+
+  it('ignores a second submit while a request is in flight', async () => {
+    let resolveFetch: (value: Response) => void
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+    render(<SignupForm />)
+    fireEvent.change(screen.getByLabelText('email_label'), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('password_label'), {
+      target: { value: 'SecurePass123!' },
+    })
+    fireEvent.click(screen.getByText('submit'))
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.click(screen.getByText('submit'))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    resolveFetch!(jsonResponse({ detail: 'ok' }, 201))
   })
 })
