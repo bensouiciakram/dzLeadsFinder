@@ -17,4 +17,5 @@ urlpatterns = [
         views.ResendVerificationView.as_view(),
         name='resend-verification',
     ),
+    path('me/', views.MeView.as_view(), name='me'),
 ]

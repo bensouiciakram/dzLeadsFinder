@@ -255,3 +255,17 @@ class ResendVerificationView(APIView):
             {'detail': 'If an account exists for this email, a verification link has been sent.'},
             status=status.HTTP_200_OK,
         )
+
+
+class MeView(APIView):
+    def get(self, request: Request) -> Response:
+        user = request.user
+        return Response({
+            'email': user.email,
+            'locale': user.locale,
+            'tier': user.tier,
+            'credits_balance': user.credits_balance,
+            'email_verified_at': (
+                user.email_verified_at.isoformat() if user.email_verified_at is not None else None
+            ),
+        })
