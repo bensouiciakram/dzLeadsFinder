@@ -258,6 +258,14 @@ deepseek-v4-flash (opencode)
 - `frontend/src/__tests__/verify-link-handler.test.tsx` — NEW (7 tests)
 - `frontend/src/__tests__/email-render-route.test.ts` — UPDATE (NextRequest cast, pre-existing typecheck debt)
 - `frontend/src/test/mocks.ts` — UPDATE (push/replace/useSearchParams mocks)
+- `frontend/src/lib/validation/auth.ts` — NEW (signupSchema, verifyEmailSchema + inferred types; AD-18)
+- `frontend/src/components/auth/SignupForm.tsx` — UPDATE (RHF+zod retrofit, root error, email_taken via code)
+- `frontend/src/components/auth/VerifyEmailGate.tsx` — UPDATE (RHF+zod retrofit; field validation added)
+- `frontend/src/components/auth/VerifyLinkHandler.tsx` — UPDATE (RHF+zod retrofit on expired resend form)
+- `frontend/src/__tests__/validation-auth.test.ts` — NEW (10 schema tests: required/invalid/emoji code-points/128-cap)
+- `frontend/vitest.config.ts` — UNCHANGED (zod v4 workarounds tried and reverted)
+- `frontend/package.json` — UPDATE (react-hook-form ^7.84, zod ^3.25, @hookform/resolvers ^5.6)
+- `docs/ARCHITECTURE-SPINE.md` — UPDATE (AD-18 + AD Index row + Updated date)
 - `frontend/messages/en.json` — UPDATE (auth.signup + auth.verify keys)
 - `frontend/messages/fr.json` — UPDATE (parallel keys)
 - `frontend/messages/ar.json` — UPDATE (parallel keys)
@@ -267,4 +275,5 @@ deepseek-v4-flash (opencode)
 - 2026-08-01: Story created (ready-for-dev) from epic 2.2 spec; validated against checklist.
 - 2026-08-01: Implemented backend (TDD red→green) + frontend; 74 backend tests, 46 frontend tests; ruff/mypy/lint/typecheck/i18n clean; 2 commits (backend, frontend); status → review.
 - 2026-08-01: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor — 51 raw findings, 0 decision-needed, 13 patches applied, 6 deferred, rest dismissed). Review patches: atomic signup + IntegrityError 400, password max_length 128, mail-scanner-safe verify (200 already_verified on consumed+verified), soft-delete guards, non-dict body guard, email_taken machine code end-to-end, AD-14 email retry, URL hygiene, locale-less email link, prod email fail-fast, frontend double-submit/emoji-length/JSON guard, 410-can't-overwrite-success, gate aria fix. 80 backend + 47 frontend tests green, ruff/mypy/lint/typecheck clean; status → done.
+- 2026-08-01: **Form-stack adoption (AD-18)**: added `docs/ARCHITECTURE-SPINE.md` AD-18 (react-hook-form + zod for ALL client-side forms, i18n-key messages, server errors via setError). New deps: react-hook-form ^7.84, zod ^3.25, @hookform/resolvers ^5.6. New `frontend/src/lib/validation/auth.ts` (signup/verify-email schemas — code-point-aware min 8, max 128 mirrors backend). Retrofit of the three 2.2 forms (SignupForm, VerifyEmailGate, VerifyLinkHandler) to RHF+zodResolver; gate/expired forms now validate empty/invalid email client-side (was silent). 60 frontend tests green (+13), lint/typecheck/i18n clean. Note: zod **v4** was tried first (4.4.3 and 4.3.6) — both fail module init under vitest 2.x/Vite-CJS (`onattach` TypeError), documented in AD-18; fell back to v3.25 per the planned fallback. Backend untouched.
 

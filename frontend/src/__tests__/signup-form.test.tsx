@@ -20,6 +20,10 @@ function jsonResponse(body: unknown, status = 200) {
   } as Response
 }
 
+const EMAIL_LABEL = 'auth.signup.email_label'
+const PASSWORD_LABEL = 'auth.signup.password_label'
+const SUBMIT = 'auth.signup.submit'
+
 describe('SignupForm', () => {
   beforeEach(() => {
     pushMock.mockClear()
@@ -29,60 +33,62 @@ describe('SignupForm', () => {
 
   it('renders exactly two fields and the no-card note', () => {
     render(<SignupForm />)
-    expect(screen.getByLabelText('email_label')).toBeInTheDocument()
-    expect(screen.getByLabelText('password_label')).toBeInTheDocument()
-    expect(screen.getByText('no_card_required')).toBeInTheDocument()
+    expect(screen.getByLabelText(EMAIL_LABEL)).toBeInTheDocument()
+    expect(screen.getByLabelText(PASSWORD_LABEL)).toBeInTheDocument()
+    expect(screen.getByText('auth.signup.no_card_required')).toBeInTheDocument()
     const inputs = document.querySelectorAll('input')
     expect(inputs.length).toBe(2)
   })
 
-  it('shows required errors with aria attributes on empty submit', () => {
+  it('shows required errors with aria attributes on empty submit', async () => {
     render(<SignupForm />)
-    fireEvent.click(screen.getByText('submit'))
-    const email = screen.getByLabelText('email_label')
-    const password = screen.getByLabelText('password_label')
-    expect(email).toHaveAttribute('aria-invalid', 'true')
+    fireEvent.click(screen.getByText(SUBMIT))
+    const email = screen.getByLabelText(EMAIL_LABEL)
+    const password = screen.getByLabelText(PASSWORD_LABEL)
+    await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'signup-email-error')
     expect(password).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getAllByText('errors.required').length).toBe(2)
+    expect(screen.getAllByText('common.errors.required').length).toBe(2)
   })
 
-  it('shows invalid email error for malformed email', () => {
+  it('shows invalid email error for malformed email', async () => {
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'not-an-email' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
-    expect(screen.getByLabelText('email_label')).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByText('errors.invalid_email')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() => expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'))
+    expect(screen.getByText('common.errors.invalid_email')).toBeInTheDocument()
   })
 
-  it('shows weak password error for short password', () => {
+  it('shows weak password error for short password', async () => {
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'user@example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'short' },
     })
-    fireEvent.click(screen.getByText('submit'))
-    expect(screen.getByLabelText('password_label')).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByText('errors.invalid_password')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() =>
+      expect(screen.getByLabelText(PASSWORD_LABEL)).toHaveAttribute('aria-invalid', 'true'),
+    )
+    expect(screen.getByText('common.errors.invalid_password')).toBeInTheDocument()
   })
 
   it('redirects to verify-email with email on success', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ detail: 'ok' }, 201))
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'User@Example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
+    fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/auth/signup/',
@@ -103,14 +109,14 @@ describe('SignupForm', () => {
       ),
     )
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'taken@example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
-    expect(await screen.findByText('error_email_taken')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(SUBMIT))
+    expect(await screen.findByText('auth.signup.error_email_taken')).toBeInTheDocument()
   })
 
   it('shows weak password error from server', async () => {
@@ -118,27 +124,27 @@ describe('SignupForm', () => {
       jsonResponse({ password: ['This password is too short.'] }, 400),
     )
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'user@example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
-    expect(await screen.findByText('error_weak_password')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(SUBMIT))
+    expect(await screen.findByText('auth.signup.error_weak_password')).toBeInTheDocument()
   })
 
   it('shows network error when fetch fails', async () => {
     fetchMock.mockRejectedValue(new Error('offline'))
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'user@example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
-    expect(await screen.findByText('errors.network')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(SUBMIT))
+    expect(await screen.findByText('common.errors.network')).toBeInTheDocument()
   })
 
   it('ignores a second submit while a request is in flight', async () => {
@@ -149,17 +155,17 @@ describe('SignupForm', () => {
       }),
     )
     render(<SignupForm />)
-    fireEvent.change(screen.getByLabelText('email_label'), {
+    fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'user@example.com' },
     })
-    fireEvent.change(screen.getByLabelText('password_label'), {
+    fireEvent.change(screen.getByLabelText(PASSWORD_LABEL), {
       target: { value: 'SecurePass123!' },
     })
-    fireEvent.click(screen.getByText('submit'))
+    fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
     })
-    fireEvent.click(screen.getByText('submit'))
+    fireEvent.click(screen.getByText(SUBMIT))
     expect(fetchMock).toHaveBeenCalledTimes(1)
     resolveFetch!(jsonResponse({ detail: 'ok' }, 201))
   })

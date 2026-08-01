@@ -3,87 +3,71 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
+import { signupSchema, type SignupValues } from '@/lib/validation/auth'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-type FieldErrors = { email?: string; password?: string; form?: string }
+type ServerErrorBody = {
+  email?: string[]
+  password?: string[]
+  code?: { email?: string[] }
+}
 
 export function SignupForm() {
-  const t = useTranslations('auth.signup')
-  const common = useTranslations('common')
+  const t = useTranslations()
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<FieldErrors>({})
-  const [submitting, setSubmitting] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { email: '', password: '' },
+  })
 
-  function validate(): FieldErrors {
-    const next: FieldErrors = {}
-    const trimmed = email.trim()
-    if (!trimmed) {
-      next.email = common('errors.required')
-    } else if (!EMAIL_PATTERN.test(trimmed)) {
-      next.email = common('errors.invalid_email')
-    }
-    if (!password) {
-      next.password = common('errors.required')
-    } else if ([...password].length < 8) {
-      next.password = common('errors.invalid_password')
-    }
-    return next
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (submitting) return
-    const fieldErrors = validate()
-    setErrors(fieldErrors)
-    if (fieldErrors.email || fieldErrors.password) return
-    setSubmitting(true)
+  async function onSubmit(values: SignupValues) {
+    if (isSubmitting) return
     try {
       const response = await fetch('/api/auth/signup/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: values.email, password: values.password }),
       })
       if (response.ok) {
-        router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`)
+        router.push(`/verify-email?email=${encodeURIComponent(values.email)}`)
         return
       }
       if (response.status === 400) {
-        let data: { email?: string[]; password?: string[]; code?: { email?: string[] } } = {}
+        let data: ServerErrorBody = {}
         try {
-          data = (await response.json()) as typeof data
+          data = (await response.json()) as ServerErrorBody
         } catch {
-          setErrors({ form: t('error_generic') })
+          setError('root', { message: 'auth.signup.error_generic' })
           return
         }
-        const next: FieldErrors = {}
         if (data.email && data.email.length > 0) {
-          next.email =
-            data.code?.email?.[0] === 'email_taken'
-              ? t('error_email_taken')
-              : common('errors.invalid_email')
+          setError('email', {
+            type: 'server',
+            message:
+              data.code?.email?.[0] === 'email_taken'
+                ? 'auth.signup.error_email_taken'
+                : 'common.errors.invalid_email',
+          })
         }
         if (data.password && data.password.length > 0) {
-          next.password = t('error_weak_password')
+          setError('password', { type: 'server', message: 'auth.signup.error_weak_password' })
         }
-        if (next.email || next.password) {
-          setErrors(next)
-          return
+        if (!(data.email && data.email.length > 0) && !(data.password && data.password.length > 0)) {
+          setError('root', { message: 'auth.signup.error_generic' })
         }
-        setErrors({ form: t('error_generic') })
         return
       }
-      setErrors({ form: t('error_generic') })
+      setError('root', { message: 'auth.signup.error_generic' })
     } catch {
-      setErrors({ form: common('errors.network') })
-    } finally {
-      setSubmitting(false)
+      setError('root', { message: 'common.errors.network' })
     }
   }
 
@@ -91,66 +75,66 @@ export function SignupForm() {
     'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       <div>
         <label htmlFor="signup-email" className="text-small font-medium text-foreground">
-          {t('email_label')}
+          {t('auth.signup.email_label')}
         </label>
         <input
           id="signup-email"
           type="email"
           autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? 'signup-email-error' : undefined}
           className={inputClass}
+          {...register('email')}
         />
-        {errors.email ? (
+        {errors.email?.message ? (
           <p id="signup-email-error" className="mt-1 text-small text-destructive">
-            {errors.email}
+            {t(errors.email.message)}
           </p>
         ) : null}
       </div>
 
       <div>
         <label htmlFor="signup-password" className="text-small font-medium text-foreground">
-          {t('password_label')}
+          {t('auth.signup.password_label')}
         </label>
         <input
           id="signup-password"
           type="password"
           autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
           aria-invalid={Boolean(errors.password)}
           aria-describedby={errors.password ? 'signup-password-error' : undefined}
           className={inputClass}
+          {...register('password')}
         />
-        {errors.password ? (
+        {errors.password?.message ? (
           <p id="signup-password-error" className="mt-1 text-small text-destructive">
-            {errors.password}
+            {t(errors.password.message)}
           </p>
         ) : null}
       </div>
 
-      {errors.form ? (
+      {errors.root?.message ? (
         <p role="alert" className="text-small text-destructive">
-          {errors.form}
+          {t(errors.root.message)}
         </p>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-small text-muted-foreground">{t('no_card_required')}</span>
-        <Button type="submit" disabled={submitting} className="px-5">
-          {t('submit')}
+        <span className="text-small text-muted-foreground">
+          {t('auth.signup.no_card_required')}
+        </span>
+        <Button type="submit" disabled={isSubmitting} className="px-5">
+          {t('auth.signup.submit')}
         </Button>
       </div>
 
       <p className="text-small text-muted-foreground">
-        {t('has_account')}{' '}
+        {t('auth.signup.has_account')}{' '}
         <Link href="/login" className="text-primary underline-offset-4 hover:underline">
-          {t('login_link')}
+          {t('auth.signup.login_link')}
         </Link>
       </p>
     </form>
