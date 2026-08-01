@@ -2,7 +2,7 @@
 
 - **Status:** final
 - **Created:** 2026-07-19
-- **Updated:** 2026-07-19
+- **Updated:** 2026-08-01
 - **Sources:** UX spines (DESIGN.md, EXPERIENCE.md, .memlog.md), PRD shards
 - **Paradigm:** Split-stack: Next.js App Router (frontend + SSR) + Django REST Framework (API + Celery + Scrapy)
 
@@ -309,6 +309,20 @@ The display balance = subscription pool + pack pool. Drawdown order (AD-7, [ASSU
 - `/api/*` and `/admin/*` → Django
 - `/*` → Next.js
 Django sets httpOnly JWTs on `POST /api/auth/login/` — the browser stores the cookie for `mydomain.com` and sends it on all subsequent `/api/*` requests automatically. Next.js has zero API route stubs, zero auth code. No CORS middleware on Django. All four containers (Caddy, Next.js, Django, Celery/Redis/PostgreSQL) share one Docker network on one VPS.
+
+## AD-18: react-hook-form + zod for all client-side forms
+
+**Binds:** Client-side form state, submission, and validation stack.
+**Prevents:** Hand-rolled `useState` validation drift, inconsistent error UX across forms, missing accessibility wiring, duplicated validation logic between client and server.
+**Rule:** Every form in the product (auth pages now; search filters, export modal, billing, settings later) uses **react-hook-form** for state/submission plus **zod** schemas as the single validation source, wired via `@hookform/resolvers` (`zodResolver`). Version floor: react-hook-form ^7, zod ^3.25 (zod v4 is blocked: its ESM build fails module init under the current vitest 2.x/Vite-CJS test stack — revisit on a vitest/Vite ESM upgrade), @hookform/resolvers ^5 (supports both zod majors).
+
+- **Schemas live in `frontend/src/lib/validation/`** (one module per domain, e.g. `auth.ts`), exporting inferred value types (`z.infer`).
+- **Localization:** zod message strings are full next-intl message keys (e.g. `'common.errors.required'`, `'auth.signup.error_email_taken'`); forms resolve them with unnamespaced `useTranslations()` so `messages/{en,fr,ar}.json` stays the single source of truth. No hardcoded UI copy in schemas.
+- **Server errors** (400 field errors from Django) are merged via `setError('field', { type: 'server', message: <key> })`; machine-readable codes from the API (`data.code`) select the key. Non-field errors render as a form-level (root) error.
+- **Accessibility:** `aria-invalid` and `aria-describedby` are derived from RHF error state; error messages render with stable ids; `role="alert"` for form-level errors.
+- **Password rules mirror the backend:** minimum 8 characters counted as **code points** (emoji-safe — `[...value].length`), maximum 128, enforced by the schema so the client never submits a payload the server will reject.
+- **Submission guards:** `isSubmitting` disables submit; explicit in-handler guard prevents double-submit.
+- Tests: component tests assert the rendered message **keys** (vitest mocks `useTranslations` to return the key); schema edge cases (code-point length, max length, email variants) get a dedicated unit test per domain module.
 
 ---
 
@@ -823,3 +837,4 @@ Every email component extends `BaseEmail` which sets `dir="auto"` for RTL suppor
 | AD-15 | Scraper pipeline as Django management commands with Scrapy | [ADOPTED] |
 | AD-16 | Django Admin as ops panel for user/credit/payment management | [ADOPTED] |
 | AD-17 | Caddy reverse proxy — single domain, path-based routing, no BFF stubs, no CORS | [ADOPTED] |
+| AD-18 | Client forms: react-hook-form + zod (i18n-key messages, server errors via setError) | [ADOPTED] |
