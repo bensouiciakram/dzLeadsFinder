@@ -2,7 +2,7 @@
 
 - **Status:** final
 - **Created:** 2026-07-19
-- **Updated:** 2026-08-01
+- **Updated:** 2026-08-02
 - **Sources:** UX spines (DESIGN.md, EXPERIENCE.md, .memlog.md), PRD shards
 - **Paradigm:** Split-stack: Next.js App Router (frontend + SSR) + Django REST Framework (API + Celery + Scrapy)
 
@@ -331,6 +331,14 @@ Django sets httpOnly JWTs on `POST /api/auth/login/` — the browser stores the 
 **Binds:** Client → Django API communication and session-aware error routing.
 **Prevents:** Per-component raw `fetch` calls with duplicated error handling; drift between how components interpret 401 responses; unhandled session/verification gates leaking into future story code.
 **Rule:** All client-side API access goes through a base `HttpClient` (`frontend/src/lib/api/http-client.ts`) wrapping an axios instance (`baseURL: '/api'`, `withCredentials: true`). Domain services **inherit** it (e.g. `AuthService` in `frontend/src/lib/api/auth-service.ts`: `login`/`logout`/`me`/`refresh`). A response interceptor implements the sliding-session loop: a 401 `token_not_valid` on a non-refresh request triggers a **single-flight** `POST /api/auth/jwt/refresh/` (cookie rotation, 2.1) and replays the original request once; only when refresh itself fails does the 401 route to a client surface — `email_not_verified` → `/verify-email`; `session_expired` → `/login?reason=session_expired`; `account_deleted` → `/frozen`; `token_not_valid`/`token_not_provided`/`account_inactive` → `/login`; `not_authenticated` → no redirect (guest). Redirects use a `navigator.assign` seam (`window.location.assign`, full reload so session state re-derives), skip when already on the target path, and fire at most once per page lifetime. The code→target mapping is a pure exported function (`authRedirectFor`) so the routing contract is unit-testable. Session state itself is owned by `SessionProvider`, which probes `GET /api/auth/me/` on mount (`loading`/`authenticated`/`guest`, generation-guarded against stale probes) and exposes `refresh()` (fresh probe, tri-state result) / `logout()`.
+
+---
+
+## AD-20: TanStack Query as the server-state layer (Epic 3+)
+
+**Binds:** Server-state fetching, caching, retry, and polling on authenticated surfaces.
+**Prevents:** Hand-rolled `useEffect` + `useState` fetch code accumulating across Epic 3–5 (search results, saved searches, credits ledger, billing status polling) with divergent loading/error/retry handling and no cache sharing between components.
+**Rule:** **TanStack Query v5 is the server-state layer for all data-fetching surfaces starting with Epic 3 (search).** Adoption is deliberately deferred until the first real consumer (story 3-1/3-2 — search backend + endpoints); stories 2.4–2.6 (auth forms, account deletion) ship without it. Queries call the AD-19 service methods via `queryFn` (e.g. `queryFn: () => authService.me()`); the axios interceptor (401 routing, sliding-session refresh) stays in the HTTP layer untouched. Auth/session state remains `SessionProvider`-owned context — it is NOT migrated into the query cache (the Header needs synchronous `useSession()`; login/logout/refresh are imperative flows, not cached data). `QueryClientProvider` mounts in `Providers`; vitest tests wrap components in `QueryClientProvider` with the existing `@/lib/api/auth-service` module mocks. **Adoption prerequisite:** verify TanStack Query v5 works under the current vitest 2.x/Vite-CJS test stack before committing the dependency (same gate that blocked zod v4, AD-18) — if it fails, revisit on a vitest/Vite ESM upgrade. Polling use-cases (billing status-card ≤60s, AD-5/FR-27) use `refetchInterval`; mutation invalidation keeps Credits pill, ledger, and saved searches consistent.
 
 ---
 
@@ -847,3 +855,4 @@ Every email component extends `BaseEmail` which sets `dir="auto"` for RTL suppor
 | AD-17 | Caddy reverse proxy — single domain, path-based routing, no BFF stubs, no CORS | [ADOPTED] |
 | AD-18 | Client forms: react-hook-form + zod (i18n-key messages, server errors via setError) | [ADOPTED] |
 | AD-19 | axios HTTP client layer, service inheritance, 401-code interceptor routing, SessionProvider /me probe | [ADOPTED] |
+| AD-20 | TanStack Query v5 as server-state layer from Epic 3 (queries via AD-19 services; session stays context) | [PLANNED] |
