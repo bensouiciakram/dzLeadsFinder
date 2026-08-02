@@ -90,8 +90,8 @@ RESET_SUBJECTS = {
     retry_kwargs={'max_retries': 1},
     retry_backoff=True,
 )
-def send_password_reset_email(user_id: int) -> None:
-    """Send password reset email with a fresh single-use link.
+def send_password_reset_email(user_id: int, token_id: int) -> None:
+    """Send password reset email for the exact token issued by the request.
 
     Django imports are deferred to runtime: config/celery.py imports this
     module before the app registry is ready.
@@ -109,18 +109,18 @@ def send_password_reset_email(user_id: int) -> None:
     except user_model.DoesNotExist:
         logger.warning('send_password_reset_email: user %s not found', user_id)
         return
-    token = (
-        SingleUseToken.objects.filter(
-            user=user,
-            purpose='reset',
-            consumed_at__isnull=True,
-            expires_at__gt=timezone.now(),
-        )
-        .order_by('-created_at')
-        .first()
-    )
-    if token is None:
-        logger.warning('send_password_reset_email: no pending token for user %s', user_id)
+    try:
+        token = SingleUseToken.objects.get(pk=token_id)
+    except SingleUseToken.DoesNotExist:
+        logger.warning('send_password_reset_email: token %s not found', token_id)
+        return
+    if (
+        token.user_id != user_id
+        or token.purpose != 'reset'
+        or token.consumed_at is not None
+        or token.expires_at <= timezone.now()
+    ):
+        logger.warning('send_password_reset_email: token %s not usable', token_id)
         return
     reset_link = f'{settings.FRONTEND_PUBLIC_URL.rstrip("/")}/password-reset/{token.token}'
     html, plain_text = render_email(

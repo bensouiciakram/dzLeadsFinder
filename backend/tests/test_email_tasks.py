@@ -105,7 +105,7 @@ class TestSendPasswordResetEmail:
             return ('<html>reset</html>', 'plain text')
 
         monkeypatch.setattr('tasks.email_tasks.render_email', spy)
-        send_password_reset_email(create_user.pk)
+        send_password_reset_email(create_user.pk, token.pk)
         assert len(mail.outbox) == 1
         assert mail.outbox[0].to == [create_user.email]
         assert calls['template'] == 'password_reset'
@@ -118,7 +118,7 @@ class TestSendPasswordResetEmail:
         monkeypatch: Any,
         create_user: Any,
     ) -> None:
-        SingleUseToken.objects.create(
+        token = SingleUseToken.objects.create(
             user=create_user,
             purpose='reset',
             token='reset-task-token-value',
@@ -130,22 +130,22 @@ class TestSendPasswordResetEmail:
             'tasks.email_tasks.render_email',
             lambda *a, **k: ('<html>reset</html>', 'plain text'),
         )
-        send_password_reset_email(create_user.pk)
+        send_password_reset_email(create_user.pk, token.pk)
         assert len(mail.outbox) == 1
         assert 'Réinitialisation' in mail.outbox[0].subject
 
     def test_missing_user_logs_and_returns(self, monkeypatch: Any) -> None:
         monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
-        send_password_reset_email(999999)
+        send_password_reset_email(999999, 1)
         assert len(mail.outbox) == 0
 
-    def test_no_pending_token_logs_and_returns(
+    def test_missing_token_logs_and_returns(
         self,
         monkeypatch: Any,
         create_user: Any,
     ) -> None:
         monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
-        send_password_reset_email(create_user.pk)
+        send_password_reset_email(create_user.pk, 999999)
         assert len(mail.outbox) == 0
 
     def test_expired_token_does_not_send(
@@ -153,14 +153,52 @@ class TestSendPasswordResetEmail:
         monkeypatch: Any,
         create_user: Any,
     ) -> None:
-        SingleUseToken.objects.create(
+        token = SingleUseToken.objects.create(
             user=create_user,
             purpose='reset',
             token='expired-reset-token',
             expires_at=timezone.now() - timedelta(hours=1),
         )
         monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
-        send_password_reset_email(create_user.pk)
+        send_password_reset_email(create_user.pk, token.pk)
+        assert len(mail.outbox) == 0
+
+    def test_consumed_token_does_not_send(
+        self,
+        monkeypatch: Any,
+        create_user: Any,
+    ) -> None:
+        token = SingleUseToken.objects.create(
+            user=create_user,
+            purpose='reset',
+            token='consumed-reset-token',
+            expires_at=timezone.now() + timedelta(hours=1),
+            consumed_at=timezone.now(),
+        )
+        monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
+        send_password_reset_email(create_user.pk, token.pk)
+        assert len(mail.outbox) == 0
+
+    def test_token_of_another_user_is_never_sent(
+        self,
+        monkeypatch: Any,
+        create_user: Any,
+    ) -> None:
+        from django.contrib.auth import get_user_model
+
+        other = get_user_model().objects.create_user(
+            email='other@example.com',
+            password='SecurePass123!',
+            locale='en',
+        )
+        token = SingleUseToken.objects.create(
+            user=other,
+            purpose='reset',
+            token='other-user-reset-token',
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
+        send_password_reset_email(create_user.pk, token.pk)
         assert len(mail.outbox) == 0
 
     def test_verify_token_is_never_sent_as_reset_link(
@@ -168,12 +206,12 @@ class TestSendPasswordResetEmail:
         monkeypatch: Any,
         create_user: Any,
     ) -> None:
-        SingleUseToken.objects.create(
+        token = SingleUseToken.objects.create(
             user=create_user,
             purpose='verify',
             token='verify-token-value',
             expires_at=timezone.now() + timedelta(hours=24),
         )
         monkeypatch.setattr('tasks.email_tasks.render_email', lambda *a, **k: ('', ''))
-        send_password_reset_email(create_user.pk)
+        send_password_reset_email(create_user.pk, token.pk)
         assert len(mail.outbox) == 0

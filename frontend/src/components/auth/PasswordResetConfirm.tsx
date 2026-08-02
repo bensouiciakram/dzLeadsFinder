@@ -29,6 +29,7 @@ export function PasswordResetConfirm({ token }: Props) {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<NewPasswordValues>({
     resolver: zodResolver(newPasswordSchema),
@@ -75,7 +76,11 @@ export function PasswordResetConfirm({ token }: Props) {
           setState((prev) => (prev.kind === 'done' ? prev : { kind: 'used' }))
           return
         }
-        setState((prev) => (prev.kind === 'done' ? prev : { kind: 'expired' }))
+        if (error.response.status === 400) {
+          setError('root', { message: 'common.states.error' })
+          return
+        }
+        setState((prev) => (prev.kind === 'done' ? prev : { kind: 'error' }))
         return
       }
       setState((prev) => (prev.kind === 'done' ? prev : { kind: 'error' }))
@@ -156,6 +161,12 @@ export function PasswordResetConfirm({ token }: Props) {
                 </p>
               ) : null}
             </div>
+
+            {errors.root?.message ? (
+              <p role="alert" className="text-small text-destructive">
+                {t(errors.root.message)}
+              </p>
+            ) : null}
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {t('auth.password_reset.submit_new')}

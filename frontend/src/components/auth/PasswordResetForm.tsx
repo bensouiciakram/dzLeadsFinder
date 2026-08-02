@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { isAxiosError } from 'axios'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { authService } from '@/lib/api/auth-service'
@@ -14,6 +14,7 @@ import { passwordResetSchema, type PasswordResetValues } from '@/lib/validation/
 export function PasswordResetForm() {
   const t = useTranslations()
   const [submitted, setSubmitted] = useState(false)
+  const submittingRef = useRef(false)
   const {
     register,
     handleSubmit,
@@ -25,7 +26,8 @@ export function PasswordResetForm() {
   })
 
   async function onSubmit(values: PasswordResetValues) {
-    if (isSubmitting) return
+    if (submittingRef.current || isSubmitting) return
+    submittingRef.current = true
     try {
       await authService.requestPasswordReset(values.email)
       setSubmitted(true)
@@ -35,6 +37,8 @@ export function PasswordResetForm() {
       } else {
         setError('root', { message: 'common.errors.network' })
       }
+    } finally {
+      submittingRef.current = false
     }
   }
 

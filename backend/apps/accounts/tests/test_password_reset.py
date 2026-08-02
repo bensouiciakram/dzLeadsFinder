@@ -118,6 +118,25 @@ class TestPasswordResetRequest:
         assert response.status_code == status.HTTP_200_OK
         assert len(mail.outbox) == 1
 
+    def test_request_ignores_stale_session_cookie(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Any,
+    ) -> None:
+        create_user.email_verified_at = timezone.now()
+        create_user.save(update_fields=['email_verified_at'])
+        login = api_client.post('/api/auth/login/', {
+            'email': user_data['email'],
+            'password': user_data['password'],
+        })
+        assert login.status_code == status.HTTP_200_OK
+        create_user.set_password('ChangedPass123!')
+        create_user.save(update_fields=['password', 'token_version'])
+        response = api_client.post(REQUEST_URL, {'email': user_data['email']})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 1
+
 
 @pytest.mark.django_db
 class TestPasswordResetConfirmGet:
@@ -174,6 +193,25 @@ class TestPasswordResetConfirmGet:
         response = api_client.get(_confirm_url(entry.token))
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data['code'] == 'token_not_found'
+
+    def test_get_ignores_stale_session_cookie(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Any,
+    ) -> None:
+        create_user.email_verified_at = timezone.now()
+        create_user.save(update_fields=['email_verified_at'])
+        login = api_client.post('/api/auth/login/', {
+            'email': user_data['email'],
+            'password': user_data['password'],
+        })
+        assert login.status_code == status.HTTP_200_OK
+        create_user.set_password('ChangedPass123!')
+        create_user.save(update_fields=['password', 'token_version'])
+        entry = _make_reset_token(create_user)
+        response = api_client.get(_confirm_url(entry.token))
+        assert response.status_code == status.HTTP_200_OK
 
 
 @pytest.mark.django_db

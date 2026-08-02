@@ -147,4 +147,19 @@ describe('PasswordResetConfirm', () => {
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     expect(await screen.findByText('auth.password_reset.used_title')).toBeInTheDocument()
   })
+
+  it('keeps the form and shows a root error when the POST is rejected with 400', async () => {
+    authServiceMock.validatePasswordResetToken.mockResolvedValue({ code: 'token_valid' })
+    authServiceMock.confirmPasswordReset.mockRejectedValue(httpError(400, 'password'))
+    render(<PasswordResetConfirm token={TOKEN} />)
+    const newPassword = await screen.findByLabelText(NEW_PASSWORD_LABEL)
+    fireEvent.change(newPassword, { target: { value: 'SecurePass123!' } })
+    fireEvent.change(screen.getByLabelText(CONFIRM_PASSWORD_LABEL), {
+      target: { value: 'SecurePass123!' },
+    })
+    fireEvent.click(screen.getByText(SUBMIT_NEW))
+    expect(await screen.findByText('common.states.error')).toBeInTheDocument()
+    expect(screen.getByLabelText(NEW_PASSWORD_LABEL)).toBeInTheDocument()
+    expect(screen.queryByText('auth.password_reset.expired_title')).not.toBeInTheDocument()
+  })
 })

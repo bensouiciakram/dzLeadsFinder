@@ -8,8 +8,15 @@ type Props = {
   locale?: string
 }
 
-const COPY: Record<Locale, { title: string; description: string; button: string; ignore: string }> = {
+const COPY: Record<Locale, {
+  preview: string
+  title: string
+  description: string
+  button: string
+  ignore: string
+}> = {
   ar: {
+    preview: 'إعادة تعيين كلمة المرور — dzLeadsFinder',
     title: 'إعادة تعيين كلمة المرور',
     description:
       'لقد تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك. انقر على الرابط أدناه لتحديد كلمة مرور جديدة. هذا الرابط صالح لمدة ساعة واحدة فقط.',
@@ -17,6 +24,7 @@ const COPY: Record<Locale, { title: string; description: string; button: string;
     ignore: 'إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد بأمان.',
   },
   fr: {
+    preview: 'Réinitialisation du mot de passe — dzLeadsFinder',
     title: 'Réinitialisation du mot de passe',
     description:
       "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte. Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe. Ce lien est valable 1 heure.",
@@ -24,6 +32,7 @@ const COPY: Record<Locale, { title: string; description: string; button: string;
     ignore: "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité.",
   },
   en: {
+    preview: 'Reset your password — dzLeadsFinder',
     title: 'Reset your password',
     description:
       "We received a request to reset the password for your account. Click the link below to set a new password. This link is valid for 1 hour.",
@@ -35,7 +44,7 @@ const COPY: Record<Locale, { title: string; description: string; button: string;
 export function PasswordReset({ resetLink, locale }: Props) {
   const copy = COPY[(locale as Locale) in COPY ? (locale as Locale) : 'en']
   return (
-    <BaseEmail previewText="Reset your password — dzLeadsFinder">
+    <BaseEmail previewText={copy.preview}>
       <Section lang={locale === 'ar' ? 'ar' : undefined} dir={locale === 'ar' ? 'rtl' : undefined}>
         <Text style={heading}>{copy.title}</Text>
         <Text style={paragraph}>{copy.description}</Text>

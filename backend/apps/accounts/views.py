@@ -275,6 +275,7 @@ class MeView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def post(self, request: Request) -> Response:
         if isinstance(request.data, dict):
@@ -290,8 +291,10 @@ class PasswordResetRequestView(APIView):
                     SingleUseToken.objects.filter(
                         user=user, purpose='reset', consumed_at__isnull=True,
                     ).update(consumed_at=now)
-                    create_single_use_token(user, purpose='reset', ttl=RESET_TOKEN_TTL)
-                    send_password_reset_email.delay(user.pk)
+                    token = create_single_use_token(
+                        user, purpose='reset', ttl=RESET_TOKEN_TTL,
+                    )
+                    send_password_reset_email.delay(user.pk, token.pk)
         return Response(
             {'detail': 'If an account exists with this email, a reset link has been sent.'},
             status=status.HTTP_200_OK,
@@ -300,6 +303,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def _get_token_entry(self, token: str) -> SingleUseToken | None:
         try:
@@ -353,7 +357,7 @@ class PasswordResetConfirmView(APIView):
     def post(self, request: Request, token: str) -> Response:
         if not isinstance(request.data, dict):
             return Response(
-                {'detail': 'Invalid request body', 'code': 'token_not_found'},
+                {'detail': 'Invalid request body', 'code': 'invalid_request'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         entry = self._get_token_entry(token)
@@ -363,10 +367,16 @@ class PasswordResetConfirmView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         with transaction.atomic():
-            locked_entry = cast(
-                SingleUseToken,
-                SingleUseToken.objects.select_for_update().get(pk=entry.pk),
-            )
+            try:
+                locked_entry = cast(
+                    SingleUseToken,
+                    SingleUseToken.objects.select_for_update().get(pk=entry.pk),
+                )
+            except SingleUseToken.DoesNotExist:
+                return Response(
+                    {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             try:
                 user = User.objects.select_for_update().get(pk=locked_entry.user_id)
             except User.DoesNotExist:
