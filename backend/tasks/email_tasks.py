@@ -78,6 +78,69 @@ def send_verification_email(user_id: int) -> None:
     message.send()
 
 
+RESET_SUBJECTS = {
+    'ar': 'إعادة تعيين كلمة المرور — dzLeadsFinder',
+    'fr': 'Réinitialisation de votre mot de passe — dzLeadsFinder',
+    'en': 'Reset your password — dzLeadsFinder',
+}
+
+
+@shared_task(  # type: ignore[misc]
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 1},
+    retry_backoff=True,
+)
+def send_password_reset_email(user_id: int) -> None:
+    """Send password reset email with a fresh single-use link.
+
+    Django imports are deferred to runtime: config/celery.py imports this
+    module before the app registry is ready.
+    """
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.core.mail import EmailMultiAlternatives
+    from django.utils import timezone
+
+    from apps.accounts.models import SingleUseToken
+
+    user_model = get_user_model()
+    try:
+        user = user_model.objects.get(pk=user_id)
+    except user_model.DoesNotExist:
+        logger.warning('send_password_reset_email: user %s not found', user_id)
+        return
+    token = (
+        SingleUseToken.objects.filter(
+            user=user,
+            purpose='reset',
+            consumed_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        )
+        .order_by('-created_at')
+        .first()
+    )
+    if token is None:
+        logger.warning('send_password_reset_email: no pending token for user %s', user_id)
+        return
+    reset_link = f'{settings.FRONTEND_PUBLIC_URL.rstrip("/")}/password-reset/{token.token}'
+    html, plain_text = render_email(
+        'password_reset',
+        user.locale,
+        {'resetLink': reset_link},
+    )
+    message = EmailMultiAlternatives(
+        subject=RESET_SUBJECTS.get(user.locale, RESET_SUBJECTS['en']),
+        body=plain_text or html,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    if plain_text:
+        message.attach_alternative(html, 'text/html')
+    else:
+        message.content_subtype = 'html'
+    message.send()
+
+
 @shared_task  # type: ignore[misc]
 def send_payment_receipt(txn_id: str) -> None:
     """Send payment receipt after successful payment.

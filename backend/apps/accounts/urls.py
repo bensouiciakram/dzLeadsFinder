@@ -18,4 +18,14 @@ urlpatterns = [
         name='resend-verification',
     ),
     path('me/', views.MeView.as_view(), name='me'),
+    path(
+        'password-reset/',
+        views.PasswordResetRequestView.as_view(),
+        name='password-reset-request',
+    ),
+    path(
+        'password-reset/<str:token>/',
+        views.PasswordResetConfirmView.as_view(),
+        name='password-reset-confirm',
+    ),
 ]

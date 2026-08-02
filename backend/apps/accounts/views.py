@@ -1,8 +1,10 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.signals import user_logged_in
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from djoser.serializers import TokenCreateSerializer as DjoserTokenCreateSerializer
@@ -15,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 
-from tasks.email_tasks import send_verification_email
+from tasks.email_tasks import send_password_reset_email, send_verification_email
 
 from .auth import (
     TokenWithVersionAccessToken,
@@ -25,7 +27,7 @@ from .auth import (
 )
 from .models import LOCALE_CHOICES, SingleUseToken
 from .serializers import SignupSerializer
-from .tokens import create_single_use_token
+from .tokens import RESET_TOKEN_TTL, create_single_use_token
 
 User = get_user_model()
 
@@ -269,3 +271,130 @@ class MeView(APIView):
                 user.email_verified_at.isoformat() if user.email_verified_at is not None else None
             ),
         })
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request: Request) -> Response:
+        if isinstance(request.data, dict):
+            email = str(request.data.get('email') or '').lower().strip()
+            if email:
+                user = User.objects.filter(
+                    email=email,
+                    deleted_at__isnull=True,
+                    deletion_scheduled_at__isnull=True,
+                ).first()
+                if user is not None:
+                    now = timezone.now()
+                    SingleUseToken.objects.filter(
+                        user=user, purpose='reset', consumed_at__isnull=True,
+                    ).update(consumed_at=now)
+                    create_single_use_token(user, purpose='reset', ttl=RESET_TOKEN_TTL)
+                    send_password_reset_email.delay(user.pk)
+        return Response(
+            {'detail': 'If an account exists with this email, a reset link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def _get_token_entry(self, token: str) -> SingleUseToken | None:
+        try:
+            return cast(
+                SingleUseToken,
+                SingleUseToken.objects.get(token=token, purpose='reset'),
+            )
+        except SingleUseToken.DoesNotExist:
+            return None
+
+    def _reject_user(self, user: Any) -> bool:
+        return user.deleted_at is not None or user.deletion_scheduled_at is not None
+
+    def _validated_response(self, entry: SingleUseToken, user: Any) -> Response | None:
+        if self._reject_user(user):
+            return Response(
+                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if entry.consumed_at is not None:
+            return Response(
+                {'detail': 'Reset link has already been used', 'code': 'token_used'},
+                status=status.HTTP_410_GONE,
+            )
+        if entry.expires_at <= timezone.now():
+            return Response(
+                {'detail': 'Reset link has expired', 'code': 'token_expired'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return None
+
+    def get(self, request: Request, token: str) -> Response:
+        entry = self._get_token_entry(token)
+        if entry is None:
+            return Response(
+                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            user = User.objects.get(pk=entry.user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        rejected = self._validated_response(entry, user)
+        if rejected is not None:
+            return rejected
+        return Response({'detail': 'Reset link is valid', 'code': 'token_valid'})
+
+    def post(self, request: Request, token: str) -> Response:
+        if not isinstance(request.data, dict):
+            return Response(
+                {'detail': 'Invalid request body', 'code': 'token_not_found'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        entry = self._get_token_entry(token)
+        if entry is None:
+            return Response(
+                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        with transaction.atomic():
+            locked_entry = cast(
+                SingleUseToken,
+                SingleUseToken.objects.select_for_update().get(pk=entry.pk),
+            )
+            try:
+                user = User.objects.select_for_update().get(pk=locked_entry.user_id)
+            except User.DoesNotExist:
+                return Response(
+                    {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            rejected = self._validated_response(locked_entry, user)
+            if rejected is not None:
+                return rejected
+            password = request.data.get('password')
+            if not isinstance(password, str) or len(password) > 128:
+                return Response(
+                    {'password': ['Password must be at most 128 characters.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                validate_password(password, user=user)
+            except ValidationError as exc:
+                return Response(
+                    {'password': list(exc.messages)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(password)
+            user.save(update_fields=['password', 'token_version'])
+            locked_entry.consumed_at = timezone.now()
+            locked_entry.save(update_fields=['consumed_at'])
+        return Response(
+            {'detail': 'Password reset successfully', 'code': 'password_reset'},
+            status=status.HTTP_200_OK,
+        )
