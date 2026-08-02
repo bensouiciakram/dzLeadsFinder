@@ -2,14 +2,14 @@
 story_id: 2.4
 epic: 2
 title: Story 2.4 — Password Reset Flow
-status: review
+status: done
 frs: [FR-22]
 baseline_commit: 4ec7db263cdc119e7a8478de9c5a106993653503
 ---
 
 # Story 2.4: Password Reset Flow
 
-Status: review
+Status: done
 
 ## Story
 
@@ -190,6 +190,18 @@ So that **I can regain access to my account without losing data**.
 - [Source: frontend/src/app/api/emails/render/route.ts, frontend/emails/components/SignupConfirm.tsx] Email template + render map
 - [Source: frontend/src/__tests__/login-form.test.tsx, validation-auth.test.ts, verify-link-handler.test.tsx] Test patterns (module mocks, async RHF)
 
+## Review Findings
+
+- [x] [Review][Patch] Stale-session cookies hijacked the public reset pages — `PasswordResetConfirmView`/`PasswordResetRequestView` ran DRF's default `CookieJWTAuthentication`; an expired or version-bumped cookie 401'd `token_not_valid` BEFORE token validation and the interceptor bounced the forgot-password user to `/login` (the primary reset audience). Both views now set `authentication_classes = []` (TokenRefreshView precedent); covered by two new stale-cookie tests [backend/apps/accounts/views.py]
+- [x] [Review][Patch] Confirm POST mapped every failure to the "expired" screen — a server-side password-validation 400 (or transient 500) destroyed the form and lied about the link. POST now maps: 410 → used screen, 400 → keeps the form + root error (`common.states.error`), other → error state; GET unchanged [frontend/src/components/auth/PasswordResetConfirm.tsx]
+- [x] [Review][Patch] Email task re-queried "latest pending token" at send time — concurrent requests (double-click, two tabs) invalidated each other's tokens and both tasks picked the newest link, so users received duplicate/dead links. `send_password_reset_email(user_id, token_id)` now delivers the EXACT token issued by the request (purpose/user/consumed/expiry guard); the client request form gained a synchronous ref guard closing the `isSubmitting` stale-closure double-click race [backend/tasks/email_tasks.py, backend/apps/accounts/views.py, frontend/src/components/auth/PasswordResetForm.tsx]
+- [x] [Review][Patch] Email `previewText` was hardcoded English for all locales (AC6 gap) — now trilingual via the COPY map [frontend/emails/components/PasswordReset.tsx]
+- [x] [Review][Patch] Non-dict POST body returned the misleading `code='token_not_found'` (a body problem, not a token problem) → now `invalid_request`; the unlocked→locked token re-fetch could 500 if the row vanished in the window → wrapped, returns 404 [backend/apps/accounts/views.py]
+- [x] [Review][Defer] No rate limiting on the reset request endpoint (email bombing of known emails + worker/SMTP DoS) — DRF's built-in throttles are unsafe behind Caddy (all traffic shares the proxy IP); needs a proxy-aware solution or django-ratelimit (new dependency, user approval) — same deferral as 2.2's resend finding; track for a pre-prod hardening story
+- [x] [Review][Defer] `single_use_tokens` rows accumulate (reset request + resend invalidate by UPDATE) — merges with 2.2's deferred ops cleanup task (daily purge of expired/consumed rows)
+
+Dismissed as noise/handled: timing-based account enumeration (by-design always-200 anti-enumeration tradeoff, same class as verify/resend), `is_active=False` accounts (no such accounts exist in the app — deletion uses `deleted_at`; a reset grants no access), UTF-16-vs-code-point max-128 divergence on astral passwords (consistent with signup/login schemas; UI is stricter, server accepts 128 code points), locale-less email link landing on browser-negotiated page (documented 2.2 deviation — `localePrefix: 'never'` 307s any prefixed URL), login banner param persisting in the URL (same as 2.3's `session_expired` precedent), no focus management on loading→valid/expired/used swaps (matches 2.2 VerifyLinkHandler precedent), whitespace-only passwords (identical pre-existing signup behavior), AC4 wording paraphrase ("Link expired or invalid" vs "Link expired — request a new one" — spec 8.2 defines these exact keys), render-route `await`/`pretty` change (documented latent 1.8 bug fix, formatting-only impact).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -210,7 +222,7 @@ deepseek-v4-flash (opencode)
 - `PasswordResetRequestView` (POST `/api/auth/password-reset/`, AllowAny): always-200 anti-enumeration (mirrors ResendVerificationView incl. non-dict body guard); existing non-deleted users only → invalidate pending `reset` tokens, fresh 1h token, `send_password_reset_email.delay(user.pk)`; unverified users included (reset ≠ resend).
 - `PasswordResetConfirmView` (AllowAny): GET `/api/auth/password-reset/<token>/` validates WITHOUT consuming (200 `token_valid` / 400 `token_expired` / 410 `token_used` / 404 `token_not_found`, soft-deleted → 404); POST re-validates under `transaction.atomic` + `select_for_update`, `validate_password` (min 8, max 128 guard), `set_password` + `save(update_fields=['password', 'token_version'])` (session invalidation, AC3), consumes token, 200 `password_reset`; replay → 410.
 - `send_password_reset_email(user_id)`: copy of the verify task (deferred imports, AD-14 1-retry, latest pending `reset` token, locale-less link `{FRONTEND_PUBLIC_URL}/password-reset/{token}`, `password_reset` template with `{resetLink}`, trilingual subject by `user.locale`).
-- Backend: 113 tests green (87 + 26: 20 `test_password_reset.py` + 6 reset-task tests), ruff 0, mypy strict 0. Commit `b7ba206`.
+- Backend: 117 tests green (87 + 30: 22 `test_password_reset.py` + 8 reset-task tests), ruff 0, mypy strict 0. Commits `b7ba206` + review `5367280`.
 - Frontend: `AuthService` + `requestPasswordReset` / `validatePasswordResetToken` / `confirmPasswordReset` (AD-19, no interceptor changes); `passwordResetSchema` + `newPasswordSchema` (code-point min 8, max 128, confirm refine → `common.errors.password_mismatch`).
 - `/password-reset` page + `PasswordResetForm` (single email field, AC1; always-200 → `sent_confirmation` anti-enumeration state + login link; network error root; double-submit guard).
 - `/password-reset/[token]` page + `PasswordResetConfirm` (on-mount GET validate; valid → new-password+confirm form with requirement note + per-field aria; success → `reset_done` + Go-to-login → `/login?reason=password_reset`; expired/404 → expired screen with request-new-link; used → used screen; 410-after-success guard on both GET and POST paths; network → error).
@@ -218,7 +230,7 @@ deepseek-v4-flash (opencode)
 - **Trilingual email (user decision, deviation from 2.2's English-only)**: `PasswordReset.tsx` with ar/fr/en copy + `lang`/`dir` per locale; render route now passes `locale` into template props and registers `password_reset`; Celery task localizes the subject.
 - **Latent 1.8 bug fixed**: render route `await render(...)` (emails were `{}`); dropped `pretty` (1.8 nested-`<p>` prettier crash — the previously "documented noise").
 - i18n: +11 keys ×3 locales (`auth.password_reset.*` ×9, `auth.login.password_reset`, `common.errors.password_mismatch`) — check:i18n parity green (347 keys).
-- Frontend: 129 tests green (104 + 25: 6 form, 8 confirm, 8 schema, 2 login banner, 1 render route), lint 0, typecheck 0. Commit `0cc2b12`.
+- Frontend: 130 tests green (104 + 26: 6 form, 9 confirm, 8 schema, 2 login banner, 1 render route), lint 0, typecheck 0. Commits `0cc2b12` + review `5367280`.
 
 ### File List
 
@@ -227,9 +239,9 @@ deepseek-v4-flash (opencode)
 - `backend/apps/accounts/tokens.py` — UPDATE (ttl param, RESET_TOKEN_TTL)
 - `backend/apps/accounts/views.py` — UPDATE (PasswordResetRequestView, PasswordResetConfirmView)
 - `backend/apps/accounts/urls.py` — UPDATE (2 new paths)
-- `backend/apps/accounts/tests/test_password_reset.py` — NEW (20 tests)
+- `backend/apps/accounts/tests/test_password_reset.py` — NEW (22 tests)
 - `backend/tasks/email_tasks.py` — UPDATE (send_password_reset_email + RESET_SUBJECTS)
-- `backend/tests/test_email_tasks.py` — UPDATE (6 reset-task tests)
+- `backend/tests/test_email_tasks.py` — UPDATE (8 reset-task tests)
 - `frontend/src/lib/api/auth-service.ts` — UPDATE (3 reset methods)
 - `frontend/src/lib/validation/auth.ts` — UPDATE (passwordResetSchema, newPasswordSchema)
 - `frontend/src/app/[locale]/password-reset/page.tsx` — NEW
@@ -240,7 +252,7 @@ deepseek-v4-flash (opencode)
 - `frontend/emails/components/PasswordReset.tsx` — NEW (trilingual)
 - `frontend/src/app/api/emails/render/route.ts` — UPDATE (locale pass-through, password_reset template, await render)
 - `frontend/src/__tests__/password-reset-form.test.tsx` — NEW (6 tests)
-- `frontend/src/__tests__/password-reset-confirm.test.tsx` — NEW (8 tests)
+- `frontend/src/__tests__/password-reset-confirm.test.tsx` — NEW (9 tests)
 - `frontend/src/__tests__/validation-auth.test.ts` — UPDATE (8 schema tests)
 - `frontend/src/__tests__/login-form.test.tsx` — UPDATE (2 banner tests)
 - `frontend/src/__tests__/email-render-route.test.ts` — UPDATE (1 template test)
@@ -252,3 +264,4 @@ deepseek-v4-flash (opencode)
 
 - 2026-08-02: Story created (ready-for-dev) from epic 2.4 spec; user decisions resolved (TTL parameter, GET-validate+POST-set endpoints, `/login?reason=password_reset` + login banner, full trilingual reset email, always-200 anti-enumeration, soft-delete guard); validated against checklist.
 - 2026-08-02: Implemented (TDD): backend reset views + task + 26 tests (113 green, commit `b7ba206`); frontend pages/forms/service/schemas/trilingual email + i18n + 25 tests (129 green, commit `0cc2b12`); fixed latent 1.8 render-route bug (`render()` async, emails were `{}`); ruff/mypy/lint/typecheck/i18n clean; status → review.
+- 2026-08-02: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor — 22 raw findings, 0 decision-needed, 5 patches applied, 2 deferred, 7 dismissed). Review patches: `authentication_classes=[]` on both reset views (stale-session cookie 401 bounce, 2 new tests), confirm POST error mapping (400 keeps form / 410 → used / other → error), exact-token email task (`user_id, token_id` signature, 3 new task tests) + client double-click ref guard, trilingual `previewText`, `invalid_request` code + locked-token-fetch 404 guard. 117 backend + 130 frontend tests green, ruff/mypy/lint/typecheck/i18n clean; commit `5367280`; status → done.
