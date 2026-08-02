@@ -13,7 +13,8 @@
       "signup_link": "Inscrivez-vous",
       "error_invalid": "Email ou mot de passe invalide",
       "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard.",
-      "session_expired": "Votre session a expiré. Veuillez vous reconnecter."
+      "session_expired": "Votre session a expiré. Veuillez vous reconnecter.",
+      "password_reset": "Mot de passe réinitialisé avec succès — veuillez vous connecter"
     },
     "frozen": {
       "title": "Compte gelé",
@@ -72,7 +73,16 @@
       "new_password_label": "Nouveau mot de passe",
       "confirm_password_label": "Confirmer le nouveau mot de passe",
       "submit_new": "Réinitialiser le mot de passe",
-      "error_token_invalid": "Ce lien de réinitialisation est invalide ou a expiré."
+      "error_token_invalid": "Ce lien de réinitialisation est invalide ou a expiré.",
+      "sent_confirmation": "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.",
+      "expired_title": "Lien expiré ou invalide",
+      "expired_description": "Ce lien de réinitialisation est expiré ou invalide. Demandez-en un nouveau pour continuer.",
+      "request_new_link": "Demander un nouveau lien",
+      "used_title": "Lien déjà utilisé",
+      "used_description": "Ce lien de réinitialisation a déjà été utilisé. Demandez-en un nouveau pour continuer.",
+      "password_requirements": "8 caractères minimum",
+      "reset_done": "Votre mot de passe a été réinitialisé.",
+      "go_to_login": "Aller à la connexion"
     }
   },
   "billing": {
@@ -188,6 +198,7 @@
       "required": "Ce champ est requis",
       "invalid_email": "Veuillez entrer une adresse email valide",
       "invalid_password": "Le mot de passe doit contenir au moins 8 caractères",
+      "password_mismatch": "Les mots de passe ne correspondent pas",
       "network": "Erreur réseau. Veuillez vérifier votre connexion.",
       "unauthorized": "Veuillez vous connecter pour continuer",
       "forbidden": "Vous n'avez pas la permission d'effectuer cette action"

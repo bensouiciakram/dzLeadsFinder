@@ -201,3 +201,21 @@ describe('LoginForm session-expired banner', () => {
     expect(screen.queryByText('auth.login.session_expired')).not.toBeInTheDocument()
   })
 })
+
+describe('LoginForm password-reset banner', () => {
+  beforeEach(() => {
+    searchParamsMock.mockReset()
+  })
+
+  it('renders the password-reset success notice when reason=password_reset', async () => {
+    searchParamsMock.mockReturnValue(new URLSearchParams('reason=password_reset'))
+    renderLoginForm()
+    expect(await screen.findByText('auth.login.password_reset')).toBeInTheDocument()
+  })
+
+  it('does not render the notice without the reason param', () => {
+    searchParamsMock.mockReturnValue(new URLSearchParams())
+    renderLoginForm()
+    expect(screen.queryByText('auth.login.password_reset')).not.toBeInTheDocument()
+  })
+})

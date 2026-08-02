@@ -25,6 +25,21 @@ export class AuthService extends HttpClient {
   async refresh(): Promise<void> {
     await this.client.post('/auth/jwt/refresh/')
   }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    await this.client.post('/auth/password-reset/', { email })
+  }
+
+  async validatePasswordResetToken(token: string): Promise<{ code: string }> {
+    const { data } = await this.client.get<{ code: string }>(
+      `/auth/password-reset/${encodeURIComponent(token)}/`,
+    )
+    return data
+  }
+
+  async confirmPasswordReset(token: string, password: string): Promise<void> {
+    await this.client.post(`/auth/password-reset/${encodeURIComponent(token)}/`, { password })
+  }
 }
 
 export const authService = new AuthService()

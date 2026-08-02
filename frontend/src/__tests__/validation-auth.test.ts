@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { loginSchema, signupSchema, verifyEmailSchema } from '@/lib/validation/auth'
+import {
+  loginSchema,
+  newPasswordSchema,
+  passwordResetSchema,
+  signupSchema,
+  verifyEmailSchema,
+} from '@/lib/validation/auth'
 
 describe('signupSchema', () => {
   it('accepts a valid email and password', () => {
@@ -155,6 +161,84 @@ describe('loginSchema', () => {
     if (!result.success) {
       const passwordIssue = result.error.issues.find((issue) => issue.path[0] === 'password')
       expect(passwordIssue?.message).toBe('common.errors.invalid_password')
+    }
+  })
+})
+
+describe('passwordResetSchema', () => {
+  it('accepts a valid email', () => {
+    expect(passwordResetSchema.safeParse({ email: 'user@example.com' }).success).toBe(true)
+  })
+
+  it('rejects an empty email with the required key', () => {
+    const result = passwordResetSchema.safeParse({ email: '   ' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common.errors.required')
+    }
+  })
+
+  it('rejects a malformed email with the invalid_email key', () => {
+    const result = passwordResetSchema.safeParse({ email: 'oops' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common.errors.invalid_email')
+    }
+  })
+})
+
+describe('newPasswordSchema', () => {
+  it('accepts a password of at least 8 code points with matching confirmation', () => {
+    const result = newPasswordSchema.safeParse({
+      password: '🎉'.repeat(8),
+      confirmPassword: '🎉'.repeat(8),
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a password shorter than 8 code points', () => {
+    const result = newPasswordSchema.safeParse({
+      password: '1234567',
+      confirmPassword: '1234567',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const issue = result.error.issues.find((issue) => issue.path[0] === 'password')
+      expect(issue?.message).toBe('common.errors.invalid_password')
+    }
+  })
+
+  it('rejects a password longer than 128 characters', () => {
+    const result = newPasswordSchema.safeParse({
+      password: 'x'.repeat(129),
+      confirmPassword: 'x'.repeat(129),
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const issue = result.error.issues.find((issue) => issue.path[0] === 'password')
+      expect(issue?.message).toBe('common.errors.invalid_password')
+    }
+  })
+
+  it('rejects a confirmation mismatch with the mismatch key on confirmPassword', () => {
+    const result = newPasswordSchema.safeParse({
+      password: 'SecurePass123!',
+      confirmPassword: 'DifferentPass123!',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const issue = result.error.issues.find((issue) => issue.path[0] === 'confirmPassword')
+      expect(issue?.message).toBe('common.errors.password_mismatch')
+    }
+  })
+
+  it('requires both fields', () => {
+    const result = newPasswordSchema.safeParse({ password: '', confirmPassword: '' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.message === 'common.errors.required')).toBe(
+        true,
+      )
     }
   })
 })

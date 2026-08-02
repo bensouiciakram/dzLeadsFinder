@@ -39,6 +39,17 @@ describe('POST /api/emails/render', () => {
     expect(response.status).toBe(200)
   })
 
+  it('returns 200 for password_reset template and renders the link', async () => {
+    const response = await POST(mockRequest({
+      template: 'password_reset',
+      locale: 'en',
+      context: { resetLink: 'https://example.com/password-reset/abc' },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('https://example.com/password-reset/abc')
+  })
+
   it('returns 400 for unknown template', async () => {
     const response = await POST(mockRequest({
       template: 'nonexistent',

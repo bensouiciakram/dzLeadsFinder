@@ -4,19 +4,21 @@ import { SignupConfirm } from '../../../../../emails/components/SignupConfirm'
 import { PaymentReceipt } from '../../../../../emails/components/PaymentReceipt'
 import { PackReceipt } from '../../../../../emails/components/PackReceipt'
 import { LowCredit } from '../../../../../emails/components/LowCredit'
+import { PasswordReset } from '../../../../../emails/components/PasswordReset'
 
 const TEMPLATES = {
   signup_confirm: SignupConfirm,
   payment_receipt: PaymentReceipt,
   pack_receipt: PackReceipt,
   low_credit: LowCredit,
+  password_reset: PasswordReset,
 } as const
 
 type TemplateName = keyof typeof TEMPLATES
 
 export async function POST(request: NextRequest) {
   try {
-    const { template, context } = (await request.json()) as {
+    const { template, locale, context } = (await request.json()) as {
       template: string
       locale?: string
       context: Record<string, unknown>
@@ -27,8 +29,9 @@ export async function POST(request: NextRequest) {
     }
 
     const Component = TEMPLATES[template as TemplateName]
-    const html = render(Component(context as any), { pretty: true })
-    const plainText = render(Component(context as any), { plainText: true })
+    const props = { ...context, locale }
+    const html = await render(Component(props as any))
+    const plainText = await render(Component(props as any), { plainText: true })
 
     return NextResponse.json({ html, plainText })
   } catch (error) {

@@ -18,6 +18,7 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const { refresh } = useSession()
   const sessionExpired = searchParams.get('reason') === 'session_expired'
+  const resetDone = searchParams.get('reason') === 'password_reset'
   const {
     register,
     handleSubmit,
@@ -61,6 +62,11 @@ export function LoginForm() {
       {sessionExpired ? (
         <p role="alert" className="rounded-md border border-warning/30 bg-warning-container px-3 py-2 text-small">
           {t('auth.login.session_expired')}
+        </p>
+      ) : null}
+      {resetDone ? (
+        <p role="alert" className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-small">
+          {t('auth.login.password_reset')}
         </p>
       ) : null}
 

@@ -37,3 +37,27 @@ export const loginSchema = z.object({
 })
 
 export type LoginValues = z.infer<typeof loginSchema>
+
+export const passwordResetSchema = z.object({
+  email: emailRule,
+})
+
+export type PasswordResetValues = z.infer<typeof passwordResetSchema>
+
+export const newPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(1, 'common.errors.required')
+      .max(128, 'common.errors.invalid_password')
+      .refine((value) => [...value].length >= 8, {
+        message: 'common.errors.invalid_password',
+      }),
+    confirmPassword: z.string().min(1, 'common.errors.required'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'common.errors.password_mismatch',
+    path: ['confirmPassword'],
+  })
+
+export type NewPasswordValues = z.infer<typeof newPasswordSchema>
