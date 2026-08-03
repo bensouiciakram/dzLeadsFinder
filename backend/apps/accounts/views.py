@@ -314,6 +314,15 @@ class PasswordResetConfirmView(APIView):
         except SingleUseToken.DoesNotExist:
             return None
 
+    def _require_token_entry(self, token: str) -> SingleUseToken | Response:
+        entry = self._get_token_entry(token)
+        if entry is None:
+            return Response(
+                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return entry
+
     def _reject_user(self, user: Any) -> bool:
         return user.deleted_at is not None or user.deletion_scheduled_at is not None
 
@@ -336,12 +345,9 @@ class PasswordResetConfirmView(APIView):
         return None
 
     def get(self, request: Request, token: str) -> Response:
-        entry = self._get_token_entry(token)
-        if entry is None:
-            return Response(
-                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        entry = self._require_token_entry(token)
+        if isinstance(entry, Response):
+            return entry
         try:
             user = User.objects.get(pk=entry.user_id)
         except User.DoesNotExist:
@@ -360,12 +366,9 @@ class PasswordResetConfirmView(APIView):
                 {'detail': 'Invalid request body', 'code': 'invalid_request'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        entry = self._get_token_entry(token)
-        if entry is None:
-            return Response(
-                {'detail': 'Invalid reset link', 'code': 'token_not_found'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        entry = self._require_token_entry(token)
+        if isinstance(entry, Response):
+            return entry
         with transaction.atomic():
             try:
                 locked_entry = cast(
