@@ -19,7 +19,6 @@
     "frozen": {
       "title": "Account Frozen",
       "description": "Your account is currently frozen because you requested its deletion.",
-      "grace_note": "You can recover your account within 7 days. After that, it will be permanently deleted.",
       "logout": "Log out",
       "support_note": "Need help? Contact support@dzleadsfinder.dz",
       "scheduled_on": "Your account deletion is scheduled for {date}",

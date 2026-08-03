@@ -104,6 +104,11 @@ class AccountUndeleteView(APIView):
         user, error = _frozen_user_from_cookie(request)
         if error is not None:
             return error
+        if not user.is_active:
+            return Response(
+                {'detail': 'Account is inactive', 'code': 'account_inactive'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if not _is_frozen(user):
             return Response(
                 {'detail': 'Account is not frozen', 'code': 'not_frozen'},

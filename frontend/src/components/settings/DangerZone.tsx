@@ -19,6 +19,10 @@ export function DangerZone() {
   const [error, setError] = useState(false)
   const [scheduledDate, setScheduledDate] = useState<string | null>(null)
 
+  if (sessionStatus === 'loading') {
+    return null
+  }
+
   if (sessionStatus !== 'authenticated') {
     return (
       <section className="mt-8 rounded-lg border border-border bg-card p-6 md:p-8">
@@ -62,9 +66,10 @@ export function DangerZone() {
     try {
       const data = await settingsService.deleteAccount()
       setScheduledDate(
-        new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(
-          new Date(data.deletion_scheduled_at),
-        ),
+        new Intl.DateTimeFormat(locale, {
+          dateStyle: 'medium',
+          numberingSystem: 'latn',
+        }).format(new Date(data.deletion_scheduled_at)),
       )
       setOpen(false)
     } catch {

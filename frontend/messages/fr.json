@@ -19,7 +19,6 @@
     "frozen": {
       "title": "Compte gelé",
       "description": "Votre compte est actuellement gelé car vous avez demandé sa suppression.",
-      "grace_note": "Vous pouvez récupérer votre compte dans les 7 jours. Ensuite, il sera définitivement supprimé.",
       "logout": "Se déconnecter",
       "support_note": "Besoin d'aide ? Contactez support@dzleadsfinder.dz",
       "scheduled_on": "La suppression de votre compte est prévue pour le {date}",

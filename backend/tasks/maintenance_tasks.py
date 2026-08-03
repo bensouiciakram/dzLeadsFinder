@@ -38,10 +38,17 @@ def hard_delete_expired() -> None:
         deletion_scheduled_at__lte=now,
     )
     for user in expired.iterator():
-        with transaction.atomic():
-            _anonymise_ledger(user.pk, apps, now)
-            _delete_dependent_rows(user.pk, apps)
-            user.delete()
+        try:
+            with transaction.atomic():
+                _anonymise_ledger(user.pk, apps)
+                _delete_dependent_rows(user.pk, apps)
+                user.delete()
+        except Exception:
+            logger.exception(
+                'hard_delete_expired: failed to hard-delete user %s', user.pk,
+            )
+            continue
+    _purge_anonymised_ledger(apps, now)
 
 
 def _delete_dependent_rows(user_id: Any, apps: Any) -> None:
@@ -55,7 +62,7 @@ def _delete_dependent_rows(user_id: Any, apps: Any) -> None:
         model.objects.filter(user_id=user_id).delete()
 
 
-def _anonymise_ledger(user_id: Any, apps: Any, now: Any) -> None:
+def _anonymise_ledger(user_id: Any, apps: Any) -> None:
     try:
         ledger = apps.get_model('credits', 'CreditLedger')
     except LookupError:
@@ -63,5 +70,14 @@ def _anonymise_ledger(user_id: Any, apps: Any, now: Any) -> None:
     if ledger is None:
         return
     ledger.objects.filter(user_id=user_id).update(user_id=None)
+
+
+def _purge_anonymised_ledger(apps: Any, now: Any) -> None:
+    try:
+        ledger = apps.get_model('credits', 'CreditLedger')
+    except LookupError:
+        return
+    if ledger is None:
+        return
     purge_before = now - timedelta(days=LEDGER_RETENTION_DAYS)
     ledger.objects.filter(user_id__isnull=True, created_at__lt=purge_before).delete()

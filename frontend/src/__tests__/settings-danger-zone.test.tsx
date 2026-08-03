@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -199,6 +199,20 @@ describe('DangerZone', () => {
     await waitFor(() => expect(settingsServiceMock.deleteAccount).toHaveBeenCalledTimes(1))
     fireEvent.click(screen.getByRole('button', { name: 'settings.dzone.confirming' }))
     expect(settingsServiceMock.deleteAccount).toHaveBeenCalledTimes(1)
-    resolveDelete!(SCHEDULED)
+    await act(async () => resolveDelete!(SCHEDULED))
+  })
+
+  it('renders nothing while the session probe is still loading', async () => {
+    let resolveMe: (value: typeof USER) => void
+    authServiceMock.me.mockReturnValue(
+      new Promise<typeof USER>((resolve) => {
+        resolveMe = resolve
+      }),
+    )
+    renderDangerZone()
+    expect(screen.queryByText('settings.dzone.delete_button')).not.toBeInTheDocument()
+    expect(screen.queryByText('settings.guest_title')).not.toBeInTheDocument()
+    await act(async () => resolveMe(USER))
+    expect(await screen.findByText('settings.dzone.title')).toBeInTheDocument()
   })
 })

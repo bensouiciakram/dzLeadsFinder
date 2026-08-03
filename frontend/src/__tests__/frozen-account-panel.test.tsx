@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FrozenAccountPanel } from '@/components/auth/FrozenAccountPanel'
@@ -35,14 +36,6 @@ vi.mock('@/lib/api/auth-service', () => ({
   authService: authServiceMock,
 }))
 
-const USER = {
-  email: 'user@example.com',
-  locale: 'ar',
-  tier: 'free',
-  credits_balance: 15,
-  email_verified_at: '2026-07-01T10:00:00+00:00',
-}
-
 const RECOVERABLE = {
   deletion_scheduled_at: '2026-08-10T10:00:00+00:00',
   days_left: 7,
@@ -53,6 +46,26 @@ function renderPanel() {
     <SessionProvider>
       <FrozenAccountPanel />
     </SessionProvider>,
+  )
+}
+
+function codedResponse(status: number, code: string) {
+  return {
+    status,
+    statusText: 'Error',
+    headers: {},
+    data: { code },
+    config: { headers: {} },
+  } as AxiosResponse
+}
+
+function codedError(status: number, code: string) {
+  return new AxiosError(
+    'Request failed',
+    'ERR_BAD_RESPONSE',
+    undefined,
+    undefined,
+    codedResponse(status, code),
   )
 }
 
@@ -86,13 +99,35 @@ describe('FrozenAccountPanel', () => {
     expect(screen.queryByText('auth.frozen.recover')).not.toBeInTheDocument()
   })
 
+  it('redirects to search when the status endpoint reports the account is not frozen', async () => {
+    settingsServiceMock.frozenStatus.mockRejectedValue(codedError(404, 'not_frozen'))
+    renderPanel()
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/search'))
+  })
+
   it('recovers the account and redirects to search on success', async () => {
     settingsServiceMock.frozenStatus.mockResolvedValue(RECOVERABLE)
     settingsServiceMock.undelete.mockResolvedValue(undefined)
-    authServiceMock.me.mockResolvedValue(USER)
     renderPanel()
     fireEvent.click(await screen.findByText('auth.frozen.recover'))
     await waitFor(() => expect(settingsServiceMock.undelete).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/search'))
+  })
+
+  it('shows the irreversible state when recovery is rejected after the grace period', async () => {
+    settingsServiceMock.frozenStatus.mockResolvedValue(RECOVERABLE)
+    settingsServiceMock.undelete.mockRejectedValue(codedError(409, 'irreversible'))
+    renderPanel()
+    fireEvent.click(await screen.findByText('auth.frozen.recover'))
+    expect(await screen.findByText('auth.frozen.irreversible')).toBeInTheDocument()
+    expect(screen.queryByText('auth.frozen.recover')).not.toBeInTheDocument()
+  })
+
+  it('redirects to search when recovery reports the account is already active', async () => {
+    settingsServiceMock.frozenStatus.mockResolvedValue(RECOVERABLE)
+    settingsServiceMock.undelete.mockRejectedValue(codedError(409, 'not_frozen'))
+    renderPanel()
+    fireEvent.click(await screen.findByText('auth.frozen.recover'))
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/search'))
   })
 
@@ -129,7 +164,7 @@ describe('FrozenAccountPanel', () => {
     await waitFor(() => expect(settingsServiceMock.undelete).toHaveBeenCalledTimes(1))
     fireEvent.click(screen.getByRole('button', { name: 'auth.frozen.recovering' }))
     expect(settingsServiceMock.undelete).toHaveBeenCalledTimes(1)
-    resolveUndelete!(undefined)
+    await act(async () => resolveUndelete!(undefined))
   })
 
   it('keeps the logout control available in every state', async () => {

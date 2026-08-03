@@ -34,6 +34,18 @@ User = get_user_model()
 FREE_SIGNUP_CREDITS: int = 15
 
 
+def _account_blocked(user: Any) -> bool:
+    return user.deleted_at is not None or user.deletion_scheduled_at is not None
+
+
+def _in_deletion_grace(user: Any) -> bool:
+    return (
+        user.deleted_at is not None
+        and user.deletion_scheduled_at is not None
+        and user.deletion_scheduled_at > timezone.now()
+    )
+
+
 class CaseInsensitiveTokenCreateSerializer(DjoserTokenCreateSerializer):
     def validate(self, attrs: Dict[str, Any]) -> Any:
         email = attrs.get('email')
@@ -108,7 +120,10 @@ class TokenRefreshView(APIView):
             refresh.check_exp()
         except TokenError:
             raise AuthenticationFailed('Invalid or expired refresh token', code='token_not_valid')
-        user = User.objects.get(pk=refresh['user_id'])
+        try:
+            user = User.objects.get(pk=refresh['user_id'])
+        except User.DoesNotExist:
+            raise AuthenticationFailed('Invalid refresh token', code='token_not_valid')
         validate_user_token(user, refresh)
         touch_activity(user)
         access_token = TokenWithVersionAccessToken.for_user(user)
@@ -281,12 +296,10 @@ class PasswordResetRequestView(APIView):
         if isinstance(request.data, dict):
             email = str(request.data.get('email') or '').lower().strip()
             if email:
-                user = User.objects.filter(
-                    email=email,
-                    deleted_at__isnull=True,
-                    deletion_scheduled_at__isnull=True,
-                ).first()
-                if user is not None:
+                user = User.objects.filter(email=email).first()
+                if user is not None and (
+                    not _account_blocked(user) or _in_deletion_grace(user)
+                ):
                     now = timezone.now()
                     SingleUseToken.objects.filter(
                         user=user, purpose='reset', consumed_at__isnull=True,
@@ -324,7 +337,7 @@ class PasswordResetConfirmView(APIView):
         return entry
 
     def _reject_user(self, user: Any) -> bool:
-        return user.deleted_at is not None or user.deletion_scheduled_at is not None
+        return _account_blocked(user) and not _in_deletion_grace(user)
 
     def _validated_response(self, entry: SingleUseToken, user: Any) -> Response | None:
         if self._reject_user(user):

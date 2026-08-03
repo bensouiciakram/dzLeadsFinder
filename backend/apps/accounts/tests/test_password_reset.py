@@ -137,6 +137,35 @@ class TestPasswordResetRequest:
         assert response.status_code == status.HTTP_200_OK
         assert len(mail.outbox) == 1
 
+    def test_request_sends_for_frozen_user_in_grace_period(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Any,
+    ) -> None:
+        create_user.deleted_at = timezone.now()
+        create_user.deletion_scheduled_at = timezone.now() + timedelta(days=7)
+        create_user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
+        response = api_client.post(REQUEST_URL, {'email': user_data['email']})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 1
+        assert SingleUseToken.objects.filter(
+            user=create_user, purpose='reset', consumed_at__isnull=True,
+        ).exists()
+
+    def test_request_does_not_send_for_expired_grace_period(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Any,
+    ) -> None:
+        create_user.deleted_at = timezone.now()
+        create_user.deletion_scheduled_at = timezone.now() - timedelta(hours=1)
+        create_user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
+        response = api_client.post(REQUEST_URL, {'email': user_data['email']})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mail.outbox) == 0
+
 
 @pytest.mark.django_db
 class TestPasswordResetConfirmGet:
@@ -190,6 +219,31 @@ class TestPasswordResetConfirmGet:
         entry = _make_reset_token(create_user)
         create_user.deleted_at = timezone.now()
         create_user.save(update_fields=['deleted_at'])
+        response = api_client.get(_confirm_url(entry.token))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data['code'] == 'token_not_found'
+
+    def test_get_valid_token_for_frozen_user_in_grace_period(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        entry = _make_reset_token(create_user)
+        create_user.deleted_at = timezone.now()
+        create_user.deletion_scheduled_at = timezone.now() + timedelta(days=7)
+        create_user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
+        response = api_client.get(_confirm_url(entry.token))
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_token_for_expired_grace_period_returns_404(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        entry = _make_reset_token(create_user)
+        create_user.deleted_at = timezone.now()
+        create_user.deletion_scheduled_at = timezone.now() - timedelta(hours=1)
+        create_user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
         response = api_client.get(_confirm_url(entry.token))
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data['code'] == 'token_not_found'
@@ -365,3 +419,22 @@ class TestPasswordResetConfirmPost:
         response = api_client.get(_confirm_url(entry.token))
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data['code'] == 'token_not_found'
+
+    def test_post_resets_password_for_frozen_user_in_grace_period(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Any,
+    ) -> None:
+        entry = _make_reset_token(create_user)
+        create_user.deleted_at = timezone.now()
+        create_user.deletion_scheduled_at = timezone.now() + timedelta(days=7)
+        create_user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
+        response = api_client.post(
+            _confirm_url(entry.token),
+            {'password': 'NewSecurePass456!'},
+            content_type='application/json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+        create_user.refresh_from_db()
+        assert create_user.check_password('NewSecurePass456!')

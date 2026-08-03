@@ -1,21 +1,29 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { isAxiosError } from 'axios'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
-import { useSession } from '@/components/providers/SessionProvider'
 import { settingsService, type FrozenStatus } from '@/lib/api/settings-service'
 import { FrozenLogout } from './FrozenLogout'
 
 type PanelPhase = 'loading' | 'ready' | 'irreversible' | 'error'
 
+function errorCodeOf(error: unknown): string | null {
+  if (!isAxiosError(error)) return null
+  const data = error.response?.data as { code?: unknown } | undefined
+  if (typeof data?.code !== 'string') return null
+  return data.code
+}
+
 export function FrozenAccountPanel() {
   const t = useTranslations()
   const locale = useLocale()
   const router = useRouter()
-  const { refresh } = useSession()
+  const routerRef = useRef(router)
+  routerRef.current = router
   const [phase, setPhase] = useState<PanelPhase>('loading')
   const [status, setStatus] = useState<FrozenStatus | null>(null)
   const [recovering, setRecovering] = useState(false)
@@ -27,8 +35,12 @@ export function FrozenAccountPanel() {
       const data = await settingsService.frozenStatus()
       setStatus(data)
       setPhase(data.days_left > 0 ? 'ready' : 'irreversible')
-    } catch {
-      setPhase('error')
+    } catch (error) {
+      if (errorCodeOf(error) === 'not_frozen') {
+        routerRef.current.push('/search')
+      } else {
+        setPhase('error')
+      }
     }
   }, [])
 
@@ -42,14 +54,16 @@ export function FrozenAccountPanel() {
     setRecoverError(false)
     try {
       await settingsService.undelete()
-      const result = await refresh()
-      if (result === 'authenticated') {
-        router.push('/search')
+      routerRef.current.push('/search')
+    } catch (error) {
+      const code = errorCodeOf(error)
+      if (code === 'irreversible') {
+        setPhase('irreversible')
+      } else if (code === 'not_frozen') {
+        routerRef.current.push('/search')
       } else {
         setRecoverError(true)
       }
-    } catch {
-      setRecoverError(true)
     } finally {
       setRecovering(false)
     }
@@ -57,9 +71,10 @@ export function FrozenAccountPanel() {
 
   const scheduledDate =
     status?.deletion_scheduled_at != null
-      ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(
-          new Date(status.deletion_scheduled_at),
-        )
+      ? new Intl.DateTimeFormat(locale, {
+          dateStyle: 'medium',
+          numberingSystem: 'latn',
+        }).format(new Date(status.deletion_scheduled_at))
       : null
 
   return (

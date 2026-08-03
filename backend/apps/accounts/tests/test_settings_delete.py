@@ -21,6 +21,11 @@ def _freeze(user: Any, days_left: int = 7) -> None:
     user.save(update_fields=['deleted_at', 'deletion_scheduled_at'])
 
 
+def _verify(user: Any) -> None:
+    user.email_verified_at = timezone.now()
+    user.save(update_fields=['email_verified_at'])
+
+
 def _parse_iso(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
@@ -157,6 +162,41 @@ class TestUndeleteEndpoint:
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data['code'] == 'not_frozen'
 
+    def test_undelete_returns_403_for_inactive_frozen_user(
+        self,
+        logged_in_client: Client,
+        create_user: Any,
+    ) -> None:
+        _freeze(create_user, days_left=7)
+        create_user.is_active = False
+        create_user.save(update_fields=['is_active'])
+        response = logged_in_client.post(UNDELETE_URL)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.data['code'] == 'account_inactive'
+        create_user.refresh_from_db()
+        assert create_user.deleted_at is not None
+
     def test_undelete_returns_401_without_cookie(self, api_client: Client) -> None:
         response = api_client.post(UNDELETE_URL)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestHardDeletedUserSession:
+
+    def test_refresh_returns_401_not_500_for_hard_deleted_user(
+        self,
+        api_client: Client,
+        create_user: Any,
+        user_data: Dict[str, str],
+    ) -> None:
+        _verify(create_user)
+        login = api_client.post('/api/auth/login/', {
+            'email': user_data['email'],
+            'password': user_data['password'],
+        })
+        assert login.status_code == status.HTTP_200_OK
+        create_user.delete()
+        response = api_client.post('/api/auth/jwt/refresh/')
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data['code'] == 'token_not_valid'
