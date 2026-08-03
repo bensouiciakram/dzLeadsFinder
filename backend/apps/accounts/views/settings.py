@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .auth import TokenWithVersionAccessToken
+from ..auth import TokenWithVersionAccessToken
 
 User = get_user_model()
 

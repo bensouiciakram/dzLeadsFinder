@@ -486,8 +486,12 @@ backend/
       admin.py                     # User, UserProfile, subscription state
       models.py                    # UserProfile (locale, tier, credits_balance)
       serializers.py
-      views.py                     # Custom profile endpoints
-      urls.py
+      views/                       # views package (per-surface modules)
+        auth.py                    # Auth endpoints (login/signup/verify/reset/me/refresh)
+        settings.py                # Settings endpoints (delete/undelete/frozen-status, profile later)
+      urls/                        # urls package (mounted per prefix in config/urls.py)
+        auth.py                    # /api/auth/* routes
+        settings.py                # /api/settings/* routes
     search/                        # People + Company search + filters + saved
       admin.py                     # SavedSearches (read-only for support)
       models.py

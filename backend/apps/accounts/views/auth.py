@@ -19,15 +19,15 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 from tasks.email_tasks import send_password_reset_email, send_verification_email
 
-from .auth import (
+from ..auth import (
     TokenWithVersionAccessToken,
     TokenWithVersionRefreshToken,
     touch_activity,
     validate_user_token,
 )
-from .models import LOCALE_CHOICES, SingleUseToken
-from .serializers import SignupSerializer
-from .tokens import RESET_TOKEN_TTL, create_single_use_token
+from ..models import LOCALE_CHOICES, SingleUseToken
+from ..serializers import SignupSerializer
+from ..tokens import RESET_TOKEN_TTL, create_single_use_token
 
 User = get_user_model()
 
