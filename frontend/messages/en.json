@@ -21,7 +21,15 @@
       "description": "Your account is currently frozen because you requested its deletion.",
       "grace_note": "You can recover your account within 7 days. After that, it will be permanently deleted.",
       "logout": "Log out",
-      "support_note": "Need help? Contact support@dzleadsfinder.dz"
+      "support_note": "Need help? Contact support@dzleadsfinder.dz",
+      "scheduled_on": "Your account deletion is scheduled for {date}",
+      "days_left": "You can recover your account within {days, plural, one {1 day} other {# days}}",
+      "recover": "Recover account",
+      "recovering": "Recovering your account...",
+      "recover_error": "We could not recover your account. Please try again.",
+      "status_error": "We could not load your account status. Please try again.",
+      "retry": "Retry",
+      "irreversible": "Your deletion is being finalized. This account can no longer be recovered."
     },
     "signup": {
       "title": "Create Your Account",
@@ -153,6 +161,7 @@
       "save": "Save",
       "cancel": "Cancel",
       "confirm": "Confirm",
+      "continue": "Continue",
       "close": "Close",
       "search": "Search",
       "reveal": "Reveal",
@@ -302,6 +311,33 @@
       "max_capacity": "You have reached the saved search limit"
     }
   },
+  "settings": {
+    "title": "Settings",
+    "meta_title": "Settings — dzLeadsFinder",
+    "meta_description": "Manage your dzLeadsFinder account — including account deletion.",
+    "dzone": {
+      "title": "Danger Zone",
+      "description": "Delete your account and all associated data. After a 7-day grace period, deletion is permanent.",
+      "delete_button": "Delete Account",
+      "dialog_title": "Delete your account?",
+      "step1_intro": "Before you continue, here is what happens:",
+      "consequence_frozen": "Your account will be frozen and recoverable for 7 days",
+      "consequence_permanent": "After 7 days, deletion is permanent and irreversible",
+      "consequence_credits": "Unrevealed credit balance will be removed",
+      "consequence_ledger": "Anonymised ledger rows retained for 90 days (tax records)",
+      "step2_title": "Are you absolutely sure?",
+      "step2_intro": "This is your final confirmation. After 7 days, deletion is permanent and cannot be undone.",
+      "confirm": "I understand — delete my account",
+      "confirming": "Deleting your account...",
+      "confirm_error": "We could not delete your account. Please try again.",
+      "confirmed_title": "Deletion scheduled",
+      "confirmed_body": "Your account deletion is scheduled for {date}. You can recover your account by logging in within 7 days.",
+      "confirmed_logout": "Log out"
+    },
+    "guest_title": "Sign in to manage your account",
+    "guest_body": "Account settings, including deletion, are available after signing in.",
+    "guest_cta": "Go to login"
+  },
   "trust": {
     "wilayas": {
       "meta_title": "58 Wilayas of Algeria — dzLeadsFinder",
@@ -365,6 +401,10 @@
       "right_deletion": "Request deletion of your data, subject to legal retention obligations",
       "right_portability": "Request a copy of your data in a portable format",
       "response_time": "We commit to responding to all data-subject requests within 30 days.",
+      "deletion_title": "Account Deletion & Data Retention",
+      "deletion_intro": "You can delete your account at any time from Settings, without contacting support.",
+      "deletion_process": "Deletion follows a two-step confirmation, then a 7-day grace period during which your account is frozen and can be recovered. After 7 days, deletion is permanent and irreversible.",
+      "deletion_ledger": "For tax records, anonymised credit ledger rows are retained for 90 days after deletion.",
       "anpdp_note": "We are in the process of filing a declaration with ANPDP (Autorit\u00e9 Nationale de Protection des Donn\u00e9es \u00e0 Caract\u00e8re Personnel). This page will be updated once the declaration is filed. [PENDING Open Q8 confirmation]",
       "takedown_contact": "For takedown requests or privacy inquiries, contact us at",
       "takedown_email": "privacy@dzleadsfinder.dz",

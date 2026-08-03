@@ -21,7 +21,15 @@
       "description": "Votre compte est actuellement gelé car vous avez demandé sa suppression.",
       "grace_note": "Vous pouvez récupérer votre compte dans les 7 jours. Ensuite, il sera définitivement supprimé.",
       "logout": "Se déconnecter",
-      "support_note": "Besoin d'aide ? Contactez support@dzleadsfinder.dz"
+      "support_note": "Besoin d'aide ? Contactez support@dzleadsfinder.dz",
+      "scheduled_on": "La suppression de votre compte est prévue pour le {date}",
+      "days_left": "Vous pouvez récupérer votre compte dans {days, plural, one {1 jour} other {# jours}}",
+      "recover": "Récupérer mon compte",
+      "recovering": "Récupération de votre compte…",
+      "recover_error": "Impossible de récupérer votre compte. Veuillez réessayer.",
+      "status_error": "Impossible de charger l'état de votre compte. Veuillez réessayer.",
+      "retry": "Réessayer",
+      "irreversible": "Votre suppression est en cours de finalisation. Ce compte ne peut plus être récupéré."
     },
     "signup": {
       "title": "Créez votre compte",
@@ -153,6 +161,7 @@
       "save": "Enregistrer",
       "cancel": "Annuler",
       "confirm": "Confirmer",
+      "continue": "Continuer",
       "close": "Fermer",
       "search": "Rechercher",
       "reveal": "Révéler",
@@ -302,6 +311,33 @@
       "max_capacity": "Vous avez atteint la limite de recherches enregistrées"
     }
   },
+  "settings": {
+    "title": "Paramètres",
+    "meta_title": "Paramètres — dzLeadsFinder",
+    "meta_description": "Gérez votre compte dzLeadsFinder — y compris la suppression du compte.",
+    "dzone": {
+      "title": "Zone de danger",
+      "description": "Supprimez votre compte et toutes les données associées. Après un délai de grâce de 7 jours, la suppression est définitive.",
+      "delete_button": "Supprimer le compte",
+      "dialog_title": "Supprimer votre compte ?",
+      "step1_intro": "Avant de continuer, voici ce qui va se passer :",
+      "consequence_frozen": "Votre compte sera gelé et récupérable pendant 7 jours",
+      "consequence_permanent": "Après 7 jours, la suppression est définitive et irréversible",
+      "consequence_credits": "Le solde de crédits non révélés sera supprimé",
+      "consequence_ledger": "Les lignes du registre anonymisées sont conservées 90 jours (registres fiscaux)",
+      "step2_title": "Êtes-vous absolument sûr ?",
+      "step2_intro": "Ceci est votre confirmation finale. Après 7 jours, la suppression est définitive et ne peut pas être annulée.",
+      "confirm": "Je comprends — supprimer mon compte",
+      "confirming": "Suppression de votre compte…",
+      "confirm_error": "Impossible de supprimer votre compte. Veuillez réessayer.",
+      "confirmed_title": "Suppression planifiée",
+      "confirmed_body": "La suppression de votre compte est prévue pour le {date}. Vous pouvez récupérer votre compte en vous connectant dans les 7 jours.",
+      "confirmed_logout": "Se déconnecter"
+    },
+    "guest_title": "Connectez-vous pour gérer votre compte",
+    "guest_body": "Les paramètres du compte, y compris la suppression, sont disponibles après connexion.",
+    "guest_cta": "Aller à la connexion"
+  },
   "trust": {
     "wilayas": {
       "meta_title": "Les 58 Wilayas d'Algérie — dzLeadsFinder",
@@ -365,6 +401,10 @@
       "right_deletion": "Demander la suppression de vos donn\u00e9es, sous r\u00e9serve des obligations l\u00e9gales de conservation",
       "right_portability": "Demander une copie de vos donn\u00e9es dans un format portable",
       "response_time": "Nous nous engageons \u00e0 r\u00e9pondre \u00e0 toutes les demandes des personnes concern\u00e9es dans un d\u00e9lai de 30 jours.",
+      "deletion_title": "Suppression du compte et conservation des donn\u00e9es",
+      "deletion_intro": "Vous pouvez supprimer votre compte \u00e0 tout moment depuis les Param\u00e8tres, sans contacter le support.",
+      "deletion_process": "La suppression suit une double confirmation, puis un d\u00e9lai de gr\u00e2ce de 7 jours pendant lequel votre compte est gel\u00e9 et peut \u00eatre r\u00e9cup\u00e9r\u00e9. Apr\u00e8s 7 jours, la suppression est d\u00e9finitive et irr\u00e9versible.",
+      "deletion_ledger": "\u00c0 des fins fiscales, les lignes du registre de cr\u00e9dits anonymis\u00e9es sont conserv\u00e9es 90 jours apr\u00e8s la suppression.",
       "anpdp_note": "Nous sommes en train de d\u00e9poser une d\u00e9claration aupr\u00e8s de l'ANPDP (Autorit\u00e9 Nationale de Protection des Donn\u00e9es \u00e0 Caract\u00e8re Personnel). Cette page sera mise \u00e0 jour une fois la d\u00e9claration d\u00e9pos\u00e9e. [En attente de confirmation Q8]",
       "takedown_contact": "Pour les demandes de retrait ou les questions relatives \u00e0 la confidentialit\u00e9, contactez-nous \u00e0",
       "takedown_email": "privacy@dzleadsfinder.dz",

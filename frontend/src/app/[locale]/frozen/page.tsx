@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
-import { FrozenLogout } from '@/components/auth/FrozenLogout'
+import { FrozenAccountPanel } from '@/components/auth/FrozenAccountPanel'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -25,11 +25,8 @@ export default async function FrozenPage({ params }: Props) {
       <div className="mx-auto w-full max-w-md rounded-lg border border-border bg-card p-6 md:p-8">
         <h1 className="text-title font-bold text-foreground">{t('title')}</h1>
         <p className="mt-2 text-small text-muted-foreground">{t('description')}</p>
-        <p className="mt-4 text-small text-foreground">{t('grace_note')}</p>
-        <p className="mt-2 text-small text-muted-foreground">{t('support_note')}</p>
-        <div className="mt-6">
-          <FrozenLogout />
-        </div>
+        <FrozenAccountPanel />
+        <p className="mt-6 text-small text-muted-foreground">{t('support_note')}</p>
       </div>
     </main>
   )

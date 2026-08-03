@@ -71,6 +71,18 @@ export default async function Privacy({ params }: Props) {
         <p className="mt-6 text-body text-muted-foreground">{t('response_time')}</p>
       </section>
 
+      <section className="mt-10 rounded-lg border border-border bg-card p-6 md:p-8">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Shield className="size-5" />
+          </div>
+          <h2 className="text-headline font-semibold">{t('deletion_title')}</h2>
+        </div>
+        <p className="mt-4 text-body text-muted-foreground">{t('deletion_intro')}</p>
+        <p className="mt-3 text-small text-muted-foreground">{t('deletion_process')}</p>
+        <p className="mt-3 text-small text-muted-foreground">{t('deletion_ledger')}</p>
+      </section>
+
       <section className="mt-10 flex items-start gap-4 rounded-lg bg-warning-container p-6 text-warning-on-container">
         <AlertTriangle className="mt-0.5 size-5 shrink-0" />
         <p className="text-small">{t('anpdp_note')}</p>

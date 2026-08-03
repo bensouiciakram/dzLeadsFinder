@@ -22,5 +22,6 @@ urlpatterns = [
     path('api/health/live/', health_live, name='health-live'),
     path('api/auth/', include('djoser.urls')),
     path('api/auth/', include('apps.accounts.urls')),
+    path('api/settings/', include('apps.accounts.settings_urls')),
     path('admin/', admin.site.urls),
 ]
