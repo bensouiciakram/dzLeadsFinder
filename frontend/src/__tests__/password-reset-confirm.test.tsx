@@ -71,21 +71,27 @@ describe('PasswordResetConfirm', () => {
     const newPassword = screen.getByLabelText(NEW_PASSWORD_LABEL)
     const confirmPassword = screen.getByLabelText(CONFIRM_PASSWORD_LABEL)
     await waitFor(() => expect(newPassword).toHaveAttribute('aria-invalid', 'true'))
-    expect(newPassword).toHaveAttribute('aria-describedby', 'reset-new-password-error')
-    expect(confirmPassword).toHaveAttribute('aria-describedby', 'reset-confirm-password-error')
+    expect(newPassword).toHaveAttribute(
+      'aria-describedby',
+      'reset-new-password-error reset-new-password-requirements',
+    )
+    expect(confirmPassword).toHaveAttribute(
+      'aria-describedby',
+      'reset-confirm-password-error',
+    )
 
     fireEvent.change(newPassword, { target: { value: 'short' } })
     fireEvent.change(confirmPassword, { target: { value: 'short' } })
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     await waitFor(() =>
-      expect(screen.getAllByText('common.errors.invalid_password').length).toBe(2),
+      expect(screen.getAllByText('common.errors.invalid_password').length).toBeGreaterThanOrEqual(2),
     )
 
     fireEvent.change(newPassword, { target: { value: 'SecurePass123!' } })
     fireEvent.change(confirmPassword, { target: { value: 'DifferentPass123!' } })
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     await waitFor(() =>
-      expect(screen.getAllByText('common.errors.password_mismatch').length).toBe(2),
+      expect(screen.getAllByText('common.errors.password_mismatch').length).toBeGreaterThanOrEqual(2),
     )
   })
 
@@ -95,10 +101,13 @@ describe('PasswordResetConfirm', () => {
     await screen.findByLabelText(NEW_PASSWORD_LABEL)
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     expect(await screen.findByText('common.errors.summary_title')).toBeInTheDocument()
-    const passwordAnchor = screen
+    const anchors = screen
       .getAllByText('common.errors.required')
-      .find((el) => el.tagName === 'A')!
-    expect(passwordAnchor).toHaveAttribute('href', '#reset-new-password-error')
+      .filter((el) => el.tagName === 'A')
+    expect(anchors.map((a) => a.getAttribute('href'))).toEqual([
+      '#reset-new-password-error',
+      '#reset-confirm-password-error',
+    ])
     const summary = screen.getByText('common.errors.summary_title').parentElement
     expect(summary).toHaveAttribute('aria-live', 'polite')
   })

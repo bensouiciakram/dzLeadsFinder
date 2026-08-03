@@ -44,7 +44,7 @@
     "verify": {
       "title": "Vérifiez votre email",
       "description": "Nous avons envoyé un lien de vérification à {email}. Cliquez sur le lien pour activer votre compte.",
-      "gate_title": "Vérifiez votre e-mail",
+      "gate_title": "Vérifiez votre email",
       "gate_description": "Votre compte est créé. Avant de commencer vos recherches, vous devez vérifier votre adresse email.",
       "email_label": "Email",
       "email_placeholder": "vous@entreprise.dz",

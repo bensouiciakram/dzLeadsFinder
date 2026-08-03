@@ -120,17 +120,23 @@ export function PasswordResetConfirm({ token }: Props) {
                 autoComplete="new-password"
                 aria-invalid={Boolean(errors.password)}
                 aria-describedby={
-                  errors.password ? 'reset-new-password-error' : undefined
+                  errors.password
+                    ? 'reset-new-password-error reset-new-password-requirements'
+                    : 'reset-new-password-requirements'
                 }
                 className={inputClass}
                 {...register('password')}
               />
               {errors.password?.message ? (
-                <p id="reset-new-password-error" className="mt-1 text-small text-destructive">
+                <p
+                  id="reset-new-password-error"
+                  tabIndex={-1}
+                  className="mt-1 text-small text-destructive"
+                >
                   {t(errors.password.message)}
                 </p>
               ) : null}
-              <p className="mt-1 text-small text-muted-foreground">
+              <p id="reset-new-password-requirements" className="mt-1 text-small text-muted-foreground">
                 {t('auth.password_reset.password_requirements')}
               </p>
             </div>
@@ -156,6 +162,7 @@ export function PasswordResetConfirm({ token }: Props) {
               {errors.confirmPassword?.message ? (
                 <p
                   id="reset-confirm-password-error"
+                  tabIndex={-1}
                   className="mt-1 text-small text-destructive"
                 >
                   {t(errors.confirmPassword.message)}

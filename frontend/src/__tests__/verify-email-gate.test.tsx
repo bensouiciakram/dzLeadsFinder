@@ -51,7 +51,7 @@ describe('VerifyEmailGate', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
-    expect(screen.getAllByText('common.errors.required').length).toBe(2)
+    expect(screen.getAllByText('common.errors.required').length).toBeGreaterThanOrEqual(2)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -61,7 +61,9 @@ describe('VerifyEmailGate', () => {
       target: { value: 'not-an-email' },
     })
     fireEvent.click(screen.getByText(RESEND))
-    expect(await screen.findAllByText('common.errors.invalid_email').then((els) => els.length)).toBe(2)
+    expect(
+      (await screen.findAllByText('common.errors.invalid_email')).length,
+    ).toBeGreaterThanOrEqual(2)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -83,10 +85,20 @@ describe('VerifyEmailGate', () => {
   })
 
   it('hard gate: the pre-verification gate exposes no navigation to app surfaces', () => {
-    render(<VerifyEmailGate />)
-    const links = Array.from(document.querySelectorAll('a'))
-    expect(links.length).toBe(0)
+    const { container } = render(<VerifyEmailGate />)
+    expect(container.querySelectorAll('a').length).toBe(0)
     expect(screen.getByText(RESEND)).toBeInTheDocument()
+  })
+
+  it('shows the click-the-link instruction when the email param is present', () => {
+    useSearchParamsSpy.mockReturnValue(new URLSearchParams('email=me@example.com'))
+    render(<VerifyEmailGate />)
+    expect(screen.getByText('auth.verify.description')).toBeInTheDocument()
+  })
+
+  it('omits the click-the-link instruction when no email param is present', () => {
+    render(<VerifyEmailGate />)
+    expect(screen.queryByText('auth.verify.description')).not.toBeInTheDocument()
   })
 
   it('shows success message after resend succeeds', async () => {

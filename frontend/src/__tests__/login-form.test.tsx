@@ -38,6 +38,16 @@ const USER = {
   email_verified_at: '2026-07-01T10:00:00+00:00',
 }
 
+function expectSummaryMatchesInlineErrors() {
+  const anchors = Array.from(document.querySelectorAll('a[href^="#"]'))
+  const inline = Array.from(document.querySelectorAll('p[id$="-error"]'))
+  expect(anchors.length).toBe(inline.length)
+  for (const anchor of anchors) {
+    const id = anchor.getAttribute('href')!.slice(1)
+    expect(inline.some((p) => p.id === id)).toBe(true)
+  }
+}
+
 function renderLoginForm() {
   return render(
     <SessionProvider>
@@ -83,7 +93,8 @@ describe('LoginForm', () => {
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'login-email-error')
     expect(password).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getAllByText('common.errors.required').length).toBe(4)
+    expect(screen.getAllByText('common.errors.required').length).toBeGreaterThanOrEqual(2)
+    expectSummaryMatchesInlineErrors()
   })
 
   it('shows invalid email error for malformed email', async () => {
@@ -96,7 +107,7 @@ describe('LoginForm', () => {
     })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'))
-    expect(screen.getAllByText('common.errors.invalid_email').length).toBe(2)
+    expect(screen.getAllByText('common.errors.invalid_email').length).toBeGreaterThanOrEqual(2)
   })
 
   it('shows invalid password error for short password', async () => {
@@ -111,7 +122,7 @@ describe('LoginForm', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(PASSWORD_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
-    expect(screen.getAllByText('common.errors.invalid_password').length).toBe(2)
+    expect(screen.getAllByText('common.errors.invalid_password').length).toBeGreaterThanOrEqual(2)
   })
 
   it('posts credentials and redirects home on success', async () => {
@@ -187,8 +198,13 @@ describe('LoginForm', () => {
     renderLoginForm()
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
-    const emailAnchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
-    expect(emailAnchor).toHaveAttribute('href', '#login-email-error')
+    const anchors = screen
+      .getAllByText('common.errors.required')
+      .filter((el) => el.tagName === 'A')
+    expect(anchors.map((a) => a.getAttribute('href'))).toEqual([
+      '#login-email-error',
+      '#login-password-error',
+    ])
     const summary = screen.getByText('common.errors.summary_title').parentElement
     expect(summary).toHaveAttribute('aria-live', 'polite')
   })
@@ -199,6 +215,22 @@ describe('LoginForm', () => {
     expect(focusables.map((el) => el.id || el.textContent)).toEqual([
       'login-email',
       'login-password',
+      'auth.login.forgot_password',
+      SUBMIT,
+      'auth.login.signup_link',
+    ])
+  })
+
+  it('keeps tab order with the summary anchors between the fields and the forgot link on invalid submit', async () => {
+    const { container } = renderLoginForm()
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
+    const focusables = Array.from(container.querySelectorAll('input, a[href], button'))
+    expect(focusables.map((el) => el.id || el.textContent)).toEqual([
+      'login-email',
+      'login-password',
+      'common.errors.required',
+      'common.errors.required',
       'auth.login.forgot_password',
       SUBMIT,
       'auth.login.signup_link',

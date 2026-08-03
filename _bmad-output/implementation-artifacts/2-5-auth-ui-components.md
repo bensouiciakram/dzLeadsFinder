@@ -2,7 +2,7 @@
 story_id: 2.5
 epic: 2
 title: Story 2.5 — Auth UI Components
-status: review
+status: done
 frs: [FR-21, FR-22]
 ads: [AD-10]
 ux_drs: [UX-DR20, UX-DR21, UX-DR22, UX-DR23]
@@ -11,7 +11,7 @@ baseline_commit: efffaaf4bec7851fd98560fde7c7883b269eee12
 
 # Story 2.5: Auth UI Components
 
-Status: review
+Status: done
 
 ## Story
 
@@ -147,7 +147,15 @@ So that **I can complete auth flows smoothly in my language**.
 
 ## Review Findings
 
-_(to be filled by code-review — see 2-4-password-reset-flow.md for the established format: [Patch]/[Defer]/dismissed entries)_
+- [x] [Review][Patch] `aria-live="polite"` region was conditionally mounted (created at the same moment its content appeared — unreliable SR announcements) and the "heading" was a styled `<p>`. The container is now ALWAYS rendered (empty, borderless when no errors) with the heading upgraded to `<h2>` [frontend/src/components/auth/FormErrorSummary.tsx]
+- [x] [Review][Patch] Summary anchors targeted non-focusable inline error `<p>`s — fragment jumps scrolled but never moved keyboard focus. All inline error `<p>`s (9 across the 6 forms) now carry `tabIndex={-1}` so anchors move focus to the inline error (W3C error-summary pattern) [LoginForm, SignupForm, VerifyEmailGate, VerifyLinkHandler, PasswordResetForm, PasswordResetConfirm]
+- [x] [Review][Patch] Signup password-requirements note was invisible to screen readers (never in `aria-describedby`; WCAG 1.3.1/3.3.2). The note now has `id="signup-password-requirements"` and the password input references it in BOTH error and clean states; the reset-confirm requirements note received the same wiring (`reset-new-password-requirements`) [SignupForm.tsx, PasswordResetConfirm.tsx]
+- [x] [Review][Patch] AC3 gap (Acceptance Auditor): "instructions to click the verification link" was never rendered — `auth.verify.description` was dead in all 3 locales. The gate now renders the email-interpolated instruction when the `?email=` param is present (the post-signup flow always carries it); 2 new tests [VerifyEmailGate.tsx]
+- [x] [Review][Patch] fr locale spelling drift — `auth.verify.gate_title` normalized to "Vérifiez votre email" (matches `title`/`gate_description` spellings) [messages/fr.json]
+- [x] [Review][Patch] Exact-count test assertions (`toBe(2)`/`toBe(4)`) over-encoded the inline+summary duplication and would break on any future field. Replaced with an `expectSummaryMatchesInlineErrors()` bijection helper (summary anchors ↔ inline error `<p>`s) + `>= 2` presence checks; both anchors asserted by href in the 2-field suites (login/signup/reset-confirm); the brittle signup input-count assertion dropped; the hard-gate zero-links query is now container-scoped [7 test files]
+- [x] [Review][Patch] Tab order was only asserted in the clean state and no RTL render was exercised. Added error-state tab-order tests for login and signup (summary anchors tab between fields and CTA) and an RTL-container smoke test for `FormErrorSummary` [form-error-summary, login-form, signup-form tests]
+
+Dismissed as noise/by-design: duplicate announcements (field `aria-describedby` on focus + polite summary on submit — inherent to AC5's inline-and-summary contract, documented decision), placeholder/requirements copy redundancy (auth inputs never render `placeholder` attributes — those message values are dead keys), resend visual-weight difference between the gate (link) and the expired-state form (button — different surfaces; AC3 covers the gate only), tab-order full-array assertions (deliberate loud-failure contract for the AC5 focus-order requirement).
 
 ## Dev Agent Record
 
@@ -161,6 +169,7 @@ deepseek-v4-flash (opencode)
 - **Tab-order test scope**: `querySelectorAll('input, a[href], button')` includes the below-CTA "login/signup link" — the DOM order IS the correct visual/tab order (logical flex flow), the expectation just had to include the trailing link (signup: email→password→CTA→login_link; login: email→password→forgot→CTA→signup_link).
 - **Server field errors (email_taken / weak_password) also appear in the summary**: `setError('field')` sets `errors.field.message`, which the summary picks up — expected per AC5; tests assert 2 occurrences.
 - `role="alert"` root errors (failed login, resend failure, POST 400) are NOT part of the polite summary — they are server/network failures, kept assertive by design.
+- **Review round (3 layers, in order: Blind Hunter → Edge Case Hunter → Acceptance Auditor)**: 22 raw findings → 12 fixed (7 patches above), 4 dismissed, 1 claim correction. Post-review gates: 150 tests (145 + 5: RTL smoke, 2× error-state tab order, 2× gate instruction), lint 0, typecheck 0, i18n 349×3 ✓; backend untouched (117 regression re-verified before review).
 
 ### Completion Notes List
 
@@ -200,4 +209,5 @@ deepseek-v4-flash (opencode)
 ## Change Log
 
 - 2026-08-03: Story created (ready-for-dev) from epic 2.5 spec; decisions resolved (AC-literal copy values, resend = link-styled submit button, shared FormErrorSummary with aria-live="polite", no backend changes, hard gate already enforced by AD-19 interceptor — page-level test added); validated against checklist.
-- 2026-08-03: Implemented (TDD): RED confirmed (21 failures + 1 missing-module suite) → FormErrorSummary + wiring across 6 auth components + i18n (2 new keys, 4 value changes ×3 locales) → GREEN 145 frontend tests (130 + 15), lint/typecheck/i18n clean; backend regression 117/0/0; status → review.
+- 2026-08-03: Implemented (TDD): RED confirmed (21 failures + 1 missing-module suite) → FormErrorSummary + wiring across 6 auth components + i18n (2 new keys, 4 value changes ×3 locales) → GREEN 145 frontend tests (130 + 15), lint/typecheck/i18n clean; backend regression 117/0/0; status → review. Commit `68ca5e4`.
+- 2026-08-03: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor — 22 raw findings, 12 fixed across 7 patches, 4 dismissed, 1 claim corrected). Review patches: always-mounted aria-live region + `<h2>` heading, `tabIndex={-1}` on all inline error targets (focus follows anchors), requirements-note `aria-describedby` wiring (signup + reset-confirm), AC3 click-the-link instruction rendered on the gate, fr `gate_title` spelling normalization, robust summary↔inline test invariant (bijection helper) + both-anchor href assertions + container-scoped hard-gate query, error-state tab-order tests + RTL smoke test. 150 frontend tests green, lint/typecheck/i18n clean; status → done.

@@ -78,7 +78,7 @@ export function PasswordResetForm() {
           {...register('email')}
         />
         {errors.email?.message ? (
-          <p id="reset-email-error" className="mt-1 text-small text-destructive">
+          <p id="reset-email-error" tabIndex={-1} className="mt-1 text-small text-destructive">
             {t(errors.email.message)}
           </p>
         ) : null}

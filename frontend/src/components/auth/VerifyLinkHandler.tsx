@@ -140,7 +140,7 @@ export function VerifyLinkHandler({ token }: Props) {
                 {...register('email')}
               />
               {errors.email?.message ? (
-                <p id="expired-email-error" className="mt-1 text-small text-destructive">
+                <p id="expired-email-error" tabIndex={-1} className="mt-1 text-small text-destructive">
                   {t(errors.email.message)}
                 </p>
               ) : null}

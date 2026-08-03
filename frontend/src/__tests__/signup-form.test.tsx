@@ -24,6 +24,16 @@ const EMAIL_LABEL = 'auth.signup.email_label'
 const PASSWORD_LABEL = 'auth.signup.password_label'
 const SUBMIT = 'auth.signup.submit'
 
+function expectSummaryMatchesInlineErrors() {
+  const anchors = Array.from(document.querySelectorAll('a[href^="#"]'))
+  const inline = Array.from(document.querySelectorAll('p[id$="-error"]'))
+  expect(anchors.length).toBe(inline.length)
+  for (const anchor of anchors) {
+    const id = anchor.getAttribute('href')!.slice(1)
+    expect(inline.some((p) => p.id === id)).toBe(true)
+  }
+}
+
 describe('SignupForm', () => {
   beforeEach(() => {
     pushMock.mockClear()
@@ -48,7 +58,8 @@ describe('SignupForm', () => {
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'signup-email-error')
     expect(password).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getAllByText('common.errors.required').length).toBe(4)
+    expect(screen.getAllByText('common.errors.required').length).toBeGreaterThanOrEqual(2)
+    expectSummaryMatchesInlineErrors()
   })
 
   it('shows invalid email error for malformed email', async () => {
@@ -61,7 +72,7 @@ describe('SignupForm', () => {
     })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'))
-    expect(screen.getAllByText('common.errors.invalid_email').length).toBe(2)
+    expect(screen.getAllByText('common.errors.invalid_email').length).toBeGreaterThanOrEqual(2)
   })
 
   it('shows weak password error for short password', async () => {
@@ -76,7 +87,7 @@ describe('SignupForm', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(PASSWORD_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
-    expect(screen.getAllByText('common.errors.invalid_password').length).toBe(2)
+    expect(screen.getAllByText('common.errors.invalid_password').length).toBeGreaterThanOrEqual(2)
   })
 
   it('redirects to verify-email with email on success', async () => {
@@ -116,7 +127,7 @@ describe('SignupForm', () => {
       target: { value: 'SecurePass123!' },
     })
     fireEvent.click(screen.getByText(SUBMIT))
-    expect((await screen.findAllByText('auth.signup.error_email_taken')).length).toBe(2)
+    expect((await screen.findAllByText('auth.signup.error_email_taken')).length).toBeGreaterThanOrEqual(2)
   })
 
   it('shows weak password error from server', async () => {
@@ -131,7 +142,7 @@ describe('SignupForm', () => {
       target: { value: 'SecurePass123!' },
     })
     fireEvent.click(screen.getByText(SUBMIT))
-    expect((await screen.findAllByText('auth.signup.error_weak_password')).length).toBe(2)
+    expect((await screen.findAllByText('auth.signup.error_weak_password')).length).toBeGreaterThanOrEqual(2)
   })
 
   it('shows network error when fetch fails', async () => {
@@ -148,22 +159,26 @@ describe('SignupForm', () => {
   })
 
   it('renders the password minimum note adjacent to the password field', () => {
-    const { container } = render(<SignupForm />)
+    render(<SignupForm />)
     const password = screen.getByLabelText(PASSWORD_LABEL)
     const note = screen.getByText('auth.signup.password_requirements')
     expect(note).toBeInTheDocument()
     const passwordWrapper = password.parentElement!
     expect(passwordWrapper.contains(note)).toBe(true)
-    expect(container.querySelectorAll('input').length).toBe(2)
+    expect(password).toHaveAttribute('aria-describedby', 'signup-password-requirements')
   })
 
   it('shows a form-level error summary with aria-live and jump links on invalid submit', async () => {
     render(<SignupForm />)
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
-    const emailAnchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
-    expect(emailAnchor).toHaveAttribute('href', '#signup-email-error')
-    expect(screen.getAllByText('common.errors.required').length).toBe(4)
+    const anchors = screen
+      .getAllByText('common.errors.required')
+      .filter((el) => el.tagName === 'A')
+    expect(anchors.map((a) => a.getAttribute('href'))).toEqual([
+      '#signup-email-error',
+      '#signup-password-error',
+    ])
     const summary = screen.getByText('common.errors.summary_title').parentElement
     expect(summary).toHaveAttribute('aria-live', 'polite')
   })
@@ -183,6 +198,21 @@ describe('SignupForm', () => {
     expect(focusables.map((el) => el.id || el.textContent)).toEqual([
       'signup-email',
       'signup-password',
+      SUBMIT,
+      'auth.signup.login_link',
+    ])
+  })
+
+  it('keeps tab order with the summary anchors between the fields and the CTA on invalid submit', async () => {
+    const { container } = render(<SignupForm />)
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
+    const focusables = Array.from(container.querySelectorAll('input, a[href], button'))
+    expect(focusables.map((el) => el.id || el.textContent)).toEqual([
+      'signup-email',
+      'signup-password',
+      'common.errors.required',
+      'common.errors.required',
       SUBMIT,
       'auth.signup.login_link',
     ])

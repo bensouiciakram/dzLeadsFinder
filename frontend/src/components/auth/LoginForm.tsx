@@ -92,7 +92,7 @@ export function LoginForm() {
           {...register('email')}
         />
         {errors.email?.message ? (
-          <p id="login-email-error" className="mt-1 text-small text-destructive">
+          <p id="login-email-error" tabIndex={-1} className="mt-1 text-small text-destructive">
             {t(errors.email.message)}
           </p>
         ) : null}
@@ -112,7 +112,7 @@ export function LoginForm() {
           {...register('password')}
         />
         {errors.password?.message ? (
-          <p id="login-password-error" className="mt-1 text-small text-destructive">
+          <p id="login-password-error" tabIndex={-1} className="mt-1 text-small text-destructive">
             {t(errors.password.message)}
           </p>
         ) : null}

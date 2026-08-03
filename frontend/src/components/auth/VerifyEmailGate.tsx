@@ -13,6 +13,7 @@ import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth
 export function VerifyEmailGate() {
   const t = useTranslations()
   const params = useSearchParams()
+  const email = params.get('email')
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const {
     register,
@@ -20,7 +21,7 @@ export function VerifyEmailGate() {
     formState: { errors, isSubmitting },
   } = useForm<VerifyEmailValues>({
     resolver: zodResolver(verifyEmailSchema),
-    defaultValues: { email: params.get('email') ?? '' },
+    defaultValues: { email: email ?? '' },
   })
 
   async function onSubmit(values: VerifyEmailValues) {
@@ -40,6 +41,11 @@ export function VerifyEmailGate() {
   return (
     <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 md:p-8">
       <h1 className="text-title font-bold text-foreground">{t('auth.verify.gate_title')}</h1>
+      {email ? (
+        <p className="mt-2 text-small text-muted-foreground">
+          {t('auth.verify.description', { email })}
+        </p>
+      ) : null}
       <p className="mt-2 text-small text-muted-foreground">
         {t('auth.verify.gate_description')}
       </p>
@@ -60,7 +66,7 @@ export function VerifyEmailGate() {
             {...register('email')}
           />
           {errors.email?.message ? (
-            <p id="verify-email-error" className="mt-1 text-small text-destructive">
+            <p id="verify-email-error" tabIndex={-1} className="mt-1 text-small text-destructive">
               {t(errors.email.message)}
             </p>
           ) : null}

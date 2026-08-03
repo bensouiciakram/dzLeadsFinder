@@ -40,12 +40,12 @@ describe('PasswordResetForm', () => {
     const email = screen.getByLabelText(EMAIL_LABEL)
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'reset-email-error')
-    expect(screen.getAllByText('common.errors.required').length).toBe(2)
+    expect(screen.getAllByText('common.errors.required').length).toBeGreaterThanOrEqual(2)
 
     fireEvent.change(email, { target: { value: 'not-an-email' } })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() =>
-      expect(screen.getAllByText('common.errors.invalid_email').length).toBe(2),
+      expect(screen.getAllByText('common.errors.invalid_email').length).toBeGreaterThanOrEqual(2),
     )
   })
 

@@ -58,7 +58,7 @@ development_status:
   2-2-signup-free-credits: done
   2-3-login-session-management: done
   2-4-password-reset-flow: done
-  2-5-auth-ui-components: review
+  2-5-auth-ui-components: done
   2-6-account-deletion: backlog
   epic-2-retrospective: optional
 

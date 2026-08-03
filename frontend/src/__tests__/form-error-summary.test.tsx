@@ -6,12 +6,15 @@ import { FormErrorSummary } from '@/components/auth/FormErrorSummary'
 const SUMMARY_TITLE = 'common.errors.summary_title'
 
 describe('FormErrorSummary', () => {
-  it('renders nothing when there are no errors', () => {
+  it('keeps the polite live region mounted without content when there are no errors', () => {
     const { container } = render(<FormErrorSummary errors={[]} />)
-    expect(container.firstChild).toBeNull()
+    const region = container.firstElementChild
+    expect(region).toHaveAttribute('aria-live', 'polite')
+    expect(screen.queryByText(SUMMARY_TITLE)).not.toBeInTheDocument()
+    expect(container.querySelector('a')).toBeNull()
   })
 
-  it('renders the summary title and one anchor per error', () => {
+  it('renders the summary title as a heading and one anchor per error', () => {
     render(
       <FormErrorSummary
         errors={[
@@ -20,7 +23,8 @@ describe('FormErrorSummary', () => {
         ]}
       />,
     )
-    expect(screen.getByText(SUMMARY_TITLE)).toBeInTheDocument()
+    const title = screen.getByText(SUMMARY_TITLE)
+    expect(title.tagName).toBe('H2')
     const emailAnchor = screen.getByText('common.errors.required')
     expect(emailAnchor.tagName).toBe('A')
     expect(emailAnchor).toHaveAttribute('href', '#login-email-error')
@@ -35,5 +39,15 @@ describe('FormErrorSummary', () => {
     )
     const liveRegion = container.firstElementChild
     expect(liveRegion).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('renders anchors inside an RTL container without throwing', () => {
+    const { container } = render(
+      <div dir="rtl">
+        <FormErrorSummary errors={[{ id: 'login-email-error', message: 'common.errors.required' }]} />
+      </div>,
+    )
+    expect(screen.getByText(SUMMARY_TITLE)).toBeInTheDocument()
+    expect(container.querySelector('a')).toHaveAttribute('href', '#login-email-error')
   })
 })

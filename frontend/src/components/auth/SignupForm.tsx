@@ -98,7 +98,7 @@ export function SignupForm() {
           {...register('email')}
         />
         {errors.email?.message ? (
-          <p id="signup-email-error" className="mt-1 text-small text-destructive">
+          <p id="signup-email-error" tabIndex={-1} className="mt-1 text-small text-destructive">
             {t(errors.email.message)}
           </p>
         ) : null}
@@ -113,16 +113,20 @@ export function SignupForm() {
           type="password"
           autoComplete="new-password"
           aria-invalid={Boolean(errors.password)}
-          aria-describedby={errors.password ? 'signup-password-error' : undefined}
+          aria-describedby={
+            errors.password
+              ? 'signup-password-error signup-password-requirements'
+              : 'signup-password-requirements'
+          }
           className={inputClass}
           {...register('password')}
         />
         {errors.password?.message ? (
-          <p id="signup-password-error" className="mt-1 text-small text-destructive">
+          <p id="signup-password-error" tabIndex={-1} className="mt-1 text-small text-destructive">
             {t(errors.password.message)}
           </p>
         ) : null}
-        <p className="mt-1 text-small text-muted-foreground">
+        <p id="signup-password-requirements" className="mt-1 text-small text-muted-foreground">
           {t('auth.signup.password_requirements')}
         </p>
       </div>
