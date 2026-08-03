@@ -51,7 +51,7 @@ describe('VerifyEmailGate', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
-    expect(screen.getByText('common.errors.required')).toBeInTheDocument()
+    expect(screen.getAllByText('common.errors.required').length).toBe(2)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -61,8 +61,32 @@ describe('VerifyEmailGate', () => {
       target: { value: 'not-an-email' },
     })
     fireEvent.click(screen.getByText(RESEND))
-    expect(await screen.findByText('common.errors.invalid_email')).toBeInTheDocument()
+    expect(await screen.findAllByText('common.errors.invalid_email').then((els) => els.length)).toBe(2)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('renders the resend control as a submit button with the localized link text', () => {
+    render(<VerifyEmailGate />)
+    const resend = screen.getByText(RESEND)
+    expect(resend.tagName).toBe('BUTTON')
+    expect(resend).toHaveAttribute('type', 'submit')
+  })
+
+  it('shows a form-level error summary with aria-live and a jump link on invalid submit', async () => {
+    render(<VerifyEmailGate />)
+    fireEvent.click(screen.getByText(RESEND))
+    await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
+    const anchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
+    expect(anchor).toHaveAttribute('href', '#verify-email-error')
+    const summary = screen.getByText('common.errors.summary_title').parentElement
+    expect(summary).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('hard gate: the pre-verification gate exposes no navigation to app surfaces', () => {
+    render(<VerifyEmailGate />)
+    const links = Array.from(document.querySelectorAll('a'))
+    expect(links.length).toBe(0)
+    expect(screen.getByText(RESEND)).toBeInTheDocument()
   })
 
   it('shows success message after resend succeeds', async () => {

@@ -78,15 +78,29 @@ describe('PasswordResetConfirm', () => {
     fireEvent.change(confirmPassword, { target: { value: 'short' } })
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     await waitFor(() =>
-      expect(screen.getByText('common.errors.invalid_password')).toBeInTheDocument(),
+      expect(screen.getAllByText('common.errors.invalid_password').length).toBe(2),
     )
 
     fireEvent.change(newPassword, { target: { value: 'SecurePass123!' } })
     fireEvent.change(confirmPassword, { target: { value: 'DifferentPass123!' } })
     fireEvent.click(screen.getByText(SUBMIT_NEW))
     await waitFor(() =>
-      expect(screen.getByText('common.errors.password_mismatch')).toBeInTheDocument(),
+      expect(screen.getAllByText('common.errors.password_mismatch').length).toBe(2),
     )
+  })
+
+  it('shows a form-level error summary with jump links on invalid submit', async () => {
+    authServiceMock.validatePasswordResetToken.mockResolvedValue({ code: 'token_valid' })
+    render(<PasswordResetConfirm token={TOKEN} />)
+    await screen.findByLabelText(NEW_PASSWORD_LABEL)
+    fireEvent.click(screen.getByText(SUBMIT_NEW))
+    expect(await screen.findByText('common.errors.summary_title')).toBeInTheDocument()
+    const passwordAnchor = screen
+      .getAllByText('common.errors.required')
+      .find((el) => el.tagName === 'A')!
+    expect(passwordAnchor).toHaveAttribute('href', '#reset-new-password-error')
+    const summary = screen.getByText('common.errors.summary_title').parentElement
+    expect(summary).toHaveAttribute('aria-live', 'polite')
   })
 
   it('calls confirmPasswordReset and shows success with a login CTA', async () => {

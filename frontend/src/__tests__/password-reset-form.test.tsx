@@ -40,11 +40,23 @@ describe('PasswordResetForm', () => {
     const email = screen.getByLabelText(EMAIL_LABEL)
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'reset-email-error')
-    expect(screen.getByText('common.errors.required')).toBeInTheDocument()
+    expect(screen.getAllByText('common.errors.required').length).toBe(2)
 
     fireEvent.change(email, { target: { value: 'not-an-email' } })
     fireEvent.click(screen.getByText(SUBMIT))
-    await waitFor(() => expect(screen.getByText('common.errors.invalid_email')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getAllByText('common.errors.invalid_email').length).toBe(2),
+    )
+  })
+
+  it('shows a form-level error summary with aria-live and a jump link on invalid submit', async () => {
+    render(<PasswordResetForm />)
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
+    const anchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
+    expect(anchor).toHaveAttribute('href', '#reset-email-error')
+    const summary = screen.getByText('common.errors.summary_title').parentElement
+    expect(summary).toHaveAttribute('aria-live', 'polite')
   })
 
   it('calls requestPasswordReset with the email on submit', async () => {

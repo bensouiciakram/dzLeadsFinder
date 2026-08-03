@@ -83,7 +83,7 @@ describe('LoginForm', () => {
     await waitFor(() => expect(email).toHaveAttribute('aria-invalid', 'true'))
     expect(email).toHaveAttribute('aria-describedby', 'login-email-error')
     expect(password).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getAllByText('common.errors.required').length).toBe(2)
+    expect(screen.getAllByText('common.errors.required').length).toBe(4)
   })
 
   it('shows invalid email error for malformed email', async () => {
@@ -96,7 +96,7 @@ describe('LoginForm', () => {
     })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'))
-    expect(screen.getByText('common.errors.invalid_email')).toBeInTheDocument()
+    expect(screen.getAllByText('common.errors.invalid_email').length).toBe(2)
   })
 
   it('shows invalid password error for short password', async () => {
@@ -111,7 +111,7 @@ describe('LoginForm', () => {
     await waitFor(() =>
       expect(screen.getByLabelText(PASSWORD_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
-    expect(screen.getByText('common.errors.invalid_password')).toBeInTheDocument()
+    expect(screen.getAllByText('common.errors.invalid_password').length).toBe(2)
   })
 
   it('posts credentials and redirects home on success', async () => {
@@ -181,6 +181,28 @@ describe('LoginForm', () => {
     fireEvent.click(screen.getByText(SUBMIT))
     expect(authServiceMock.login).toHaveBeenCalledTimes(1)
     resolveLogin!(undefined)
+  })
+
+  it('shows a form-level error summary with aria-live and jump links on invalid submit', async () => {
+    renderLoginForm()
+    fireEvent.click(screen.getByText(SUBMIT))
+    await waitFor(() => expect(screen.getByText('common.errors.summary_title')).toBeInTheDocument())
+    const emailAnchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
+    expect(emailAnchor).toHaveAttribute('href', '#login-email-error')
+    const summary = screen.getByText('common.errors.summary_title').parentElement
+    expect(summary).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('keeps tab order email, password, forgot link, the CTA, then the signup link', () => {
+    const { container } = renderLoginForm()
+    const focusables = Array.from(container.querySelectorAll('input, a[href], button'))
+    expect(focusables.map((el) => el.id || el.textContent)).toEqual([
+      'login-email',
+      'login-password',
+      'auth.login.forgot_password',
+      SUBMIT,
+      'auth.login.signup_link',
+    ])
   })
 })
 

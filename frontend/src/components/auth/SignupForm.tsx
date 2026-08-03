@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { signupSchema, type SignupValues } from '@/lib/validation/auth'
 
 type ServerErrorBody = {
@@ -74,6 +75,13 @@ export function SignupForm() {
   const inputClass =
     'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
 
+  const summaryErrors = [
+    errors.email?.message ? { id: 'signup-email-error', message: errors.email.message } : null,
+    errors.password?.message
+      ? { id: 'signup-password-error', message: errors.password.message }
+      : null,
+  ].filter((item): item is { id: string; message: string } => item !== null)
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       <div>
@@ -114,7 +122,12 @@ export function SignupForm() {
             {t(errors.password.message)}
           </p>
         ) : null}
+        <p className="mt-1 text-small text-muted-foreground">
+          {t('auth.signup.password_requirements')}
+        </p>
       </div>
+
+      <FormErrorSummary errors={summaryErrors} />
 
       {errors.root?.message ? (
         <p role="alert" className="text-small text-destructive">

@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { authService } from '@/lib/api/auth-service'
 import { passwordResetSchema, type PasswordResetValues } from '@/lib/validation/auth'
 
@@ -88,6 +89,12 @@ export function PasswordResetForm() {
           {t(errors.root.message)}
         </p>
       ) : null}
+
+      <FormErrorSummary
+        errors={
+          errors.email?.message ? [{ id: 'reset-email-error', message: errors.email.message }] : []
+        }
+      />
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {t('auth.password_reset.submit')}

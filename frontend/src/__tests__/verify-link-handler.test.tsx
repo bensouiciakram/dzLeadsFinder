@@ -64,14 +64,26 @@ describe('VerifyLinkHandler', () => {
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
     fireEvent.click(screen.getByText(RESEND))
-    expect(await screen.findByText('common.errors.required')).toBeInTheDocument()
+    expect((await screen.findAllByText('common.errors.required')).length).toBe(2)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'bad' },
     })
     fireEvent.click(screen.getByText(RESEND))
-    expect(await screen.findByText('common.errors.invalid_email')).toBeInTheDocument()
+    expect((await screen.findAllByText('common.errors.invalid_email')).length).toBe(2)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a form-level error summary on the expired resend form', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_expired' }, 400))
+    render(<VerifyLinkHandler token="abc" />)
+    expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(RESEND))
+    expect(await screen.findByText('common.errors.summary_title')).toBeInTheDocument()
+    const anchor = screen.getAllByText('common.errors.required').find((el) => el.tagName === 'A')!
+    expect(anchor).toHaveAttribute('href', '#expired-email-error')
+    const summary = screen.getByText('common.errors.summary_title').parentElement
+    expect(summary).toHaveAttribute('aria-live', 'polite')
   })
 
   it('shows expired screen on 404', async () => {

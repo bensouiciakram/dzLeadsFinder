@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { useSession } from '@/components/providers/SessionProvider'
 import { authService } from '@/lib/api/auth-service'
 import { loginSchema, type LoginValues } from '@/lib/validation/auth'
@@ -56,6 +57,13 @@ export function LoginForm() {
 
   const inputClass =
     'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
+
+  const summaryErrors = [
+    errors.email?.message ? { id: 'login-email-error', message: errors.email.message } : null,
+    errors.password?.message
+      ? { id: 'login-password-error', message: errors.password.message }
+      : null,
+  ].filter((item): item is { id: string; message: string } => item !== null)
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
@@ -115,6 +123,8 @@ export function LoginForm() {
           {t(errors.root.message)}
         </p>
       ) : null}
+
+      <FormErrorSummary errors={summaryErrors} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/password-reset" className="text-small text-primary underline-offset-4 hover:underline">

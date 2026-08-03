@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth'
 
 type Props = { token: string }
@@ -154,6 +155,13 @@ export function VerifyLinkHandler({ token }: Props) {
                 {t('auth.verify.resend_failed')}
               </p>
             ) : null}
+            <FormErrorSummary
+              errors={
+                errors.email?.message
+                  ? [{ id: 'expired-email-error', message: errors.email.message }]
+                  : []
+              }
+            />
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {t('auth.verify.resend')}
             </Button>

@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth'
 
 export function VerifyEmailGate() {
@@ -76,7 +77,15 @@ export function VerifyEmailGate() {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={isSubmitting} className="w-full">
+        <FormErrorSummary
+          errors={
+            errors.email?.message
+              ? [{ id: 'verify-email-error', message: errors.email.message }]
+              : []
+          }
+        />
+
+        <Button type="submit" variant="link" disabled={isSubmitting} className="w-full">
           {t('auth.verify.resend')}
         </Button>
       </form>

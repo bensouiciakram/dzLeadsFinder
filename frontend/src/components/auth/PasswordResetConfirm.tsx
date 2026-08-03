@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FormErrorSummary } from './FormErrorSummary'
 import { authService } from '@/lib/api/auth-service'
 import { newPasswordSchema, type NewPasswordValues } from '@/lib/validation/auth'
 
@@ -167,6 +168,17 @@ export function PasswordResetConfirm({ token }: Props) {
                 {t(errors.root.message)}
               </p>
             ) : null}
+
+            <FormErrorSummary
+              errors={[
+                errors.password?.message
+                  ? { id: 'reset-new-password-error', message: errors.password.message }
+                  : null,
+                errors.confirmPassword?.message
+                  ? { id: 'reset-confirm-password-error', message: errors.confirmPassword.message }
+                  : null,
+              ].filter((item): item is { id: string; message: string } => item !== null)}
+            />
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {t('auth.password_reset.submit_new')}

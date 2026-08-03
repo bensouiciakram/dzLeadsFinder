@@ -30,8 +30,9 @@
       "email_placeholder": "you@company.dz",
       "password_label": "كلمة المرور",
       "password_placeholder": "8 أحرف على الأقل",
-      "submit": "إنشاء حساب",
+      "submit": "ابدأ مجاناً",
       "no_card_required": "لا حاجة لبطاقة ائتمانية",
+      "password_requirements": "8 أحرف على الأقل",
       "free_credits": "ستحصل على 15 نقطة مجانية عند التسجيل",
       "has_account": "لديك حساب بالفعل؟",
       "login_link": "تسجيل الدخول",
@@ -43,7 +44,7 @@
     "verify": {
       "title": "تحقق من بريدك الإلكتروني",
       "description": "لقد أرسلنا رابط التحقق إلى {email}. انقر على الرابط لتفعيل حسابك.",
-      "gate_title": "تحقق من بريدك الإلكتروني للمتابعة",
+      "gate_title": "تحقق من بريدك الإلكتروني",
       "gate_description": "تم إنشاء حسابك. قبل أن تبدأ البحث، يجب التحقق من عنوان بريدك الإلكتروني.",
       "email_label": "البريد الإلكتروني",
       "email_placeholder": "you@company.dz",
@@ -199,6 +200,7 @@
       "invalid_email": "يرجى إدخال بريد إلكتروني صحيح",
       "invalid_password": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
       "password_mismatch": "كلمتا المرور غير متطابقتين",
+      "summary_title": "يرجى تصحيح الأخطاء التالية",
       "network": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
       "unauthorized": "يرجى تسجيل الدخول للمتابعة",
       "forbidden": "ليس لديك صلاحية للقيام بهذا الإجراء"
