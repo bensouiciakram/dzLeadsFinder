@@ -1,0 +1,42 @@
+"""Curated industry taxonomy (ops-owned per PRD FR-9 assumption).
+
+Trilingual names; name_en is the source of truth.
+"""
+
+INDUSTRIES: list[dict[str, str]] = [
+    {'name_ar': 'البناء والأشغال العمومية', 'name_fr': 'Bâtiment et travaux publics', 'name_en': 'Construction'},
+    {'name_ar': 'الصناعات الغذائية', 'name_fr': 'Agroalimentaire', 'name_en': 'Agroalimentaire'},
+    {'name_ar': 'صناعة الأدوية', 'name_fr': 'Pharmacie', 'name_en': 'Pharmaceuticals'},
+    {'name_ar': 'الإشهار والإعلان', 'name_fr': 'Publicité', 'name_en': 'Advertising'},
+    {'name_ar': 'توزيع الاتصالات', 'name_fr': 'Distribution télécom', 'name_en': 'Telecom Distribution'},
+    {'name_ar': 'تكنولوجيا المعلومات', 'name_fr': 'Technologies de l\'information', 'name_en': 'Information Technology'},
+    {'name_ar': 'النسيج والملابس', 'name_fr': 'Textile et habillement', 'name_en': 'Textiles & Apparel'},
+    {'name_ar': 'صناعة السيارات', 'name_fr': 'Automobile', 'name_en': 'Automotive'},
+    {'name_ar': 'الإلكترونيات والأجهزة المنزلية', 'name_fr': 'Électronique et électroménager', 'name_en': 'Electronics & Appliances'},
+    {'name_ar': 'الخدمات اللوجستية والنقل', 'name_fr': 'Logistique et transport', 'name_en': 'Logistics & Transport'},
+    {'name_ar': 'الطاقة والمحروقات', 'name_fr': 'Énergie et pétrole', 'name_en': 'Energy & Oil'},
+    {'name_ar': 'الطاقات المتجددة', 'name_fr': 'Énergies renouvelables', 'name_en': 'Renewable Energy'},
+    {'name_ar': 'العقارات', 'name_fr': 'Immobilier', 'name_en': 'Real Estate'},
+    {'name_ar': 'البنوك والمالية', 'name_fr': 'Banque et finance', 'name_en': 'Banking & Finance'},
+    {'name_ar': 'التأمينات', 'name_fr': 'Assurances', 'name_en': 'Insurance'},
+    {'name_ar': 'التعليم والتكوين', 'name_fr': 'Éducation et formation', 'name_en': 'Education & Training'},
+    {'name_ar': 'الصحة', 'name_fr': 'Santé', 'name_en': 'Healthcare'},
+    {'name_ar': 'الفندقة والسياحة', 'name_fr': 'Hôtellerie et tourisme', 'name_en': 'Hospitality & Tourism'},
+    {'name_ar': 'تجارة التجزئة', 'name_fr': 'Commerce de détail', 'name_en': 'Retail'},
+    {'name_ar': 'تجارة الجملة', 'name_fr': 'Commerce de gros', 'name_en': 'Wholesale Trade'},
+    {'name_ar': 'الفلاحة', 'name_fr': 'Agriculture', 'name_en': 'Agriculture'},
+    {'name_ar': 'المطاعم وخدمات التغذية', 'name_fr': 'Restauration', 'name_en': 'Food Services'},
+    {'name_ar': 'الأثاث والخشب', 'name_fr': 'Meubles et bois', 'name_en': 'Furniture & Wood'},
+    {'name_ar': 'البلاستيك والتغليف', 'name_fr': 'Plastiques et emballages', 'name_en': 'Plastics & Packaging'},
+    {'name_ar': 'الصناعات الكيميائية', 'name_fr': 'Chimie', 'name_en': 'Chemicals'},
+    {'name_ar': 'صناعة الحديد والصلب', 'name_fr': 'Métallurgie et sidérurgie', 'name_en': 'Metallurgy & Steel'},
+    {'name_ar': 'مواد البناء', 'name_fr': 'Matériaux de construction', 'name_en': 'Building Materials'},
+    {'name_ar': 'الطباعة والنشر', 'name_fr': 'Imprimerie et édition', 'name_en': 'Printing & Publishing'},
+    {'name_ar': 'الاستشارات', 'name_fr': 'Conseil', 'name_en': 'Consulting'},
+    {'name_ar': 'الخدمات القانونية', 'name_fr': 'Services juridiques', 'name_en': 'Legal Services'},
+    {'name_ar': 'المحاسبة والتدقيق', 'name_fr': 'Comptabilité et audit', 'name_en': 'Accounting & Auditing'},
+    {'name_ar': 'خدمات الحراسة والأمن', 'name_fr': 'Services de sécurité', 'name_en': 'Security Services'},
+    {'name_ar': 'خدمات التنظيف', 'name_fr': 'Services de nettoyage', 'name_en': 'Cleaning Services'},
+    {'name_ar': 'الهندسة', 'name_fr': 'Ingénierie', 'name_en': 'Engineering'},
+    {'name_ar': 'التسويق الرقمي', 'name_fr': 'Marketing digital', 'name_en': 'Digital Marketing'},
+]
