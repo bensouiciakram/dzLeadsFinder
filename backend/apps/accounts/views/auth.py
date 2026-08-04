@@ -68,6 +68,7 @@ def _set_cookie(response: Response, key: str, value: str, path: str) -> None:
 class TokenCreateView(DjoserTokenCreateView):
     serializer_class = CaseInsensitiveTokenCreateSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = self.get_serializer(data=request.data)
@@ -169,6 +170,7 @@ class TokenDestroyView(DjoserTokenDestroyView):
 
 class SignupView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def post(self, request: Request) -> Response:
         serializer = SignupSerializer(data=request.data)
@@ -199,6 +201,7 @@ class SignupView(APIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def get(self, request: Request, token: str) -> Response:
         try:
@@ -255,6 +258,7 @@ class VerifyEmailView(APIView):
 
 class ResendVerificationView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes: List[Any] = []
 
     def post(self, request: Request) -> Response:
         if isinstance(request.data, dict):

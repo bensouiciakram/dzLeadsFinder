@@ -6,6 +6,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# Caddy terminates TLS and proxies plain HTTP; without this Django treats
+# requests as http and CSRF origin checks fail against https Origins.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',

@@ -2,7 +2,11 @@
   admin off
 }
 
-:443 {
+:80 {
+  redir https://localhost{uri}
+}
+
+localhost {
   tls internal
 
   @api path /api/* /admin/*
@@ -13,8 +17,4 @@
   handle {
     reverse_proxy nextjs:3000
   }
-}
-
-:80 {
-  redir :443{uri}
 }

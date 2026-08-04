@@ -73,7 +73,7 @@ export function LoginForm() {
         </p>
       ) : null}
       {resetDone ? (
-        <p role="alert" className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-small">
+        <p role="alert" className="rounded-md border border-success/30 bg-success-container px-3 py-2 text-small text-success-on-container">
           {t('auth.login.password_reset')}
         </p>
       ) : null}
