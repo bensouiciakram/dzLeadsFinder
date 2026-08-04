@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of 3-1-search-database-schema (2026-08-04)
+
+- `bulk_create` / `bulk_update` / `QuerySet.update()` skip the `save()` override, leaving `search_normalized` empty/stale (tsvector silently empty). Requirement for story 3.2 (search API) and Epic 6 (scraper pipeline): writers must set `search_normalized` explicitly or write per-row. [backend/apps/search/models.py]
+- DailyUsage upsert via update-then-create races under concurrent rate-limited requests (both create → IntegrityError). Story 3.2 must use an atomic PG `INSERT ... ON CONFLICT (user_id, date) DO UPDATE` upsert; the tested pattern is the SQLite-compatible approximation. [backend/apps/search/tests/test_daily_usage.py]
+- No cross-stack parity test between `backend/apps/search/data/wilayas.py` and `frontend/src/data/wilayas.ts` (mirrored by process, not by test). Story 3.4 (wilaya combobox) should consolidate the canonical source and add a parity check.
+
 ## Deferred from: code review of 2-2-signup-free-credits (2026-08-01)
 
 - Rate limiting on `POST /api/auth/signup/` and `POST /api/auth/resend-verification/` — anonymous email bombing of existing users + unbounded account creation. Needs a new dependency (django-ratelimit / django-axes) → user approval required before prod. [backend/apps/accounts/views.py:159,225]
