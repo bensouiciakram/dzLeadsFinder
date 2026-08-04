@@ -184,6 +184,11 @@ class TestNotNullConstraints:
         with pytest.raises(IntegrityError):
             Person.objects.create(name=None, source='scraper')
 
+    def test_industry_name_en_unique_enforced(self) -> None:
+        Industry.objects.create(name_ar='أ', name_fr='a', name_en='Unique Name')
+        with pytest.raises(IntegrityError):
+            Industry.objects.create(name_ar='ب', name_fr='b', name_en='Unique Name')
+
     def test_wilaya_code_range_enforced(self) -> None:
         with pytest.raises(IntegrityError):
             Wilaya.objects.create(code=99, name_ar='أ', name_fr='a', name_en='a')
@@ -214,6 +219,22 @@ class TestSearchNormalizedOnSave:
         company.save()
         company.refresh_from_db()
         assert company.search_normalized == 'batiment alger'
+
+    def test_company_normalized_survives_update_fields(self) -> None:
+        company = Company.objects.create(name='SARL Test', source='scraper')
+        Company.objects.filter(pk=company.pk).update(name='ÉNERGIE NOUVELLE')
+        company.name = 'ÉNERGIE NOUVELLE'
+        company.save(update_fields=['name'])
+        company.refresh_from_db()
+        assert company.name == 'ÉNERGIE NOUVELLE'
+        assert company.search_normalized == 'energie nouvelle'
+
+    def test_person_normalized_survives_role_update_fields(self) -> None:
+        person = Person.objects.create(name='Ahmed', role='Gérant', source='scraper')
+        person.role = 'DIRECTEUR'
+        person.save(update_fields=['role'])
+        person.refresh_from_db()
+        assert person.search_normalized == 'ahmed directeur'
 
     def test_person_normalized_name_and_role(self) -> None:
         person = Person.objects.create(name='محمد أمين', role='GÉRANT', source='scraper')

@@ -15,6 +15,7 @@ _ARABIC_DIACRITICS = {
     0x0670,
     0x0640,
 }
+_INVISIBLE_TO_SPACE = str.maketrans({chr(code): ' ' for code in (0x00AD, 0x200B, 0x200C, 0x200D)})
 _STRIP_ARABIC = str.maketrans({chr(code): None for code in _ARABIC_DIACRITICS})
 _WHITESPACE = re.compile(r'\s+')
 
@@ -34,4 +35,4 @@ def normalize_search(*parts: str) -> str:
     """Build the normalized search string from the given parts."""
     joined = ' '.join(part for part in parts if part)
     stripped = strip_tashkeel(unaccent_text(joined))
-    return _WHITESPACE.sub(' ', stripped).strip().lower()
+    return _WHITESPACE.sub(' ', stripped.translate(_INVISIBLE_TO_SPACE)).strip().lower()

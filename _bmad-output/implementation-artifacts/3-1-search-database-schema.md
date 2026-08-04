@@ -2,7 +2,7 @@
 story_id: 3.1
 epic: 3
 title: Story 3.1 — Search Database Schema
-status: review
+status: done
 frs: [FR-5, FR-6, FR-7, FR-9, FR-10, FR-11, FR-12, FR-13]
 ads: [AD-3, AD-11]
 baseline_commit: 060c11b5f21e0f723f52eba9a2cbac70c0f9b2b2
@@ -10,7 +10,7 @@ baseline_commit: 060c11b5f21e0f723f52eba9a2cbac70c0f9b2b2
 
 # Story 3.1: Search Database Schema
 
-Status: review
+Status: done
 
 ## Story
 
@@ -171,7 +171,7 @@ industries
 ### Gotchas
 
 - Windows/PowerShell: no `&&`; chain with `;` or `if ($?) {}`; use `npm.cmd`; venv is `backend\.venv\Scripts\` (run from `backend/`); system `python` is 3.10 — use `.\.venv\Scripts\python.exe` for manage.py (venv python version unknown — verify with `--version`; Django 5.0 needs 3.10+).
-- `bulk_create` and `QuerySet.update()` SKIP `save()` overrides → `search_normalized` would be empty. This story only tests `save()`; Epic 6 scrapers must set `search_normalized` explicitly (documented requirement for 3.2/Epic 6 dev notes).
+- `bulk_create`, `bulk_update`, and `QuerySet.update()` SKIP `save()` overrides → `search_normalized` would be empty/stale (review-deferred requirement for story 3.2/Epic 6: scraper writers must set `search_normalized` explicitly or save per row). `save(update_fields=[...])` IS handled (review patch).
 - `search_vector` must NEVER be referenced in ORM queries/tests (does not exist on SQLite; 3.2 queries it via Postgres-only SQL `websearch_to_tsquery`).
 - Do NOT declare `search_vector` as a model field (reserved DB-only column — a future field addition would collide with the generated column on Postgres).
 - mypy strict on migration files: annotate `(apps: Any, schema_editor: Any) -> None` style per existing precedent; data module lists need explicit typing (`list[dict[str, str | int]]`).
@@ -202,7 +202,18 @@ industries
 
 ## Review Findings
 
-<!-- Populated in Stage 3 (code review) per the 2-6 precedent. -->
+- [x] [Review][Patch] `save(update_fields=['name'])` persisted the new name but never the re-normalized search column (tsvector stayed stale). Both `Company.save`/`Person.save` now call `_ensure_normalized_in_update_fields(kwargs, 'name'|'name','role')` — when update_fields is a list/tuple containing a normalized-source field, `search_normalized` is appended to the set. 2 new tests [models.py, test_models.py]
+- [x] [Review][Patch] AC's `search_count/export_rows INTEGER DEFAULT 0` existed only Python-side; `db_default=0` added so raw DDL carries `DEFAULT 0` (the auditor's one undocumented deviation). Date keeps the documented decision-5a (no db_default — Django can't compile `CURRENT_DATE` on a DateField) [models.py]
+- [x] [Review][Patch] `industries.name_en` was treated as a key by the reverse seed + admin but had no DB constraint (duplicates possible). Added `UniqueConstraint(fields=['name_en'], name='industries_name_en_unique')`; 1 new test [models.py, 0001_initial, test_models.py]
+- [x] [Review][Patch] Invisible format characters (ZWSP U+200B, ZWNJ U+200C, ZWJ U+200D, soft hyphen U+00AD) survived normalization into index tokens. `normalize_search` now maps them to a space BEFORE whitespace collapse (they are word separators, not removable noise). 4 new tests [search_index.py, test_search_index.py]
+- [x] [Review][Patch] Migration 0002 forward DDL was non-idempotent under partial state loss (restored backup with `django_migrations` rolled back). `ADD COLUMN IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` added (PG 9.6+ syntax); contract tests updated [0002_search_pg_tsvector.py, test_migrations.py]
+- [x] [Review][Patch] Migration tests asserted source strings only. `add_search_vector`/`remove_search_vector` now executed against a stub schema_editor (vendor='postgresql' → exact statement sequence asserted, incl. unaccent + both tables + GIN + reverse drops; vendor='sqlite' → zero statements). Seed migrations 0003/0004 now behavior-tested on SQLite: seed → 58/35, unseed → 0, re-seed → restored (idempotency + reversibility actually executed) [test_migrations.py, test_seed_data.py]
+- [x] [Review][Verification] PG-only DDL was never executed anywhere (High). Verified end-to-end against real PostgreSQL 16 in Docker (`postgres:16-alpine`, TZ=Africa/Algiers): all 4 migrations apply cleanly; `unaccent` extension present; both GIN indexes exist (`companies_search_vector_gin`, `people_search_vector_gin`); generated `search_vector` computes `'batiment':3 'electricite':2 'sarl':1` from `search_normalized`; `websearch_to_tsquery('simple', ...)` matches both diacritic-free queries. Container torn down after verification.
+- [x] [Review][Deferred] `bulk_create`/`bulk_update`/`QuerySet.update()` bypass the `save()` override → empty `search_normalized`. Documented requirement for story 3.2/Epic 6 (scraper pipeline must set `search_normalized` explicitly or write through per-row saves; an atomic ON CONFLICT upsert is the 3.2 rate-limit path). Gotchas updated.
+- [x] [Review][Deferred] Update-then-create upsert documented in tests races under concurrency (two handlers both create → IntegrityError). Story 3.2 must use a PG `INSERT ... ON CONFLICT (user_id, date) DO UPDATE` atomic upsert; the test pattern is the SQLite-compatible approximation.
+- [x] [Review][Deferred] No frontend↔backend wilaya parity test (backend data module mirrors `frontend/src/data/wilayas.ts` by process, not by test). Story 3.4 (wilaya combobox) should consolidate the source and add a cross-stack parity check.
+
+Dismissed as by-design/noise: `unaccent` extension unused in DDL (AC-literal satisfied — it is enabled; it becomes the 3.2 query-side tool, matching the spine's `websearch_to_tsquery` prescription), seed migrations importing live data modules (standard Django data-migration pattern — the taxonomy is ops-owned and row updates are ops work; reversing a data migration deleting its seeded rows is inherent), `strip_tashkeel` redundancy with NFKD (AC-literal clarity; no duplicated codepoint — U+0653 is set-deduped), surrogate-PK deviation (documented D5), Person company-name exclusion (documented D8), E501 per-file-ignore for data dirs (migrations precedent), `AutoField` vs project `BigAutoField` default (AC says `id SERIAL` — literal match), admin `search_fields` using raw `name` (3.2 owns search), Turkish `İ` folding (verified false positive — NFKD decomposes İ → I + U+0307 inside `unaccent_text`, dot removed before `lower()`).
 
 ## Dev Agent Record
 
@@ -223,6 +234,7 @@ deepseek-v4-flash (opencode)
 - **Test DB is pre-seeded by data migrations**: pytest-django runs migrations (incl. seeds) once per session — wilaya codes 1-58 exist in every test; tests needing a deletable wilaya use `get_or_create(code=1)`, and code=99 is reserved for the CHECK-constraint test.
 - **Ruff E501 on trilingual data rows**: `apps/search/data/*.py` added to per-file-ignores (migrations precedent) — rows are inherently >100 cols.
 - **`timezone.localdate()` rollover test**: patching `django.utils.timezone.now` to 23:30 UTC in January yields next-day Algiers date (UTC+1) — verifies the ORM key is Africa/Algiers, not host-local.
+- **Review round (3 sequential layers: Blind Hunter → Edge Case Hunter → Acceptance Auditor)**: 24 raw findings → 7 patches + 1 PG verification + 3 deferred (documented) + 13 dismissed. Post-review gates: 230 backend (146 + 84) / 171 frontend, lint/typecheck/ruff/mypy/i18n 0, `makemigrations --check` clean, real-PostgreSQL 16 Docker verification passed.
 
 ### Completion Notes List
 
@@ -232,6 +244,7 @@ deepseek-v4-flash (opencode)
 - Data: `data/wilayas.py` — verbatim mirror of `frontend/src/data/wilayas.ts` (canonical source); `data/industries.py` — 35 curated trilingual industries (PRD anchors included).
 - `admin.py` (NEW): all 5 models registered with minimal list_display (AD-16 daily_usage monitoring).
 - Gates: backend 220 pytest (146 baseline + 74 new) / ruff 0 / mypy strict 0; frontend regression 171 tests / lint 0 / typecheck 0 / check:i18n 384×3 ✓; `makemigrations --check` clean.
+- Review round: +10 tests (84 total: update_fields ×2, name_en unique, invisible chars ×2, PG DDL behavior ×3, seed idempotency/reversibility ×2) — 230 backend green; PG 16 Docker verification (unaccent/GIN/generated column/websearch match) passed.
 - No frontend changes; no new dependencies; no `django.contrib.postgres` imports (SQLite-safe).
 
 ### File List
@@ -258,4 +271,5 @@ deepseek-v4-flash (opencode)
 ## Change Log
 
 - 2026-08-04: Story created (ready-for-dev) from epic 3.1 spec; Winston architect consultation resolved 7 design decisions (wilayas table created here — 1.6 was frontend-only; single 'simple'-config tsvector + write-time normalization; search_normalized model field + DB-only generated search_vector; vendor-guarded PG DDL for SQLite test DB; AD-11 timezone.localdate + db_default CURRENT_DATE; user_id bigint deviation; PII encryption deferred to Epic 4); no John consultation (industry list is ops-curated assumption — 35 curated industries); validated against checklist.
-- 2026-08-04: Implemented (TDD): RED 5 suites → search_index.py + models + 4 migrations (0001 portable, 0002 PG-only unaccent/generated-tsvector/GIN, 0003/0004 seeds) + data modules + admin + pyproject E501 exemption → GREEN 220 backend (146 + 74) / 171 frontend regression, lint/typecheck/ruff/mypy/i18n clean; `makemigrations --check` clean. Dev-stage amendments recorded: `db_default='CURRENT_DATE'` dropped (Django 5.0 cannot compile SQL keywords in typed db_default — decision 5a), Industry.id = AutoField (manual IntegerField PK never populates pk), upsert = update-then-create pattern (F() illegal in update_or_create defaults), seed-migration assertions moved to test_seed_data.py. Status → review; sprint 3-1 → review.
+- 2026-08-04: Implemented (TDD): RED 5 suites → search_index.py + models + 4 migrations (0001 portable, 0002 PG-only unaccent/generated-tsvector/GIN, 0003/0004 seeds) + data modules + admin + pyproject E501 exemption → GREEN 220 backend (146 + 74) / 171 frontend regression, lint/typecheck/ruff/mypy/i18n clean; `makemigrations --check` clean. Dev-stage amendments recorded: `db_default='CURRENT_DATE'` dropped (Django 5.0 cannot compile SQL keywords in typed db_default — decision 5a), Industry.id = AutoField (manual IntegerField PK never populates pk), upsert = update-then-create pattern (F() illegal in update_or_create defaults), seed-migration assertions moved to test_seed_data.py. Status → review; sprint 3-1 → review. Commit `0dc9c63`.
+- 2026-08-04: Code review (3 sequential layers: Blind Hunter → Edge Case Hunter → Acceptance Auditor — 24 raw findings, 7 patches + 1 real-PG verification + 3 deferred documented + 13 dismissed). Patches: update_fields-aware normalization (`_ensure_normalized_in_update_fields`), `db_default=0` counters (AC DEFAULT 0), `industries_name_en_unique` constraint, invisible-characters → separator mapping, `IF NOT EXISTS` idempotent DDL, migration behavior tests (stub schema_editor statement sequence + SQLite no-op + seed idempotency/reversibility on SQLite). Verification: full migration run against PostgreSQL 16 in Docker — unaccent ✓, GIN indexes ✓, generated tsvector ✓, `websearch_to_tsquery('simple')` matches ✓. Deferred: bulk-create/update bypass (3.2/Epic 6 requirement), atomic ON CONFLICT upsert (3.2), frontend↔backend wilaya parity test (3.4). 230 backend / 171 frontend tests green, all gates clean; status → done; sprint 3-1 → done (epic-3 stays in-progress). Commit `(review-fixes)`. NOTE: do NOT push; user commits/merges manually.

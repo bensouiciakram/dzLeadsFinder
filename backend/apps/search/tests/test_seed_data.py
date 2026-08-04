@@ -2,6 +2,7 @@ import importlib
 import inspect
 
 import pytest
+from django.apps import apps as django_apps
 from django.db import migrations
 
 from apps.search.data.industries import INDUSTRIES
@@ -97,3 +98,23 @@ class TestIndustrySeed:
         assert 'bulk_create' in source
         assert 'ignore_conflicts=True' in source
         assert "get_model('search', 'Industry')" in source
+
+
+class TestSeedMigrationBehavior:
+    def test_wilaya_seed_idempotent_and_reversible(self) -> None:
+        module = importlib.import_module('apps.search.migrations.0003_wilaya_seed')
+        module.seed_wilayas(django_apps, None)
+        assert Wilaya.objects.count() == 58
+        module.unseed_wilayas(django_apps, None)
+        assert Wilaya.objects.count() == 0
+        module.seed_wilayas(django_apps, None)
+        assert Wilaya.objects.count() == 58
+
+    def test_industry_seed_idempotent_and_reversible(self) -> None:
+        module = importlib.import_module('apps.search.migrations.0004_industry_seed')
+        module.seed_industries(django_apps, None)
+        assert Industry.objects.count() >= 30
+        module.unseed_industries(django_apps, None)
+        assert Industry.objects.count() == 0
+        module.seed_industries(django_apps, None)
+        assert Industry.objects.count() == len(INDUSTRIES)

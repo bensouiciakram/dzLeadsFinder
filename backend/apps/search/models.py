@@ -37,6 +37,9 @@ class Industry(models.Model):
     class Meta:
         db_table = 'industries'
         ordering = ['name_en']
+        constraints = [
+            models.UniqueConstraint(fields=['name_en'], name='industries_name_en_unique'),
+        ]
 
     def __str__(self) -> str:
         return str(self.name_en)
@@ -73,7 +76,18 @@ class Company(models.Model):
 
     def save(self, *args: object, **kwargs: object) -> None:
         self.search_normalized = search_index.normalize_search(self.name)
+        self._ensure_normalized_in_update_fields(kwargs, 'name')
         super().save(*args, **kwargs)
+
+    def _ensure_normalized_in_update_fields(
+        self, kwargs: dict[str, object], *source_fields: str
+    ) -> None:
+        update_fields = kwargs.get('update_fields')
+        if not isinstance(update_fields, (list, tuple)):
+            return
+        fields = set(update_fields)
+        if fields.intersection(source_fields) and 'search_normalized' not in fields:
+            kwargs['update_fields'] = [*update_fields, 'search_normalized']
 
     def __str__(self) -> str:
         return str(self.name)
@@ -105,7 +119,18 @@ class Person(models.Model):
 
     def save(self, *args: object, **kwargs: object) -> None:
         self.search_normalized = search_index.normalize_search(self.name, self.role or '')
+        self._ensure_normalized_in_update_fields(kwargs, 'name', 'role')
         super().save(*args, **kwargs)
+
+    def _ensure_normalized_in_update_fields(
+        self, kwargs: dict[str, object], *source_fields: str
+    ) -> None:
+        update_fields = kwargs.get('update_fields')
+        if not isinstance(update_fields, (list, tuple)):
+            return
+        fields = set(update_fields)
+        if fields.intersection(source_fields) and 'search_normalized' not in fields:
+            kwargs['update_fields'] = [*update_fields, 'search_normalized']
 
     def __str__(self) -> str:
         return str(self.name)
@@ -118,8 +143,8 @@ class DailyUsage(models.Model):
         related_name='daily_usage',
     )
     date = models.DateField(default=timezone.localdate)
-    search_count = models.IntegerField(default=0)
-    export_rows = models.IntegerField(default=0)
+    search_count = models.IntegerField(default=0, db_default=0)
+    export_rows = models.IntegerField(default=0, db_default=0)
 
     class Meta:
         db_table = 'daily_usage'

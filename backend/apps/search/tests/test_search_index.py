@@ -50,3 +50,12 @@ class TestNormalizeSearch:
 
     def test_preserves_arabic_letters(self) -> None:
         assert normalize_search('قسنطينة') == 'قسنطينة'
+
+    def test_strips_invisible_format_characters(self) -> None:
+        assert normalize_search('SARL\u200bÉLECTRICITÉ') == 'sarl electricite'
+        assert normalize_search('A\u200dB') == 'a b'
+        assert normalize_search('A\u00adB') == 'a b'
+        assert normalize_search('\u200c') == ''
+
+    def test_turkish_dotted_i_folds_cleanly(self) -> None:
+        assert normalize_search('İSTANBUL') == 'istanbul'

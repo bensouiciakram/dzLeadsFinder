@@ -3,10 +3,10 @@ from typing import Any
 from django.db import migrations
 
 _ADD_SEARCH_VECTOR_SQL = (
-    "ALTER TABLE {table} ADD COLUMN search_vector tsvector "
+    "ALTER TABLE {table} ADD COLUMN IF NOT EXISTS search_vector tsvector "
     "GENERATED ALWAYS AS (to_tsvector('simple', search_normalized)) STORED"
 )
-_ADD_GIN_INDEX_SQL = 'CREATE INDEX {index} ON {table} USING GIN (search_vector)'
+_ADD_GIN_INDEX_SQL = 'CREATE INDEX IF NOT EXISTS {index} ON {table} USING GIN (search_vector)'
 _DROP_INDEX_SQL = 'DROP INDEX IF EXISTS {index}'
 _DROP_COLUMN_SQL = 'ALTER TABLE {table} DROP COLUMN IF EXISTS search_vector'
 
