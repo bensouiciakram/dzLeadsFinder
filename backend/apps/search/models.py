@@ -45,7 +45,24 @@ class Industry(models.Model):
         return str(self.name_en)
 
 
-class Company(models.Model):
+class SearchNormalizedModel(models.Model):
+    search_normalized = models.TextField(default='', blank=True)
+
+    class Meta:
+        abstract = True
+
+    def _ensure_normalized_in_update_fields(
+        self, kwargs: dict[str, object], *source_fields: str
+    ) -> None:
+        update_fields = kwargs.get('update_fields')
+        if not isinstance(update_fields, (list, tuple)):
+            return
+        fields = set(update_fields)
+        if fields.intersection(source_fields) and 'search_normalized' not in fields:
+            kwargs['update_fields'] = [*update_fields, 'search_normalized']
+
+
+class Company(SearchNormalizedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.TextField()
     industry = models.ForeignKey(
@@ -69,7 +86,6 @@ class Company(models.Model):
     source = models.TextField()
     last_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
-    search_normalized = models.TextField(default='', blank=True)
 
     class Meta:
         db_table = 'companies'
@@ -79,21 +95,11 @@ class Company(models.Model):
         self._ensure_normalized_in_update_fields(kwargs, 'name')
         super().save(*args, **kwargs)
 
-    def _ensure_normalized_in_update_fields(
-        self, kwargs: dict[str, object], *source_fields: str
-    ) -> None:
-        update_fields = kwargs.get('update_fields')
-        if not isinstance(update_fields, (list, tuple)):
-            return
-        fields = set(update_fields)
-        if fields.intersection(source_fields) and 'search_normalized' not in fields:
-            kwargs['update_fields'] = [*update_fields, 'search_normalized']
-
     def __str__(self) -> str:
         return str(self.name)
 
 
-class Person(models.Model):
+class Person(SearchNormalizedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(
         Company,
@@ -112,7 +118,6 @@ class Person(models.Model):
     source = models.TextField()
     last_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
-    search_normalized = models.TextField(default='', blank=True)
 
     class Meta:
         db_table = 'people'
@@ -121,16 +126,6 @@ class Person(models.Model):
         self.search_normalized = search_index.normalize_search(self.name, self.role or '')
         self._ensure_normalized_in_update_fields(kwargs, 'name', 'role')
         super().save(*args, **kwargs)
-
-    def _ensure_normalized_in_update_fields(
-        self, kwargs: dict[str, object], *source_fields: str
-    ) -> None:
-        update_fields = kwargs.get('update_fields')
-        if not isinstance(update_fields, (list, tuple)):
-            return
-        fields = set(update_fields)
-        if fields.intersection(source_fields) and 'search_normalized' not in fields:
-            kwargs['update_fields'] = [*update_fields, 'search_normalized']
 
     def __str__(self) -> str:
         return str(self.name)
