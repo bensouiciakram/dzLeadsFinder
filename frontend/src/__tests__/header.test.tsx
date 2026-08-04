@@ -30,9 +30,11 @@ describe('Header (guest)', () => {
 
   it('renders logo linking to homepage', () => {
     render(<Header />)
-    const logo = screen.getByText('dzLeadsFinder')
+    const logo = screen.getByRole('img', { name: 'dzLeadsFinder' })
     expect(logo).toBeInTheDocument()
+    expect(screen.getByText('dzLeadsFinder')).toBeInTheDocument()
     expect(logo.closest('a')).toHaveAttribute('href', '/')
+    expect(screen.getByText('dzLeadsFinder').closest('a')).toHaveAttribute('href', '/')
   })
 
   it('renders login and signup links for guests', () => {
