@@ -1,0 +1,158 @@
+import { describe, expect, it, vi } from 'vitest'
+
+import {
+  EMPTY_FILTERS,
+  SearchService,
+  buildFiltersPayload,
+  countActiveFilters,
+  type StagedFilters,
+} from '@/lib/api/search-service'
+
+describe('countActiveFilters', () => {
+  it('counts zero for the empty draft', () => {
+    expect(countActiveFilters(EMPTY_FILTERS)).toBe(0)
+  })
+
+  it('counts each selected industry', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, industries: [1, 2] }
+    expect(countActiveFilters(draft)).toBe(2)
+  })
+
+  it('counts wilayas and seniorities together', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, wilayas: [31], seniorities: ['director'] }
+    expect(countActiveFilters(draft)).toBe(2)
+  })
+
+  it('counts a non-empty keyword as one filter', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, keyword: 'café' }
+    expect(countActiveFilters(draft)).toBe(1)
+  })
+
+  it('counts the include-unknown-size toggle when on', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, sizes: ['1-10'], includeUnknownSize: true }
+    expect(countActiveFilters(draft)).toBe(2)
+  })
+
+  it('does not count an empty keyword or off toggle', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, keyword: '   ', includeUnknownSize: false }
+    expect(countActiveFilters(draft)).toBe(0)
+  })
+})
+
+describe('buildFiltersPayload', () => {
+  it('emits only the people key set', () => {
+    const draft: StagedFilters = {
+      industries: [4, 9],
+      wilayas: [31],
+      seniorities: ['owner_founder'],
+      sizes: ['1-10'],
+      includeUnknownSize: true,
+      keyword: 'oran',
+    }
+    expect(buildFiltersPayload(draft, 'people')).toEqual({
+      industry: [4, 9],
+      wilaya: [31],
+      seniority: ['owner_founder'],
+      keyword: 'oran',
+    })
+  })
+
+  it('never leaks company-only fields into a people payload', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, sizes: ['500+'], includeUnknownSize: true }
+    const payload = buildFiltersPayload(draft, 'people')
+    expect(payload).not.toHaveProperty('size')
+    expect(payload).not.toHaveProperty('include_unknown_size')
+  })
+
+  it('emits the companies key set with include_unknown_size always present', () => {
+    const draft: StagedFilters = {
+      industries: [21],
+      wilayas: [16, 31],
+      seniorities: ['manager'],
+      sizes: ['11-50'],
+      includeUnknownSize: false,
+      keyword: '',
+    }
+    expect(buildFiltersPayload(draft, 'companies')).toEqual({
+      industry: [21],
+      wilaya: [16, 31],
+      size: ['11-50'],
+      keyword: '',
+      include_unknown_size: false,
+    })
+  })
+
+  it('serializes empty lists as empty arrays', () => {
+    expect(buildFiltersPayload(EMPTY_FILTERS, 'people')).toEqual({
+      industry: [],
+      wilaya: [],
+      seniority: [],
+      keyword: '',
+    })
+  })
+})
+
+describe('SearchService', () => {
+  function stubClient(service: SearchService, response: unknown) {
+    const getMock = vi.fn().mockResolvedValue({ data: response })
+    ;(service as unknown as { client: { get: typeof getMock } }).client.get = getMock
+    return getMock
+  }
+
+  it('queries /api/search/people/ with JSON-encoded filters and default page/sort', async () => {
+    const service = new SearchService()
+    const getMock = stubClient(service, {
+      results: [],
+      total: 0,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+
+    const result = await service.searchPeople('{"industry":[1]}')
+
+    expect(getMock).toHaveBeenCalledTimes(1)
+    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+      params: { filters: '{"industry":[1]}', page: 1, sort: 'name:asc' },
+    })
+    expect(result.total).toBe(0)
+    expect(result.truncated).toBe(false)
+  })
+
+  it('passes through explicit page and sort', async () => {
+    const service = new SearchService()
+    const getMock = stubClient(service, {
+      results: [],
+      total: 0,
+      page: 2,
+      truncated: false,
+      refine_prompt: null,
+    })
+
+    await service.searchPeople('{}', 2, 'name:desc')
+
+    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+      params: { filters: '{}', page: 2, sort: 'name:desc' },
+    })
+  })
+
+  it('queries /api/search/companies/ with the same contract', async () => {
+    const service = new SearchService()
+    const getMock = stubClient(service, {
+      results: [],
+      total: 3,
+      page: 1,
+      truncated: true,
+      refine_prompt: 'refine',
+    })
+
+    const result = await service.searchCompanies('{"size":["1-10"]}')
+
+    expect(getMock).toHaveBeenCalledWith('/api/search/companies/', {
+      params: { filters: '{"size":["1-10"]}', page: 1, sort: 'name:asc' },
+    })
+    expect(result.total).toBe(3)
+    expect(result.truncated).toBe(true)
+    expect(result.refine_prompt).toBe('refine')
+  })
+})

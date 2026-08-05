@@ -260,6 +260,7 @@
     "people_tab": "People",
     "companies_tab": "Companies",
     "placeholder": "Search by name, activity, or keyword...",
+    "skip_to_results": "Skip to results",
     "filters": {
       "title": "Filters",
       "industry": "Industry",
@@ -271,7 +272,13 @@
       "keyword": "Keyword",
       "apply": "Apply Filters",
       "clear": "Clear All",
-      "save": "Save Search"
+      "save": "Save Search",
+      "badge": "Filters ({count})",
+      "select_all": "Select all",
+      "clear_group": "Clear",
+      "include_unknown_size": "Include unknown size",
+      "wilaya_soon": "Wilaya picker coming soon",
+      "keyword_hint": "Diacritics don't matter — \"café\" finds \"cafe\""
     },
     "results": {
       "count": "{count} results found",
@@ -279,7 +286,10 @@
       "empty": "No leads match your filters. Try widening your criteria.",
       "truncated": "Refine your search — only the first 1,000 results are shown",
       "refine_prompt": "Add more filters to narrow results",
-      "pagination": "Page {current} of {total}"
+      "pagination": "Page {current} of {total}",
+      "not_run": "Apply your filters and run a search to see results",
+      "retry": "Retry",
+      "rate_limited": "Daily search limit reached — refine your filters or come back tomorrow"
     },
     "sort": {
       "label": "Sort by",

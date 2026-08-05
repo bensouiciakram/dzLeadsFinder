@@ -260,6 +260,7 @@
     "people_tab": "Personnes",
     "companies_tab": "Entreprises",
     "placeholder": "Rechercher par nom, activité ou mot-clé...",
+    "skip_to_results": "Aller aux résultats",
     "filters": {
       "title": "Filtres",
       "industry": "Secteur d'activité",
@@ -271,7 +272,13 @@
       "keyword": "Mot-clé",
       "apply": "Appliquer les filtres",
       "clear": "Tout effacer",
-      "save": "Enregistrer la recherche"
+      "save": "Enregistrer la recherche",
+      "badge": "Filtres ({count})",
+      "select_all": "Tout sélectionner",
+      "clear_group": "Effacer",
+      "include_unknown_size": "Inclure les tailles inconnues",
+      "wilaya_soon": "Sélecteur de wilayas bientôt disponible",
+      "keyword_hint": "Les accents ne comptent pas — « café » trouve aussi « cafe »"
     },
     "results": {
       "count": "{count} résultats trouvés",
@@ -279,7 +286,10 @@
       "empty": "Aucun lead ne correspond à vos filtres. Essayez d'élargir vos critères.",
       "truncated": "Affinez votre recherche — seuls les 1 000 premiers résultats sont affichés",
       "refine_prompt": "Ajoutez plus de filtres pour affiner les résultats",
-      "pagination": "Page {current} sur {total}"
+      "pagination": "Page {current} sur {total}",
+      "not_run": "Appliquez des filtres puis lancez la recherche pour voir les résultats",
+      "retry": "Réessayer",
+      "rate_limited": "Limite quotidienne de recherches atteinte — affinez vos filtres ou revenez demain"
     },
     "sort": {
       "label": "Trier par",

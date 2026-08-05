@@ -1,0 +1,382 @@
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+
+import { FilterSidebar } from '@/components/search/FilterSidebar'
+import { EMPTY_FILTERS, type StagedFilters } from '@/lib/api/search-service'
+
+const EMPTY: StagedFilters = { ...EMPTY_FILTERS }
+
+function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> = {}) {
+  const props = {
+    tab: 'people' as const,
+    onSubmit: vi.fn(),
+    ...overrides,
+  }
+  const view = render(<FilterSidebar {...props} />)
+  return { ...view, props }
+}
+
+function groupOf(key: string): HTMLElement {
+  const match = screen
+    .getAllByText(key)
+    .map((el) => el.closest('[data-testid="filter-group"]'))
+    .find((el): el is HTMLElement => el !== null)
+  if (!match) throw new Error(`No filter-group found for heading ${key}`)
+  return match
+}
+
+function assertHeadingOrder(keys: string[]): void {
+  for (let i = 0; i < keys.length - 1; i += 1) {
+    const a = groupOf(keys[i])
+    const b = groupOf(keys[i + 1])
+    expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+}
+
+describe('FilterSidebar desktop', () => {
+  it('renders a persistent sidebar at the sidebar-width token with card fill and inline-end border', () => {
+    renderSidebar()
+
+    const aside = screen.getByTestId('filter-sidebar')
+    expect(aside).toHaveClass('w-sidebar-width')
+    expect(aside).toHaveClass('bg-card')
+    expect(aside).toHaveClass('border-inline-end')
+    expect(aside).toHaveClass('border-border')
+  })
+
+  it('renders the groups in order: industry, wilaya, seniority, keyword (people)', () => {
+    renderSidebar({ tab: 'people' })
+
+    assertHeadingOrder([
+      'search.filters.industry',
+      'search.filters.wilaya',
+      'search.filters.seniority',
+      'search.filters.keyword',
+    ])
+  })
+
+  it('renders the groups in order: industry, wilaya, size, keyword (companies)', () => {
+    renderSidebar({ tab: 'companies' })
+
+    assertHeadingOrder([
+      'search.filters.industry',
+      'search.filters.wilaya',
+      'search.filters.size',
+      'search.filters.keyword',
+    ])
+    expect(screen.queryAllByText('search.filters.seniority')).toHaveLength(0)
+    expect(screen.queryAllByText('search.filters.include_unknown_size')).not.toHaveLength(0)
+  })
+
+  it('gates the size group to the companies tab and hides it on people', () => {
+    renderSidebar({ tab: 'people' })
+
+    expect(screen.queryAllByText('search.filters.size')).toHaveLength(0)
+    expect(screen.queryAllByText('search.filters.include_unknown_size')).toHaveLength(0)
+  })
+
+  it('lists all 35 industries with localized names', () => {
+    renderSidebar()
+
+    const industryGroup = groupOf('search.filters.industry')
+    expect(within(industryGroup).getAllByRole('checkbox')).toHaveLength(35)
+    expect(within(industryGroup).getByRole('checkbox', { name: 'Construction' })).toBeInTheDocument()
+  })
+
+  it('renders a disabled wilaya placeholder trigger with a coming-soon caption', () => {
+    renderSidebar()
+
+    const trigger = screen.getByTestId('wilaya-placeholder')
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveTextContent('search.filters.wilaya_placeholder')
+    const caption = screen.getByText('search.filters.wilaya_soon')
+    expect(caption.id).toBe(trigger.getAttribute('aria-describedby'))
+  })
+
+  it('renders a custom wilaya field in place of the placeholder', () => {
+    renderSidebar({ wilayaField: <div data-testid="custom-wilaya" /> })
+
+    expect(screen.getByTestId('custom-wilaya')).toBeInTheDocument()
+    expect(screen.queryByTestId('wilaya-placeholder')).not.toBeInTheDocument()
+  })
+
+  it('stages edits without firing the query', () => {
+    const { props } = renderSidebar({ tab: 'companies' })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
+    fireEvent.change(screen.getByLabelText('search.filters.keyword'), {
+      target: { value: 'oran' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search.filters.include_unknown_size' }))
+
+    expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('fires exactly one onSubmit per Apply click with the full staged draft', () => {
+    const { props } = renderSidebar({ tab: 'companies' })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
+    fireEvent.change(screen.getByLabelText('search.filters.keyword'), {
+      target: { value: 'oran' },
+    })
+
+    const apply = screen.getByRole('button', { name: 'search.filters.apply' })
+    fireEvent.click(apply)
+
+    expect(props.onSubmit).toHaveBeenCalledTimes(1)
+    expect(props.onSubmit).toHaveBeenCalledWith({
+      industries: [1],
+      wilayas: [],
+      seniorities: [],
+      sizes: ['1-10'],
+      includeUnknownSize: false,
+      keyword: 'oran',
+    })
+  })
+
+  it('marks Apply aria-disabled while busy and ignores clicks', () => {
+    const { props } = renderSidebar({ busy: true })
+
+    const apply = screen.getByRole('button', { name: 'common.states.loading' })
+    expect(apply).toHaveAttribute('aria-disabled', 'true')
+    expect(apply).toBeEnabled()
+
+    fireEvent.click(apply)
+    expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('marks Apply aria-disabled when rate-limited and shows the message inline', () => {
+    const { props } = renderSidebar({
+      rateLimited: true,
+      rateLimitMessage: 'server.limit.message',
+    })
+
+    const apply = screen.getByRole('button', { name: 'search.filters.apply' })
+    expect(apply).toHaveAttribute('aria-disabled', 'true')
+    const message = screen.getByText('server.limit.message')
+    expect(apply.getAttribute('aria-describedby')).toBe(message.id)
+
+    fireEvent.click(apply)
+    expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the generic rate-limit key when no message is provided', () => {
+    renderSidebar({ rateLimited: true })
+
+    expect(screen.getByText('search.results.rate_limited')).toBeInTheDocument()
+  })
+
+  it('clears the whole draft via Clear All without firing the query', () => {
+    const { props } = renderSidebar({ tab: 'companies' })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.clear' }))
+
+    const industryGroup = groupOf('search.filters.industry')
+    expect(
+      within(industryGroup)
+        .getAllByRole('checkbox')
+        .every((box) => box.getAttribute('aria-checked') === 'false'),
+    ).toBe(true)
+    expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('clears only the affected group via the per-group Clear affordance', () => {
+    renderSidebar({ tab: 'companies' })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
+    for (const label of [
+      'search.size.11_50',
+      'search.size.51_200',
+      'search.size.201_500',
+      'search.size.500_plus',
+    ]) {
+      fireEvent.click(screen.getByRole('checkbox', { name: label }))
+    }
+
+    const sizeGroup = groupOf('search.filters.size')
+    fireEvent.click(within(sizeGroup).getByRole('button', { name: 'search.filters.clear_group' }))
+
+    const industryGroup = groupOf('search.filters.industry')
+    expect(within(industryGroup).getByRole('checkbox', { name: 'Construction' })).toBeChecked()
+    expect(
+      within(sizeGroup)
+        .getAllByRole('checkbox')
+        .every((box) => box.getAttribute('aria-checked') === 'true'),
+    ).toBe(false)
+  })
+
+  it('selects every industry via Select all', () => {
+    renderSidebar()
+
+    const industryGroup = groupOf('search.filters.industry')
+    fireEvent.click(within(industryGroup).getByRole('button', { name: 'search.filters.select_all' }))
+
+    expect(
+      within(industryGroup)
+        .getAllByRole('checkbox')
+        .every((box) => box.getAttribute('aria-checked') === 'true'),
+    ).toBe(true)
+  })
+})
+
+describe('FilterSidebar mobile trigger and badge', () => {
+  it('renders a mobile-only trigger with the Filters badge counting staged + active filters', () => {
+    renderSidebar({ tab: 'companies', wilayaCount: 3 })
+
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(trigger).toHaveClass('md:hidden')
+    expect(within(trigger).getByText('3')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.change(screen.getByLabelText('search.filters.keyword'), {
+      target: { value: 'oran' },
+    })
+
+    expect(within(trigger).getByText('5')).toBeInTheDocument()
+  })
+
+  it('announces badge count changes through an sr-only live region', () => {
+    renderSidebar()
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveAttribute('aria-live', 'polite')
+    expect(status).toHaveClass('sr-only')
+    expect(status).toHaveTextContent('search.filters.badge')
+  })
+})
+
+describe('FilterSidebar mobile drawer', () => {
+  it('opens a bottom sheet labelled by the filters title with a visible close button', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    expect(within(dialog).getByRole('button', { name: 'common.actions.close' })).toBeInTheDocument()
+    expect(within(dialog).getAllByTestId('filter-group').length).toBeGreaterThan(0)
+  })
+
+  it('gives initial focus to the close button on open', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.actions.close' })).toHaveFocus()
+    })
+  })
+
+  it('closes via the close button and returns focus to the trigger', async () => {
+    renderSidebar()
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+
+    fireEvent.click(trigger)
+    await screen.findByRole('dialog', { name: 'search.filters.title' })
+    fireEvent.click(screen.getByRole('button', { name: 'common.actions.close' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(document.activeElement).toBe(trigger)
+    })
+  })
+
+  it('closes via the Esc key and returns focus to the trigger', async () => {
+    renderSidebar()
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+
+    fireEvent.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(document.activeElement).toBe(trigger)
+    })
+  })
+
+  it('closes via scrim tap', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    const overlay = document.querySelector('[data-slot="drawer-overlay"]')
+    expect(overlay).not.toBeNull()
+    fireEvent.click(overlay as Element)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes via swipe-down past the threshold', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    fireEvent.pointerDown(dialog, { pointerId: 1, clientX: 200, clientY: 80, buttons: 1 })
+    fireEvent.pointerMove(dialog, { pointerId: 1, clientX: 200, clientY: 160, buttons: 1 })
+    fireEvent.pointerMove(dialog, { pointerId: 1, clientX: 200, clientY: 320, buttons: 1 })
+    fireEvent.pointerUp(dialog, { pointerId: 1, clientX: 200, clientY: 320, buttons: 1 })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('applies from the sheet: exactly one submit and the sheet closes', async () => {
+    const { props } = renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'search.filters.apply' }))
+
+    expect(props.onSubmit).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('renders the swipe handle for the sheet', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    expect(document.querySelector('[data-slot="drawer-swipe-handle"]')).not.toBeNull()
+  })
+})
+
+describe('FilterSidebar RTL', () => {
+  it('keeps the group order and uses no physical layout classes inside an RTL container', () => {
+    const { container } = render(
+      <div dir="rtl">
+        <FilterSidebar tab="people" onSubmit={vi.fn()} />
+      </div>,
+    )
+
+    assertHeadingOrder([
+      'search.filters.industry',
+      'search.filters.wilaya',
+      'search.filters.seniority',
+      'search.filters.keyword',
+    ])
+
+    const sidebar = screen.getByTestId('filter-sidebar')
+    const forbidden = ['left-', 'right-', 'ml-', 'mr-', 'pl-', 'pr-', 'text-left', 'text-right']
+    for (const cls of forbidden) {
+      expect(sidebar.className).not.toContain(cls)
+    }
+    expect(container.querySelector('[dir="rtl"]')).not.toBeNull()
+  })
+})
