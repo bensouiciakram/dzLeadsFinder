@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { FilterSidebar } from '@/components/search/FilterSidebar'
 import { Button } from '@/components/ui/button'
@@ -33,10 +33,13 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [result, setResult] = useState<SearchResult | null>(null)
   const [rateLimitMessage, setRateLimitMessage] = useState<string | undefined>(undefined)
   const [lastFilters, setLastFilters] = useState<StagedFilters | null>(null)
+  const inFlightRef = useRef(false)
 
   const runSearch = async (filters: StagedFilters) => {
-    if (phase === 'loading') return
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setPhase('loading')
+    setRateLimitMessage(undefined)
     setLastFilters(filters)
     const payload = JSON.stringify(buildFiltersPayload(filters, tab))
     try {
@@ -54,6 +57,8 @@ export function SearchPage({ tab }: SearchPageProps) {
       } else {
         setPhase('error')
       }
+    } finally {
+      inFlightRef.current = false
     }
   }
 
@@ -77,6 +82,7 @@ export function SearchPage({ tab }: SearchPageProps) {
         onSubmit={(filters) => void runSearch(filters)}
       />
       <main className="min-w-0 grow px-gutter py-6 md:px-gutter-desktop">
+        <h1 className="sr-only">{t('search.title')}</h1>
         <nav aria-label={t('common.nav.search')} className="flex gap-2">
           <Link
             href="/search"
@@ -121,8 +127,11 @@ export function SearchPage({ tab }: SearchPageProps) {
           {phase === 'rate_limited' && (
             <p className="text-small text-destructive">{rateLimitMessage ?? t('search.results.rate_limited')}</p>
           )}
-          {result !== null && phase !== 'loading' && phase !== 'rate_limited' && (
-            <div>
+          {result !== null &&
+            phase !== 'loading' &&
+            phase !== 'rate_limited' &&
+            phase !== 'error' && (
+              <div>
               {result.total > 0 ? (
                 <p className="text-small text-muted-foreground tabular-nums">
                   {t('search.results.count', { count: result.total })}

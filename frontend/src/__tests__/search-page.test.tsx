@@ -69,9 +69,12 @@ describe('SearchPage', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
 
-    expect(screen.getAllByText('common.states.loading').length).toBeGreaterThanOrEqual(2)
+    expect(
+      within(screen.getByTestId('filter-sidebar')).getByRole('button', {
+        name: 'common.states.loading',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(call).toHaveBeenCalledTimes(1)
-
     const expectedPayload = JSON.stringify(
       buildFiltersPayload(
         { industries: [1], wilayas: [], seniorities: [], sizes: [], includeUnknownSize: false, keyword: '' },
@@ -187,7 +190,54 @@ describe('SearchPage', () => {
     render(<SearchPage tab="people" />)
 
     const status = screen.getByRole('status')
-    expect(status).toHaveAttribute('aria-live', 'polite')
     expect(status).toHaveClass('sr-only')
+    expect(status).toHaveTextContent('search.filters.badge')
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
+  it('fires exactly one query for a double-click on Apply', async () => {
+    const { call, resolve } = deferredResult()
+    hoisted.searchPeople.mockImplementation(call)
+    render(<SearchPage tab="people" />)
+
+    const apply = screen.getByRole('button', { name: 'search.filters.apply' })
+    fireEvent.click(apply)
+    fireEvent.click(apply)
+
+    expect(call).toHaveBeenCalledTimes(1)
+
+    resolve()
+    await screen.findByText('search.results.count')
+  })
+
+  it('never renders stale results next to the error state', async () => {
+    const { call, resolve } = deferredResult()
+    hoisted.searchPeople.mockImplementation(call)
+    render(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    resolve()
+    await screen.findByText('search.results.count')
+
+    hoisted.searchPeople.mockRejectedValueOnce({ response: { status: 500 } })
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+
+    await screen.findByText('common.states.error')
+    expect(screen.queryByText('search.results.count')).not.toBeInTheDocument()
+    expect(screen.queryByText('search.results.truncated')).not.toBeInTheDocument()
+  })
+
+  it('keeps the rate-limited state until a new query is possible (staged for tomorrow)', async () => {
+    hoisted.searchPeople.mockRejectedValue({
+      response: { status: 429, data: { detail: 'server.limit.message' } },
+    })
+    render(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    await screen.findAllByText('server.limit.message')
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(screen.getAllByText('server.limit.message').length).toBe(2)
+    expect(hoisted.searchPeople).toHaveBeenCalledTimes(1)
   })
 })

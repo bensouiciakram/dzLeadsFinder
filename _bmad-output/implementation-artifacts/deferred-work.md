@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of story-3.3-filter-sidebar-component (2026-08-05)
+
+- No timeout/abort on search requests: a hung `searchPeople/searchCompanies` request leaves the page in `loading` forever (Apply permanently `aria-disabled`, no retry path). Add an axios timeout (service-level or the shared `HttpClient` config) — cross-cutting, touches all surfaces, belongs with the HTTP layer; revisit in Story 3.5 (results table) which will own retry/polling UX. [frontend/src/lib/api/search-service.ts, frontend/src/lib/api/http-client.ts]
+- `elementFromPoint` jsdom polyfill in `src/test/mocks.ts` returns the open drawer popup for every call site — fine today, but it will mask real pointer hit-testing for the 3.4 wilaya combobox, tooltips, and any popup positioning logic. Narrow it (or scope by test) when 3.4 lands. [frontend/src/test/mocks.ts]
+- Cross-stack industry parity is dev-run only: `frontend/src/data/industries.ts` must stay in lockstep with `backend/apps/search/data/industries.py` (seed order = serial ids). Extend the 3.4 wilaya parity item (below) to cover industries with a real parity check. [frontend/src/data/industries.ts]
+- `aria-live="polite"` wraps the whole `#results` section; Story 3.5 must move the polite region to the count/status line before mounting the results table, or the entire table will be announced on every update. [frontend/src/components/search/SearchPage.tsx]
+- Physical-property classes inside stock shadcn base-nova wrappers (drawer.tsx `md:text-left`, `left-`/`right-` swipe-direction variants, tooltip.tsx arrow offsets, scroll-area.tsx `border-l`) — registry defaults, dormant in 3.3 (swipe-down only, mobile only). Revisit if the drawer is reused at ≥md in RTL or if a CSS lint gate is added; do not hand-edit registry files lightly. [frontend/src/components/ui/{drawer,tooltip,scroll-area}.tsx]
+- `FilterSidebar` `applied` re-sync effect: documented contract for Story 3.6 (saved-search re-runs replace the draft). The clobber risk for post-submit edits is accepted and documented in the story; 3.5 (chips) and 3.6 must drive `applied` with stable object identity and re-verify the effect with tests.
+
 ## Deferred from: code review of story-3.2-search-api-endpoints (2026-08-05)
 
 - Rate-limit check-then-increment TOCTOU: the quota SELECT and the atomic upsert span the search query, so a concurrent burst at count = limit-1 can exceed the 30/100 cap. One-statement `INSERT ... ON CONFLICT DO UPDATE ... WHERE search_count < limit RETURNING` would require increment-before-success (conflicts with Q8) and a PG transaction + row lock; needs a Postgres-backed CI job to be exercised. Spine-documented pattern. [backend/apps/search/quota.py]

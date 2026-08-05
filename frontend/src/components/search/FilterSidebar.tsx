@@ -83,15 +83,28 @@ export function FilterSidebar({
   useEffect(() => {
     if (sheetOpen) {
       const frame = requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>('[data-slot="drawer-close"]')?.focus()
+        document
+          .querySelector<HTMLElement>(
+            '[data-slot="drawer-popup"] [data-slot="drawer-close"]',
+          )
+          ?.focus()
       })
       return () => cancelAnimationFrame(frame)
     }
   }, [sheetOpen])
 
+  useEffect(() => {
+    if (!sheetOpen) return
+    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null
+    if (!media) return
+    const onResize = () => {
+      if (media.matches) setSheetOpen(false)
+    }
+    media.addEventListener('change', onResize)
+    return () => media.removeEventListener('change', onResize)
+  }, [sheetOpen])
+
   const badgeCount = countActiveFilters(draft) + wilayaCount
-  const rateLimitId = `${baseId}-rate-limit`
-  const unknownSizeId = `${baseId}-unknown-size`
 
   const toggleInList = (list: string[], value: string): string[] =>
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
@@ -131,91 +144,97 @@ export function FilterSidebar({
     label: t(option.labelKey),
   }))
 
-  const renderGroups = () => (
-    <div className="flex flex-col gap-5">
-      <section data-testid="filter-group">
-        <CheckboxGroup
-          id={`${baseId}-industry`}
-          labelKey="search.filters.industry"
-          options={industryOptions}
-          selected={draft.industries.map(String)}
-          onToggle={toggleIndustries}
-          onSelectAll={() => setDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
-          onClear={() => setDraft((current) => ({ ...current, industries: [] }))}
-        />
-      </section>
-
-      <section data-testid="filter-group">
-        <h3 className="text-caption text-muted-foreground">{t('search.filters.wilaya')}</h3>
-        <div className="mt-2">{wilayaField ?? <WilayaPlaceholder describedById={`${baseId}-wilaya-soon`} />}</div>
-      </section>
-
-      {tab === 'people' && (
+  const renderGroups = (surface: string) => {
+    const groupId = (name: string) => `${baseId}-${surface}-${name}`
+    return (
+      <div className="flex flex-col gap-5">
         <section data-testid="filter-group">
           <CheckboxGroup
-            id={`${baseId}-seniority`}
-            labelKey="search.filters.seniority"
-            options={seniorityOptions}
-            selected={draft.seniorities}
-            onToggle={(value) => setDraft((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
-            onSelectAll={() => setDraft((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
-            onClear={() => setDraft((current) => ({ ...current, seniorities: [] }))}
+            id={groupId('industry')}
+            labelKey="search.filters.industry"
+            options={industryOptions}
+            selected={draft.industries.map(String)}
+            onToggle={toggleIndustries}
+            onSelectAll={() => setDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
+            onClear={() => setDraft((current) => ({ ...current, industries: [] }))}
           />
         </section>
-      )}
 
-      {tab === 'companies' && (
         <section data-testid="filter-group">
-          <CheckboxGroup
-            id={`${baseId}-size`}
-            labelKey="search.filters.size"
-            options={sizeOptions}
-            selected={draft.sizes}
-            onToggle={(value) => setDraft((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
-            onSelectAll={() => setDraft((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
-            onClear={() => setDraft((current) => ({ ...current, sizes: [] }))}
-          />
-          <label
-            htmlFor={unknownSizeId}
-            className="mt-3 flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0"
-          >
-            <Checkbox
-              id={unknownSizeId}
-              checked={draft.includeUnknownSize}
-              onCheckedChange={() => setDraft((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
+          <h3 className="text-caption text-muted-foreground">{t('search.filters.wilaya')}</h3>
+          <div className="mt-2">{wilayaField ?? <WilayaPlaceholder describedById={groupId('wilaya-soon')} />}</div>
+        </section>
+
+        {tab === 'people' && (
+          <section data-testid="filter-group">
+            <CheckboxGroup
+              id={groupId('seniority')}
+              labelKey="search.filters.seniority"
+              options={seniorityOptions}
+              selected={draft.seniorities}
+              onToggle={(value) => setDraft((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
+              onSelectAll={() => setDraft((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
+              onClear={() => setDraft((current) => ({ ...current, seniorities: [] }))}
             />
-            <span className="text-small">{t('search.filters.include_unknown_size')}</span>
-          </label>
+          </section>
+        )}
+
+        {tab === 'companies' && (
+          <section data-testid="filter-group">
+            <CheckboxGroup
+              id={groupId('size')}
+              labelKey="search.filters.size"
+              options={sizeOptions}
+              selected={draft.sizes}
+              onToggle={(value) => setDraft((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
+              onSelectAll={() => setDraft((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
+              onClear={() => setDraft((current) => ({ ...current, sizes: [] }))}
+            />
+            <label
+              htmlFor={groupId('unknown-size')}
+              className="mt-3 flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0"
+            >
+              <Checkbox
+                id={groupId('unknown-size')}
+                checked={draft.includeUnknownSize}
+                onCheckedChange={() => setDraft((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
+              />
+              <span className="text-small">{t('search.filters.include_unknown_size')}</span>
+            </label>
+          </section>
+        )}
+
+        <section data-testid="filter-group">
+          <KeywordField
+            id={groupId('keyword')}
+            value={draft.keyword}
+            onChange={(value) => setDraft((current) => ({ ...current, keyword: value }))}
+          />
         </section>
-      )}
+      </div>
+    )
+  }
 
-      <section data-testid="filter-group">
-        <KeywordField
-          id={`${baseId}-keyword`}
-          value={draft.keyword}
-          onChange={(value) => setDraft((current) => ({ ...current, keyword: value }))}
-        />
-      </section>
-    </div>
-  )
-
-  const renderApply = () => (
-    <div className="p-4">
-      {rateLimited && (
-        <p id={rateLimitId} className="mb-2 text-caption text-destructive">
-          {rateLimitMessage ?? t('search.results.rate_limited')}
-        </p>
-      )}
-      <Button
-        className="min-h-11 w-full md:min-h-8"
-        aria-disabled={busy || rateLimited}
-        aria-describedby={rateLimited ? rateLimitId : undefined}
-        onClick={handleApply}
-      >
-        {busy ? t('common.states.loading') : t('search.filters.apply')}
-      </Button>
-    </div>
-  )
+  const renderApply = (surface: string) => {
+    const rateLimitId = `${baseId}-${surface}-rate-limit`
+    return (
+      <div className="p-4">
+        {rateLimited && (
+          <p id={rateLimitId} className="mb-2 text-caption text-destructive">
+            {rateLimitMessage ?? t('search.results.rate_limited')}
+          </p>
+        )}
+        <Button
+          className="min-h-11 w-full rounded-md md:min-h-8"
+          aria-disabled={busy || rateLimited}
+          aria-describedby={rateLimited ? rateLimitId : undefined}
+          onClick={handleApply}
+        >
+          {busy ? t('common.states.loading') : t('search.filters.apply')}
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -228,14 +247,14 @@ export function FilterSidebar({
           <button
             type="button"
             onClick={handleClearAll}
-            className="h-8 cursor-pointer text-caption text-primary hover:text-primary-hover"
+            className="min-h-11 cursor-pointer text-caption text-primary hover:text-primary-hover md:h-8"
           >
             {t('search.filters.clear')}
           </button>
         </div>
-        <div className="grow overflow-y-auto px-4 pb-4">{renderGroups()}</div>
+        <div className="grow overflow-y-auto px-4 pb-4">{renderGroups('aside')}</div>
         <div className="border-t border-border">
-          <div className="border-inline-end border-border">{renderApply()}</div>
+          <div className="border-inline-end border-border">{renderApply('aside')}</div>
         </div>
       </aside>
 
@@ -246,22 +265,22 @@ export function FilterSidebar({
           <Badge variant="default" className="rounded-full">
             {badgeCount}
           </Badge>
-          <span className="sr-only" role="status" aria-live="polite">
-            {t('search.filters.badge', { count: badgeCount })}
-          </span>
         </DrawerTrigger>
+        <span className="sr-only" role="status">
+          {t('search.filters.badge', { count: badgeCount })}
+        </span>
         <DrawerContent>
           <DrawerHeader className="relative border-b border-border">
             <DrawerTitle>{t('search.filters.title')}</DrawerTitle>
             <DrawerClose
               aria-label={t('common.actions.close')}
-              className="absolute end-4 top-3 inline-flex size-8 items-center justify-center rounded-lg hover:bg-muted"
+              className="absolute end-4 top-3 inline-flex size-11 items-center justify-center rounded-lg hover:bg-muted md:size-8"
             >
               <XIcon />
             </DrawerClose>
           </DrawerHeader>
-          <div className="grow overflow-y-auto p-4">{renderGroups()}</div>
-          <DrawerFooter className="border-t border-border">{renderApply()}</DrawerFooter>
+          <div className="grow overflow-y-auto p-4">{renderGroups('drawer')}</div>
+          <DrawerFooter className="border-t border-border">{renderApply('drawer')}</DrawerFooter>
         </DrawerContent>
       </Drawer>
     </>
@@ -277,7 +296,7 @@ function WilayaPlaceholder({ describedById }: { describedById: string }) {
         <SelectTrigger
           data-testid="wilaya-placeholder"
           aria-describedby={describedById}
-          className="w-full justify-start text-start"
+          className="min-h-11 w-full justify-start text-start md:h-8"
         >
           <SelectValue placeholder={t('search.filters.wilaya_placeholder')} />
         </SelectTrigger>

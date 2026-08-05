@@ -241,13 +241,40 @@ describe('FilterSidebar mobile trigger and badge', () => {
     expect(within(trigger).getByText('5')).toBeInTheDocument()
   })
 
-  it('announces badge count changes through an sr-only live region', () => {
+  it('announces badge count changes through an sr-only status region outside the trigger', () => {
     renderSidebar()
 
     const status = screen.getByRole('status')
-    expect(status).toHaveAttribute('aria-live', 'polite')
     expect(status).toHaveClass('sr-only')
     expect(status).toHaveTextContent('search.filters.badge')
+    expect(status.closest('button')).toBeNull()
+  })
+
+  it('uses rounded-md on the Apply button', () => {
+    renderSidebar()
+
+    expect(screen.getByRole('button', { name: 'search.filters.apply' })).toHaveClass('rounded-md')
+  })
+
+  it('gives the drawer close button a 44px touch target on mobile', async () => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    expect(screen.getByRole('button', { name: 'common.actions.close' })).toHaveClass('size-11')
+  })
+
+  it('uses distinct ids for the aside and drawer group controls', async () => {
+    renderSidebar()
+
+    const asideInput = screen.getByLabelText('search.filters.keyword')
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    const drawerInput = within(dialog).getByLabelText('search.filters.keyword')
+
+    expect(asideInput.id).not.toBe(drawerInput.id)
+    expect(asideInput.id).not.toBe('')
   })
 })
 

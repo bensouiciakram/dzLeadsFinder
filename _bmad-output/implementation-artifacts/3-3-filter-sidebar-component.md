@@ -2,7 +2,7 @@
 story_id: 3.3
 epic: 3
 title: Story 3.3 — Filter Sidebar Component
-status: review
+status: done
 frs: [FR-5, FR-6, FR-7, FR-9, FR-11, FR-12, FR-13]
 ads: [AD-2, AD-9, AD-19]
 ux_drs: [UX-DR8, UX-DR20, UX-DR21, UX-DR22, UX-DR24]
@@ -11,7 +11,7 @@ baseline_commit: d52491e69a6ddc15524fca5f599be084450654d4
 
 # Story 3.3: Filter Sidebar Component
 
-Status: review
+Status: done
 
 ## Story
 
@@ -175,6 +175,29 @@ So that **I control when my daily search quota is consumed**.
 - [Source: frontend/messages/en.json#L258-L312] Existing search namespace keys (group labels, seniority/size bands, results, apply/clear/save)
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md] Wilaya parity item (3.4) — industries parity extends it
 
+## Review Findings
+
+- [x] [Review][Patch] Stale results rendered beside the error state: after a successful search, a later failing search showed the OLD count/truncated notice under the error alert (phase 'error' was not excluded from the results block). [SearchPage.tsx] — FIXED: results block now excludes `error`; 1 new test.
+- [x] [Review][Patch] Double-Apply race (FR-7 quota burn): the in-flight guard read `phase` from the render closure, so two clicks inside the same flush both passed the guard and fired two queries. [SearchPage.tsx:38] — FIXED: `inFlightRef` (useRef) guard set before the await, cleared in `finally`; 1 new double-click test asserts exactly one call.
+- [x] [Review][Patch] Duplicate DOM ids between the desktop aside and the drawer portal: `renderGroups()` was called twice with the same `useId`, so the open sheet duplicated every group id (invalid HTML, WCAG 4.1.1; `htmlFor`/`aria-describedby` resolved to the hidden aside copy). [FilterSidebar.tsx:236,263] — FIXED: surface-prefixed ids (`aside`/`drawer`) across groups, keyword, unknown-size toggle, rate-limit message, wilaya caption; 1 new distinct-ids test.
+- [x] [Review][Patch] Apply radius was `rounded-lg` (stock Button base) — violates AC "Apply uses {rounded.md}". [FilterSidebar.tsx] — FIXED: `rounded-md` override (twMerge keeps the last conflicting class); 1 new class test.
+- [x] [Review][Patch] Touch-inflation gaps (UX-DR22): drawer close (`size-8`), Select-all/Clear-group, Clear All, and the wilaya placeholder trigger were all 32px on mobile. [FilterSidebar.tsx, CheckboxGroup.tsx] — FIXED: `size-11 md:size-8` close; `min-h-11 md:h-8` toggles/clear/placeholder; tests extended.
+- [x] [Review][Patch] Global `document.querySelector('[data-slot="drawer-close"]')` focus grab could land in a different overlay (any future drawer/dialog on the page). [FilterSidebar.tsx:86] — FIXED: scoped to `[data-slot="drawer-popup"] [data-slot="drawer-close"]`.
+- [x] [Review][Patch] sr-only badge status nested INSIDE the trigger button: duplicated the count in the button's accessible name and nested live regions in buttons are unreliable across screen readers; `aria-live="polite"` on `role="status"` is redundant by ARIA definition. [FilterSidebar.tsx:249] — FIXED: status span moved beside the trigger, `role="status"` only; tests updated.
+- [x] [Review][Patch] Keyword input unbounded while the backend enforces `MAX_KEYWORD_LENGTH = 200` → 400 `invalid_filter` → generic error state. [KeywordField.tsx] — FIXED: `maxLength={200}` on the input (mirrors 3.2 constant).
+- [x] [Review][Patch] No page-level `h1` on either /search route (heading-structure gap, WCAG 1.3.1). [SearchPage.tsx] — FIXED: sr-only `h1` with `search.title`; asserted in test.
+- [x] [Review][Patch] Drawer open when the viewport is resized to ≥md leaves focus-restore targeting the now-hidden (`md:hidden`) trigger. [FilterSidebar.tsx] — FIXED: `matchMedia('(min-width: 768px)')` change closes the sheet (optional-chained — jsdom has no matchMedia).
+- [x] [Review][Patch] Brittle loading assertion (`getAllByText('common.states.loading').length >= 2`) encoded duplication instead of behavior. [search-page.test.tsx] — FIXED: scoped to the sidebar Apply button + `aria-disabled` check.
+- [x] [Review][Patch] `rateLimitMessage` never cleared between runs. [SearchPage.tsx] — FIXED: reset at query start (defensive — today the rate-limited state blocks re-Apply by design; relevant for the 3.5 chip-removal path).
+- [x] [Review][Defer] No timeout/abort on search requests → terminal `loading` state on a hung request. Belongs in the HTTP layer (cross-cutting); revisit in Story 3.5. [search-service.ts, http-client.ts] — deferred, documented in deferred-work.md.
+- [x] [Review][Defer] `applied` re-sync effect behavior is untested and clobbers post-submit edits on identity change — documented contract for 3.6 (saved-search re-runs); 3.5/3.6 must drive it with stable identity and add tests. [FilterSidebar.tsx:79-81] — deferred, documented in deferred-work.md.
+- [x] [Review][Defer] Physical-property classes inside stock shadcn base-nova registry wrappers (drawer `md:text-left` + `left-`/`right-` swipe variants, tooltip arrow, scroll-area `border-l`) — dormant in 3.3 (swipe-down only, mobile only); revisit if the drawer is reused at ≥md in RTL or on stylelint-gate expansion. [ui/{drawer,tooltip,scroll-area}.tsx] — deferred, documented in deferred-work.md.
+- [x] [Review][Defer] `elementFromPoint` jsdom polyfill returns the drawer popup for every call site — masks pointer hit-testing for future popups (3.4 combobox, tooltips); narrow when 3.4 lands. [src/test/mocks.ts] — deferred, documented in deferred-work.md.
+- [x] [Review][Defer] Industry parity with the backend seed is dev-run only (no cross-stack test infra) — future seed drift passes CI silently; extend the 3.4 wilaya parity item. [industries-data.test.ts] — deferred, documented in deferred-work.md.
+- [x] [Review][Defer] `aria-live="polite"` wraps the whole `#results` section — Story 3.5 must move the polite region to the count/status line before mounting the results table. [SearchPage.tsx] — deferred, documented in deferred-work.md.
+
+Dismissed as by-design/noise: XSS path verified clean (server `rateLimitMessage` rendered as plain JSX text; payload built from typed values via JSON.stringify — no injection vector), rate-limit message announcement (the results-region copy inside `aria-live` announces the phase change — the sidebar inline copy is a redundant visual anchor), `aria-describedby` on the disabled wilaya placeholder (the caption is adjacent visible text — SRs that skip describedby still present it), live-region tests assert presence not announcements (key-returning useTranslations mock makes content assertions impossible — 2-5 precedent), `rounded-[4px]` in the stock checkbox wrapper (registry default ≈ rounded-sm token; registry-file debt), Retry re-fires the last payload even if the draft was edited (spec-literal: "Retry re-fires the same query"), `search.results.rate_limited` key duplicates `common.states.rate_limited` (deliberate: carries the FR-7 refine-or-come-back-tomorrow copy — Task 2's own key list; the generic key would lose the copy), fieldset/legend instead of the spec'd h3+role=group markup (legend is the a11y-superior group pattern; the wilaya group's h3 keeps visual hierarchy), `next/link` instead of `@/i18n/navigation` Link (localePrefix 'never' → plain hrefs are correct; next/link is the repo-wide convention), shallow copy instead of structuredClone on Apply (immutable state updates make the snapshot safe; payload is serialized synchronously), CheckboxGroup `{value,label}` option contract (resolved labels are required for non-key data like industry names; spec's labelKey form was a suggestion), wilayaCount NaN/negative (internal wiring contract for 3.4), stale selected values / 0-option groups in CheckboxGroup (unreachable internal state today).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -235,3 +258,4 @@ deepseek-v4-flash (opencode)
 
 - 2026-08-05: Story created (ready-for-dev) from epic 3.3 spec; Sally UX consultation resolved 8 design decisions (staged-vs-applied draft model + badge semantics + reset-staging, minimal /search + /search/companies pages per user D2 approval, wilayaField slot + disabled-Select placeholder contract for 3.4, Base UI Drawer bottom-sheet with full dismiss path + focus return, one-call-per-Apply with aria-disabled busy/rate-limited states + no TanStack Query (3.5 gate), empty-state prompt + checklist-slot + count/truncated placeholder region, i18n key reuse + 8 new keys no-uppercase, industries.ts seed mirror); no John consultation (ACs fully specify — 3.2 precedent); validated against checklist; sprint-status 3-3 → ready-for-dev.
 - 2026-08-05: Implemented (TDD): RED suites for search-service/checkbox-group/filter-sidebar/search-page/industries-data → CheckboxGroup + KeywordField + FilterSidebar + SearchPage + /search routes + search-service + industries.ts + 8 stock shadcn base-nova controls + i18n (+10 keys ×3) + jsdom polyfills (PointerEvent, elementFromPoint) → GREEN 228 frontend tests (171 + 57), lint 0 / typecheck 0 / check:i18n 394×3 ✓; backend regression 352 / ruff 0 / mypy strict 0. Dev-stage amendments recorded: native Base UI Drawer swipe (no custom handlers), rAF initial-focus, sibling-htmlFor checkbox labelling, disabled-placeholder assertion, applied-prop deferral to 3.5. Status → review; sprint 3-3 → review.
+- 2026-08-05: Code review (3 parallel layers: Blind Hunter → Edge Case Hunter → Acceptance Auditor — 40 raw findings → 33 unique → 12 patches + 6 deferred + 15 dismissed). Patches: stale-results-hidden-on-error, in-flight ref guard (double-Apply race → exactly one query), surface-prefixed ids for the drawer copy (duplicate-id fix), Apply `rounded-md` (AC literal), touch inflation on close/Select-all/Clear/placeholder, scoped drawer-close focus query, sr-only status moved out of the trigger button, keyword `maxLength=200`, sr-only page `h1`, close-on-md-resize (matchMedia), scoped loading assertion, rateLimitMessage reset. Deferred (deferred-work.md): axios timeout/abort, applied-effect 3.6 contract, physical classes in stock registry wrappers, elementFromPoint polyfill scope (3.4), industries parity check, aria-live scope for the 3.5 table. Post-review gates: 235 frontend tests green (228 + 7 new), lint 0 / typecheck 0 / check:i18n ✓; backend regression 352 / ruff 0 / mypy strict 0. Status → done; sprint 3-3 → done (epic-3 stays in-progress).

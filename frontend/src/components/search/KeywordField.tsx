@@ -26,6 +26,7 @@ export function KeywordField({ id, value, onChange }: KeywordFieldProps) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={t('search.placeholder')}
+        maxLength={200}
         aria-describedby={hintId}
         className="mt-2 min-h-11 md:min-h-8"
       />

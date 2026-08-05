@@ -53,7 +53,7 @@ export function CheckboxGroup({
       <button
         type="button"
         onClick={allSelected ? onClear : onSelectAll}
-        className="mt-1 h-8 cursor-pointer text-caption text-primary hover:text-primary-hover"
+        className="mt-1 min-h-11 cursor-pointer text-caption text-primary hover:text-primary-hover md:h-8"
       >
         {t(allSelected ? 'search.filters.clear_group' : 'search.filters.select_all')}
       </button>

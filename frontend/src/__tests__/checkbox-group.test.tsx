@@ -75,4 +75,11 @@ describe('CheckboxGroup', () => {
     expect(row).toHaveClass('min-h-11')
     expect(row).toHaveClass('md:min-h-0')
   })
+
+  it('gives the Select-all toggle a 44px touch target on mobile', () => {
+    renderGroup()
+
+    expect(screen.getByRole('button', { name: 'search.filters.select_all' })).toHaveClass('min-h-11')
+    expect(screen.getByRole('button', { name: 'search.filters.select_all' })).toHaveClass('md:h-8')
+  })
 })
