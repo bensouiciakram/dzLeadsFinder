@@ -1,5 +1,5 @@
 # generated: 2026-07-21T12:52:00+01:00
-# last_updated: 2026-08-05T14:00:00+01:00
+# last_updated: 2026-08-05T15:00:00+01:00
 # project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 #   - done: Completed
 
 generated: 2026-07-21T12:52:00+01:00
-last_updated: 2026-08-05T14:00:00+01:00
+last_updated: 2026-08-05T15:00:00+01:00
 project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 project_key: NOKEY
 tracking_system: file-system
@@ -66,7 +66,7 @@ development_status:
   epic-3: in-progress
   3-1-search-database-schema: done
   3-2-search-api-endpoints: done
-  3-3-filter-sidebar-component: backlog
+  3-3-filter-sidebar-component: ready-for-dev
   3-4-wilaya-combobox: backlog
   3-5-results-table-stacked-row: backlog
   3-6-saved-searches: backlog
