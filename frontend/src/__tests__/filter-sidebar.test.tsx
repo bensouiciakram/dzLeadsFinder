@@ -101,6 +101,43 @@ describe('FilterSidebar desktop', () => {
     expect(within(trigger).getByText('3')).toBeInTheDocument()
   })
 
+  it('normalizes the badge so wilayas are counted once when the draft mirrors applied', () => {
+    const applied: StagedFilters = { ...EMPTY, wilayas: [31, 16] }
+    renderSidebar({ applied, wilayaCount: 2 })
+
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(within(trigger).getByText('2')).toBeInTheDocument()
+    expect(within(trigger).queryByText('4')).toBeNull()
+  })
+
+  it('applies a staged patch from chip removals into the draft', () => {
+    const { rerender, props } = renderSidebar()
+    const patch: Partial<StagedFilters> = { industries: [7] }
+    rerender(<FilterSidebar {...props} stagedPatch={patch} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [7] }))
+  })
+
+  it('resets the draft when the clear nonce bumps', () => {
+    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1] } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    rerender(<FilterSidebar {...props} clearNonce={1} />)
+
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(within(trigger).queryByText('1')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [] }))
+  })
+
+  it('notifies the page when the sidebar Clear All is used (wilaya clear wiring)', () => {
+    const onClearAllRequest = vi.fn()
+    renderSidebar({ wilayaCount: 3, onClearAllRequest })
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.clear' }))
+    expect(onClearAllRequest).toHaveBeenCalledTimes(1)
+  })
+
   it('stages edits without firing the query', () => {
     const { props } = renderSidebar({ tab: 'companies' })
 

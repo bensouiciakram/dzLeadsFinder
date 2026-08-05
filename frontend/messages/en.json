@@ -286,13 +286,24 @@
     "results": {
       "count": "{count} results found",
       "count_with_limit": "Showing first {shown} of {total} results — refine your search",
-      "empty": "No leads match your filters. Try widening your criteria.",
+      "empty": "No leads match your filters. Try broadening your wilaya or industry selection.",
       "truncated": "Refine your search — only the first 1,000 results are shown",
       "refine_prompt": "Add more filters to narrow results",
       "pagination": "Page {current} of {total}",
       "not_run": "Apply your filters and run a search to see results",
       "retry": "Retry",
-      "rate_limited": "Daily search limit reached — refine your filters or come back tomorrow"
+      "rate_limited": "Daily search limit reached — refine your filters or come back tomorrow",
+      "columns": {
+        "role": "Role",
+        "company": "Company",
+        "people_count": "People count"
+      },
+      "sort_asc": "Sorted by {column}, ascending",
+      "sort_desc": "Sorted by {column}, descending",
+      "sort_default": "Sorted by {column}, default order",
+      "previous": "Previous",
+      "clear_all": "Clear all filters",
+      "chip_remove": "Remove {name}"
     },
     "sort": {
       "label": "Sort by",

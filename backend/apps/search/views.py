@@ -32,6 +32,7 @@ _PEOPLE_SORT: dict[str, str] = {
 
 _COMPANY_SORT: dict[str, str] = {
     'name': 'name',
+    'industry': 'industry__name_en',
     'size_band': 'size_band',
     'wilaya_code': 'wilaya_code',
     'people_count': 'people_count',
@@ -116,6 +117,7 @@ def _people_row(person: Person, locale: str) -> dict[str, object]:
         'name': person.name,
         'role': person.role,
         'company_name': company.name if company is not None else None,
+        'company_id': str(company.id) if company is not None else None,
         'wilaya_code': wilaya.code if wilaya is not None else None,
         'wilaya_name': getattr(wilaya, f'name_{locale}') if wilaya is not None else None,
         'revealed': False,

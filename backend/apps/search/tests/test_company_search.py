@@ -250,6 +250,44 @@ class TestCompanySearchSorting:
         assert desc == ['A', 'B', 'C', 'D']
 
 
+    def test_sort_by_industry(self, search_session: _Session) -> None:
+        client, _ = search_session('en')
+        alpha = Industry.objects.create(
+            name_ar='ألفا', name_fr='Alpha', name_en='Alpha'
+        )
+        gamma = Industry.objects.create(
+            name_ar='غاما', name_fr='Gamma', name_en='Gamma'
+        )
+        beta = Industry.objects.create(
+            name_ar='بيتا', name_fr='Beta', name_en='Beta'
+        )
+        no_industry = _company('No Industry Co', industry=None)
+        _company('A Co', industry=alpha)
+        _company('G Co', industry=gamma)
+        _company('B Co', industry=beta)
+        asc = [
+            row['name']
+            for row in client.get(
+                '/api/search/companies/', {'sort': 'industry:asc'}
+            ).json()['results']
+        ]
+        desc = [
+            row['name']
+            for row in client.get(
+                '/api/search/companies/', {'sort': 'industry:desc'}
+            ).json()['results']
+        ]
+        assert asc == ['A Co', 'B Co', 'G Co', no_industry.name]
+        assert desc == ['G Co', 'B Co', 'A Co', no_industry.name]
+
+    def test_industry_sort_rejected_on_people(self, search_session: _Session) -> None:
+        client, _ = search_session('en')
+        _person('A')
+        response = client.get('/api/search/people/', {'sort': 'industry:asc'})
+        assert response.status_code == 400
+        assert response.json()['code'] == 'invalid_sort'
+
+
 class TestCompanySearchRateLimit:
     def test_people_and_company_searches_share_daily_usage(self, search_session: _Session) -> None:
         client, user = search_session('en')

@@ -1,5 +1,18 @@
 # Deferred Work
 
+## RESOLVED by Story 3.5 (2026-08-05)
+
+- ~~No timeout/abort on search requests~~ — **RESOLVED**: shared `timeout: 20000` in the HttpClient default config (all AD-19 services inherit) + `signal` forwarding on `searchPeople`/`searchCompanies` (queryFn abort on new submit; a hung request can no longer strand the page in loading). [frontend/src/lib/api/http-client.ts, frontend/src/lib/api/search-service.ts]
+- ~~`aria-live="polite"` wraps the whole `#results` section~~ — **RESOLVED**: the polite region moved to the count/status line (`data-testid="results-status"`); the table is outside the live region; sort/page changes announce via an sr-only `role="status"` span inside it. [frontend/src/components/search/SearchPage.tsx]
+- ~~AD-20 TanStack Query adoption~~ — **RESOLVED**: `QueryClientProvider` mounts in `Providers` (module-scoped client, `retry: false` + `refetchOnWindowFocus: false` — retry:false is a quota contract: a retried success would double-burn `daily_usage`); the results query is a `useQuery` consumer via the AD-19 `SearchService` methods (queryFn receives the abort signal); session stays SessionProvider-owned. The 3.4 gate test remains as the smoke guard. [frontend/src/components/providers/Providers.tsx, frontend/src/components/search/SearchPage.tsx]
+- ~~`FilterSidebar` `applied` re-sync effect untested / clobbers post-submit edits~~ — **RESOLVED**: SearchPage drives `applied` with stable identity (set only on query success); the resync effect now carries a dirty-guard (`dirtyRef`) — staged edits during a query flight are never clobbered (verified by the 3.3 "keeps staged filters editable" test); chip removals stage via the new `stagedPatch` prop. [frontend/src/components/search/FilterSidebar.tsx]
+- ~~Badge double-count landmine (draft.wilayas + wilayaCount)~~ — **RESOLVED**: badge = `countActiveFilters({ ...draft, wilayas: [] }) + wilayaCount` — wilayaCount is the single wilaya source while the combobox is wired (fires NOW because 3.5 drives applied). [frontend/src/components/search/FilterSidebar.tsx]
+- ~~Dual combobox instances keep independent query state~~ — **RESOLVED**: `WilayaCombobox` gained optional controlled `inputValue`/`onInputValueChange`; SearchPage owns ONE shared query state fed to both aside + drawer mounts (same React element, two mounts — synchronized by construction). [frontend/src/components/search/WilayaCombobox.tsx, SearchPage.tsx]
+
+## Deferred from: code review of story-3.5-results-table-stacked-row (2026-08-05)
+
+- `/companies/:id` company-name links render per the AC literal but 404 until the company-detail surface lands (CompanyDetailPage is not in Epic 3's story list). No stub created — the link is forward-correct; the detail story must land before launch. [frontend/src/components/search/ResultsTable.tsx, ResultsTableStackedRow.tsx]
+
 ## RESOLVED by Story 3.4 (2026-08-05)
 
 - ~~`elementFromPoint` jsdom polyfill returns the open drawer popup for every call site~~ — **RESOLVED**: polyfill now returns `[data-slot="combobox-content"]` first, then `[data-slot="drawer-popup"]`, else body. [frontend/src/test/mocks.ts]
@@ -8,12 +21,12 @@
 
 ## Deferred from: code review of story-3.3-filter-sidebar-component (2026-08-05)
 
-- No timeout/abort on search requests: a hung `searchPeople/searchCompanies` request leaves the page in `loading` forever (Apply permanently `aria-disabled`, no retry path). Add an axios timeout (service-level or the shared `HttpClient` config) — cross-cutting, touches all surfaces, belongs with the HTTP layer; revisit in Story 3.5 (results table) which will own retry/polling UX. [frontend/src/lib/api/search-service.ts, frontend/src/lib/api/http-client.ts]
-- `FilterSidebar` `applied` re-sync effect: documented contract for Story 3.6 (saved-search re-runs replace the draft). The clobber risk for post-submit edits is accepted and documented in the story; 3.5 (chips) and 3.6 must drive `applied` with stable object identity and re-verify the effect with tests. 3.4 note: SearchPage owns the wilaya state — 3.6 saved-search re-runs must restore `applied.wilayas` into the combobox via SearchPage.
+- ~~No timeout/abort on search requests~~ — **RESOLVED by 3.5**: shared `timeout: 20000` in the HttpClient default config + `signal` forwarding on search methods. [frontend/src/lib/api/search-service.ts, frontend/src/lib/api/http-client.ts]
+- ~~`FilterSidebar` `applied` re-sync effect~~ — **RESOLVED by 3.5**: `applied` driven with stable identity (set on query success) + dirty-guard resync + chips staging via `stagedPatch`; 3.6 saved-search re-runs restore `applied.wilayas` into the combobox via SearchPage. [frontend/src/components/search/FilterSidebar.tsx]
 - Physical-property classes inside stock shadcn base-nova wrappers (drawer.tsx `md:text-left`, `left-`/`right-` swipe-direction variants, tooltip.tsx arrow offsets, scroll-area.tsx `border-l`) — registry defaults, dormant in 3.3 (swipe-down only, mobile only). Revisit if the drawer is reused at ≥md in RTL or if a CSS lint gate is added; do not hand-edit registry files lightly. [frontend/src/components/ui/{drawer,tooltip,scroll-area}.tsx]
-- `aria-live="polite"` wraps the whole `#results` section; Story 3.5 must move the polite region to the count/status line before mounting the results table, or the entire table will be announced on every update. [frontend/src/components/search/SearchPage.tsx]
+- ~~`aria-live="polite"` wraps the whole `#results` section~~ — **RESOLVED by 3.5**: the polite region moved to the count/status line; the table is outside the live region. [frontend/src/components/search/SearchPage.tsx]
 - Registry-file class debt in the 3.4 combobox wrapper (physical `-ml-1`/`right-2`/`pl-1.5`/`pr-8` inside stock `combobox.tsx` ItemIndicator/ChipRemove, physical `data-[side=left|right]:` slide variants) — dormant (chips use custom remove buttons; popup sides default to bottom/start); revisit with the same caveat as the drawer debt. [frontend/src/components/ui/combobox.tsx]
-- AD-20 TanStack Query: **gate CHECK PASSED in Story 3.4** — v5 (`@tanstack/react-query@^5`) mounts + `useQuery` resolves under vitest 2.x/Vite-CJS (`frontend/src/__tests__/tanstack-query-gate.test.tsx`). Adoption (QueryClientProvider in Providers, queryFn wiring, cache consumers) is deferred to Story 3.5 (results table = first real consumer); the 3.4 combobox stays a pure local component consuming static WILAYAS. [frontend/src/__tests__/tanstack-query-gate.test.tsx]
+- ~~AD-20 TanStack Query: gate CHECK PASSED in Story 3.4~~ — **RESOLVED by 3.5**: adoption completed — QueryClientProvider in Providers, results query is a useQuery consumer, session stays SessionProvider-owned. [frontend/src/__tests__/tanstack-query-gate.test.tsx]
 
 ## Deferred from: code review of story-3.4-wilaya-combobox (2026-08-05)
 

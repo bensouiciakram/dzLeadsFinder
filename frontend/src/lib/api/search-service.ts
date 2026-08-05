@@ -52,8 +52,30 @@ export function buildFiltersPayload(
   }
 }
 
-export type SearchResult = {
-  results: unknown[]
+export type PeopleResultRow = {
+  id: string
+  name: string
+  role: string | null
+  company_name: string | null
+  company_id: string | null
+  wilaya_code: number | null
+  wilaya_name: string | null
+  revealed: boolean
+}
+
+export type CompanyResultRow = {
+  id: string
+  name: string
+  industry: string | null
+  industry_id: number | null
+  wilaya_code: number | null
+  wilaya_name: string | null
+  size_band: string | null
+  people_count: number
+}
+
+export type SearchResult<T> = {
+  results: T[]
   total: number
   page: number
   truncated: boolean
@@ -61,10 +83,16 @@ export type SearchResult = {
 }
 
 export class SearchService extends HttpClient {
-  async searchPeople(filtersJson: string, page = 1, sort = 'name:asc'): Promise<SearchResult> {
-    const { data } = await this.client.get<SearchResult>('/api/search/people/', {
-      params: { filters: filtersJson, page, sort },
-    })
+  async searchPeople(
+    filtersJson: string,
+    page = 1,
+    sort = 'name:asc',
+    signal?: AbortSignal,
+  ): Promise<SearchResult<PeopleResultRow>> {
+    const { data } = await this.client.get<SearchResult<PeopleResultRow>>(
+      '/api/search/people/',
+      { params: { filters: filtersJson, page, sort }, signal },
+    )
     return data
   }
 
@@ -72,10 +100,12 @@ export class SearchService extends HttpClient {
     filtersJson: string,
     page = 1,
     sort = 'name:asc',
-  ): Promise<SearchResult> {
-    const { data } = await this.client.get<SearchResult>('/api/search/companies/', {
-      params: { filters: filtersJson, page, sort },
-    })
+    signal?: AbortSignal,
+  ): Promise<SearchResult<CompanyResultRow>> {
+    const { data } = await this.client.get<SearchResult<CompanyResultRow>>(
+      '/api/search/companies/',
+      { params: { filters: filtersJson, page, sort }, signal },
+    )
     return data
   }
 }

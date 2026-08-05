@@ -22,7 +22,7 @@ SEARCH_FILTER_KEYS: frozenset[str] = frozenset(
 
 PEOPLE_SORT_FIELDS: frozenset[str] = frozenset({'name', 'role', 'company_name', 'wilaya_code'})
 COMPANY_SORT_FIELDS: frozenset[str] = frozenset(
-    {'name', 'size_band', 'wilaya_code', 'people_count'}
+    {'name', 'industry', 'size_band', 'wilaya_code', 'people_count'}
 )
 
 SORT_DIRECTIONS: frozenset[str] = frozenset({'asc', 'desc'})

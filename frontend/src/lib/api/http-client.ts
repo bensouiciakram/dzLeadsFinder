@@ -65,6 +65,7 @@ export class HttpClient {
       baseURL: '/api',
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' },
+      timeout: 20000,
       ...config,
     })
     this.client.interceptors.response.use(

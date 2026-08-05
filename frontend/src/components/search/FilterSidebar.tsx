@@ -2,7 +2,7 @@
 
 import { SlidersHorizontalIcon, XIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { CheckboxGroup } from '@/components/search/CheckboxGroup'
 import { KeywordField } from '@/components/search/KeywordField'
@@ -48,6 +48,9 @@ export type FilterSidebarProps = {
   rateLimitMessage?: string
   wilayaField?: ReactNode
   wilayaCount?: number
+  stagedPatch?: Partial<StagedFilters>
+  clearNonce?: number
+  onClearAllRequest?: () => void
   onSubmit: (filters: StagedFilters) => void
 }
 
@@ -59,6 +62,9 @@ export function FilterSidebar({
   rateLimitMessage,
   wilayaField,
   wilayaCount = 0,
+  stagedPatch,
+  clearNonce = 0,
+  onClearAllRequest,
   onSubmit,
 }: FilterSidebarProps) {
   const t = useTranslations()
@@ -66,10 +72,31 @@ export function FilterSidebar({
   const baseId = useId()
   const [draft, setDraft] = useState<StagedFilters>(() => applied ?? EMPTY_FILTERS)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const dirtyRef = useRef(false)
+  const lastAppliedRef = useRef<StagedFilters | null>(null)
+
+  const updateDraft = (updater: (current: StagedFilters) => StagedFilters) => {
+    dirtyRef.current = true
+    setDraft(updater)
+  }
 
   useEffect(() => {
-    setDraft(applied ?? EMPTY_FILTERS)
+    if (applied === undefined || applied === lastAppliedRef.current) return
+    lastAppliedRef.current = applied
+    if (!dirtyRef.current) setDraft(applied)
   }, [applied])
+
+  useEffect(() => {
+    if (stagedPatch === undefined) return
+    dirtyRef.current = true
+    setDraft((current) => ({ ...current, ...stagedPatch }))
+  }, [stagedPatch])
+
+  useEffect(() => {
+    if (clearNonce === 0) return
+    dirtyRef.current = false
+    setDraft({ ...EMPTY_FILTERS })
+  }, [clearNonce])
 
   useEffect(() => {
     if (sheetOpen) {
@@ -95,14 +122,14 @@ export function FilterSidebar({
     return () => media.removeEventListener('change', onResize)
   }, [sheetOpen])
 
-  const badgeCount = countActiveFilters(draft) + wilayaCount
+  const badgeCount = countActiveFilters({ ...draft, wilayas: [] }) + wilayaCount
 
   const toggleInList = (list: string[], value: string): string[] =>
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value]
 
   const toggleIndustries = (value: string) => {
     const id = Number(value)
-    setDraft((current) => ({
+    updateDraft((current) => ({
       ...current,
       industries: current.industries.includes(id)
         ? current.industries.filter((item) => item !== id)
@@ -112,12 +139,15 @@ export function FilterSidebar({
 
   const handleApply = () => {
     if (busy || rateLimited) return
+    dirtyRef.current = false
     onSubmit({ ...draft })
     setSheetOpen(false)
   }
 
   const handleClearAll = () => {
+    dirtyRef.current = false
     setDraft({ ...EMPTY_FILTERS })
+    onClearAllRequest?.()
   }
 
   const industryOptions = INDUSTRIES.map((industry) => ({
@@ -146,8 +176,8 @@ export function FilterSidebar({
             options={industryOptions}
             selected={draft.industries.map(String)}
             onToggle={toggleIndustries}
-            onSelectAll={() => setDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
-            onClear={() => setDraft((current) => ({ ...current, industries: [] }))}
+            onSelectAll={() => updateDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
+            onClear={() => updateDraft((current) => ({ ...current, industries: [] }))}
           />
         </section>
 
@@ -163,9 +193,9 @@ export function FilterSidebar({
               labelKey="search.filters.seniority"
               options={seniorityOptions}
               selected={draft.seniorities}
-              onToggle={(value) => setDraft((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
-              onSelectAll={() => setDraft((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
-              onClear={() => setDraft((current) => ({ ...current, seniorities: [] }))}
+              onToggle={(value) => updateDraft((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
+              onSelectAll={() => updateDraft((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
+              onClear={() => updateDraft((current) => ({ ...current, seniorities: [] }))}
             />
           </section>
         )}
@@ -177,9 +207,9 @@ export function FilterSidebar({
               labelKey="search.filters.size"
               options={sizeOptions}
               selected={draft.sizes}
-              onToggle={(value) => setDraft((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
-              onSelectAll={() => setDraft((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
-              onClear={() => setDraft((current) => ({ ...current, sizes: [] }))}
+              onToggle={(value) => updateDraft((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
+              onSelectAll={() => updateDraft((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
+              onClear={() => updateDraft((current) => ({ ...current, sizes: [] }))}
             />
             <label
               htmlFor={groupId('unknown-size')}
@@ -188,7 +218,7 @@ export function FilterSidebar({
               <Checkbox
                 id={groupId('unknown-size')}
                 checked={draft.includeUnknownSize}
-                onCheckedChange={() => setDraft((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
+                onCheckedChange={() => updateDraft((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
               />
               <span className="text-small">{t('search.filters.include_unknown_size')}</span>
             </label>
@@ -199,7 +229,7 @@ export function FilterSidebar({
           <KeywordField
             id={groupId('keyword')}
             value={draft.keyword}
-            onChange={(value) => setDraft((current) => ({ ...current, keyword: value }))}
+            onChange={(value) => updateDraft((current) => ({ ...current, keyword: value }))}
           />
         </section>
       </div>

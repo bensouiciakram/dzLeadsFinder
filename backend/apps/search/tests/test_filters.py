@@ -31,7 +31,7 @@ class TestBandTaxonomy:
     def test_sort_whitelists(self) -> None:
         assert PEOPLE_SORT_FIELDS == frozenset({'name', 'role', 'company_name', 'wilaya_code'})
         assert COMPANY_SORT_FIELDS == frozenset(
-            {'name', 'size_band', 'wilaya_code', 'people_count'}
+            {'name', 'industry', 'size_band', 'wilaya_code', 'people_count'}
         )
 
     def test_filter_keys_match_spec(self) -> None:
@@ -179,6 +179,13 @@ class TestParseSort:
         with pytest.raises(ValidationError) as exc:
             parse_sort('people_count:asc', PEOPLE_SORT_FIELDS)
         assert 'invalid_sort' in exc.value.get_codes()
+        with pytest.raises(ValidationError) as exc:
+            parse_sort('industry:asc', PEOPLE_SORT_FIELDS)
+        assert 'invalid_sort' in exc.value.get_codes()
+
+    def test_industry_is_a_company_sort_field(self) -> None:
+        assert parse_sort('industry:asc', COMPANY_SORT_FIELDS) == ('industry', 'asc')
+        assert parse_sort('industry:desc', COMPANY_SORT_FIELDS) == ('industry', 'desc')
 
 
 class TestParsePage:

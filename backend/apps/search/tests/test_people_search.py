@@ -67,11 +67,13 @@ class TestPeopleSearchResults:
         assert response.status_code == 200
         row = response.json()['results'][0]
         assert set(row.keys()) == {
-            'id', 'name', 'role', 'company_name', 'wilaya_code', 'wilaya_name', 'revealed'
+            'id', 'name', 'role', 'company_name', 'company_id', 'wilaya_code', 'wilaya_name',
+            'revealed',
         }
         assert row['name'] == 'Mohamed Amine'
         assert row['role'] == 'GÉRANT'
         assert row['company_name'] == 'SARL ÉLECTRICITÉ'
+        assert row['company_id'] == str(company.id)
         assert row['wilaya_code'] == 31
         assert row['revealed'] is False
 

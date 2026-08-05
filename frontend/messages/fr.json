@@ -286,13 +286,24 @@
     "results": {
       "count": "{count} résultats trouvés",
       "count_with_limit": "Affichage des {shown} premiers résultats sur {total} — affinez votre recherche",
-      "empty": "Aucun lead ne correspond à vos filtres. Essayez d'élargir vos critères.",
+      "empty": "Aucun lead ne correspond à vos filtres. Essayez d'élargir votre sélection de wilayas ou de secteurs.",
       "truncated": "Affinez votre recherche — seuls les 1 000 premiers résultats sont affichés",
       "refine_prompt": "Ajoutez plus de filtres pour affiner les résultats",
       "pagination": "Page {current} sur {total}",
       "not_run": "Appliquez des filtres puis lancez la recherche pour voir les résultats",
       "retry": "Réessayer",
-      "rate_limited": "Limite quotidienne de recherches atteinte — affinez vos filtres ou revenez demain"
+      "rate_limited": "Limite quotidienne de recherches atteinte — affinez vos filtres ou revenez demain",
+      "columns": {
+        "role": "Fonction",
+        "company": "Entreprise",
+        "people_count": "Nombre de contacts"
+      },
+      "sort_asc": "Trié par {column}, croissant",
+      "sort_desc": "Trié par {column}, décroissant",
+      "sort_default": "Trié par {column}, ordre par défaut",
+      "previous": "Précédent",
+      "clear_all": "Effacer tous les filtres",
+      "chip_remove": "Retirer {name}"
     },
     "sort": {
       "label": "Trier par",

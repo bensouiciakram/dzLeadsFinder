@@ -155,4 +155,85 @@ describe('SearchService', () => {
     expect(result.truncated).toBe(true)
     expect(result.refine_prompt).toBe('refine')
   })
+
+  it('carries a timeout on the shared axios instance (hung-request guard)', () => {
+    const service = new SearchService()
+    const defaults = (service as unknown as { client: { defaults: { timeout?: number } } })
+      .client.defaults
+    expect(defaults.timeout).toBeGreaterThan(0)
+  })
+
+  it('forwards an abort signal so in-flight queries can be cancelled', async () => {
+    const service = new SearchService()
+    const getMock = stubClient(service, {
+      results: [],
+      total: 0,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+    const controller = new AbortController()
+
+    await service.searchPeople('{}', 2, 'name:asc', controller.signal)
+
+    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+      params: { filters: '{}', page: 2, sort: 'name:asc' },
+      signal: controller.signal,
+    })
+  })
+
+  it('types people rows with the 3.2 people key set', async () => {
+    const service = new SearchService()
+    const row = {
+      id: '1',
+      name: 'Amina',
+      role: 'Gérante',
+      company_name: 'SARL X',
+      wilaya_code: 31,
+      wilaya_name: 'Oran',
+      revealed: false,
+    }
+    const getMock = stubClient(service, {
+      results: [row],
+      total: 1,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+
+    const result = await service.searchPeople('{}')
+    const first = result.results[0]
+    expect(first.name).toBe('Amina')
+    expect(first.wilaya_code).toBe(31)
+    expect(first.revealed).toBe(false)
+    expect(getMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('types company rows with the 3.2 company key set', async () => {
+    const service = new SearchService()
+    const getMock = stubClient(service, {
+      results: [
+        {
+          id: '9',
+          name: 'SARL X',
+          industry: 'Construction',
+          industry_id: 1,
+          wilaya_code: 16,
+          wilaya_name: 'Algiers',
+          size_band: '11-50',
+          people_count: 2,
+        },
+      ],
+      total: 1,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+
+    const result = await service.searchCompanies('{}')
+    const first = result.results[0]
+    expect(first.people_count).toBe(2)
+    expect(first.size_band).toBe('11-50')
+    expect(getMock).toHaveBeenCalledTimes(1)
+  })
 })

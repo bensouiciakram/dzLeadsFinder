@@ -47,13 +47,26 @@ export function filterWilayas(wilayas: Wilaya[], query: string): Wilaya[] {
 export type WilayaComboboxProps = {
   value: number[]
   onChange: (codes: number[]) => void
+  inputValue?: string
+  onInputValueChange?: (query: string) => void
 }
 
-export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
+export function WilayaCombobox({
+  value,
+  onChange,
+  inputValue,
+  onInputValueChange,
+}: WilayaComboboxProps) {
   const t = useTranslations()
   const locale = useLocale()
   const anchor = useComboboxAnchor()
-  const [query, setQuery] = useState('')
+  const [internalQuery, setInternalQuery] = useState('')
+
+  const query = inputValue ?? internalQuery
+  const handleQueryChange = (next: string) => {
+    setInternalQuery(next)
+    onInputValueChange?.(next)
+  }
 
   const selected = useMemo(() => {
     const byCode = new Map<number, Wilaya>()
@@ -68,7 +81,7 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
 
   const update = (codes: number[]) => {
     onChange(codes)
-    setQuery('')
+    handleQueryChange('')
   }
 
   const removeChip = (code: number) => {
@@ -95,7 +108,7 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
       if (!popupOpen) {
         event.preventDefault()
         suppressBaseUI(event)
-        setQuery('')
+        handleQueryChange('')
       }
       return
     }
@@ -114,7 +127,7 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
       value={selected}
       onValueChange={(wilayas) => update(wilayas.map((wilaya) => wilaya.code))}
       inputValue={query}
-      onInputValueChange={setQuery}
+      onInputValueChange={handleQueryChange}
     >
       <BaseCombobox.Chips
         ref={anchor}
