@@ -240,4 +240,77 @@ describe('SearchPage', () => {
     expect(screen.getAllByText('server.limit.message').length).toBe(2)
     expect(hoisted.searchPeople).toHaveBeenCalledTimes(1)
   })
+
+  it('merges wilaya combobox selections into the people query payload', async () => {
+    const { call, resolve } = deferredResult()
+    hoisted.searchPeople.mockImplementation(call)
+    render(<SearchPage tab="people" />)
+
+    const input = screen.getByRole('combobox')
+    fireEvent.mouseDown(input)
+    fireEvent.mouseUp(input)
+    fireEvent.click(input)
+    input.focus()
+    fireEvent.click(await screen.findByRole('option', { name: '31 — Oran' }))
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+
+    expect(call).toHaveBeenCalledTimes(1)
+    const expectedPayload = JSON.stringify(
+      buildFiltersPayload(
+        { industries: [], wilayas: [31], seniorities: [], sizes: [], includeUnknownSize: false, keyword: '' },
+        'people',
+      ),
+    )
+    expect(call).toHaveBeenCalledWith(expectedPayload)
+
+    resolve()
+    await screen.findByText('search.results.count')
+  })
+
+  it('merges multiple wilaya selections into the companies query payload', async () => {
+    const { call, resolve } = deferredResult()
+    hoisted.searchCompanies.mockImplementation(call)
+    render(<SearchPage tab="companies" />)
+
+    const input = screen.getByRole('combobox')
+    fireEvent.mouseDown(input)
+    fireEvent.mouseUp(input)
+    fireEvent.click(input)
+    input.focus()
+    fireEvent.click(await screen.findByRole('option', { name: '31 — Oran' }))
+    fireEvent.click(await screen.findByRole('option', { name: '16 — Algiers' }))
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+
+    const expectedPayload = JSON.stringify(
+      buildFiltersPayload(
+        { industries: [], wilayas: [31, 16], seniorities: [], sizes: [], includeUnknownSize: false, keyword: '' },
+        'companies',
+      ),
+    )
+    expect(call).toHaveBeenCalledWith(expectedPayload)
+
+    resolve()
+    await screen.findByText('search.results.count')
+  })
+
+  it('feeds the sidebar badge with the live wilaya selection count', async () => {
+    hoisted.searchPeople.mockResolvedValue(RESULT)
+    render(<SearchPage tab="people" />)
+
+    const input = screen.getByRole('combobox')
+    fireEvent.mouseDown(input)
+    fireEvent.mouseUp(input)
+    fireEvent.click(input)
+    input.focus()
+    fireEvent.click(await screen.findByRole('option', { name: '31 — Oran' }))
+    fireEvent.click(await screen.findByRole('option', { name: '16 — Algiers' }))
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(within(trigger).getByText('2')).toBeInTheDocument()
+  })
 })

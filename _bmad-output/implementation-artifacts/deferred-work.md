@@ -1,13 +1,19 @@
 # Deferred Work
 
+## RESOLVED by Story 3.4 (2026-08-05)
+
+- ~~`elementFromPoint` jsdom polyfill returns the open drawer popup for every call site~~ — **RESOLVED**: polyfill now returns `[data-slot="combobox-content"]` first, then `[data-slot="drawer-popup"]`, else body. [frontend/src/test/mocks.ts]
+- ~~Cross-stack industry parity is dev-run only~~ — **RESOLVED**: `backend/apps/search/tests/test_wilaya_parity.py` asserts industries lockstep (count, ids 1..N, name_en order) with a strict TS-array parser. [backend/apps/search/tests/test_wilaya_parity.py]
+- ~~No cross-stack parity test between `backend/apps/search/data/wilayas.py` and `frontend/src/data/wilayas.ts`~~ — **RESOLVED**: the same parity module asserts wilaya lockstep (58 entries, codes 1–58, trilingual non-blank); mutation-verified (code swap → test fails). Canonical source = the frontend TS files. [backend/apps/search/tests/test_wilaya_parity.py]
+
 ## Deferred from: code review of story-3.3-filter-sidebar-component (2026-08-05)
 
 - No timeout/abort on search requests: a hung `searchPeople/searchCompanies` request leaves the page in `loading` forever (Apply permanently `aria-disabled`, no retry path). Add an axios timeout (service-level or the shared `HttpClient` config) — cross-cutting, touches all surfaces, belongs with the HTTP layer; revisit in Story 3.5 (results table) which will own retry/polling UX. [frontend/src/lib/api/search-service.ts, frontend/src/lib/api/http-client.ts]
-- `elementFromPoint` jsdom polyfill in `src/test/mocks.ts` returns the open drawer popup for every call site — fine today, but it will mask real pointer hit-testing for the 3.4 wilaya combobox, tooltips, and any popup positioning logic. Narrow it (or scope by test) when 3.4 lands. [frontend/src/test/mocks.ts]
-- Cross-stack industry parity is dev-run only: `frontend/src/data/industries.ts` must stay in lockstep with `backend/apps/search/data/industries.py` (seed order = serial ids). Extend the 3.4 wilaya parity item (below) to cover industries with a real parity check. [frontend/src/data/industries.ts]
-- `aria-live="polite"` wraps the whole `#results` section; Story 3.5 must move the polite region to the count/status line before mounting the results table, or the entire table will be announced on every update. [frontend/src/components/search/SearchPage.tsx]
+- `FilterSidebar` `applied` re-sync effect: documented contract for Story 3.6 (saved-search re-runs replace the draft). The clobber risk for post-submit edits is accepted and documented in the story; 3.5 (chips) and 3.6 must drive `applied` with stable object identity and re-verify the effect with tests. 3.4 note: SearchPage owns the wilaya state — 3.6 saved-search re-runs must restore `applied.wilayas` into the combobox via SearchPage.
 - Physical-property classes inside stock shadcn base-nova wrappers (drawer.tsx `md:text-left`, `left-`/`right-` swipe-direction variants, tooltip.tsx arrow offsets, scroll-area.tsx `border-l`) — registry defaults, dormant in 3.3 (swipe-down only, mobile only). Revisit if the drawer is reused at ≥md in RTL or if a CSS lint gate is added; do not hand-edit registry files lightly. [frontend/src/components/ui/{drawer,tooltip,scroll-area}.tsx]
-- `FilterSidebar` `applied` re-sync effect: documented contract for Story 3.6 (saved-search re-runs replace the draft). The clobber risk for post-submit edits is accepted and documented in the story; 3.5 (chips) and 3.6 must drive `applied` with stable object identity and re-verify the effect with tests.
+- `aria-live="polite"` wraps the whole `#results` section; Story 3.5 must move the polite region to the count/status line before mounting the results table, or the entire table will be announced on every update. [frontend/src/components/search/SearchPage.tsx]
+- Registry-file class debt in the 3.4 combobox wrapper (physical `-ml-1`/`right-2`/`pl-1.5`/`pr-8` inside stock `combobox.tsx` ItemIndicator/ChipRemove, physical `data-[side=left|right]:` slide variants) — dormant (chips use custom remove buttons; popup sides default to bottom/start); revisit with the same caveat as the drawer debt. [frontend/src/components/ui/combobox.tsx]
+- AD-20 TanStack Query: **gate CHECK PASSED in Story 3.4** — v5 (`@tanstack/react-query@^5`) mounts + `useQuery` resolves under vitest 2.x/Vite-CJS (`frontend/src/__tests__/tanstack-query-gate.test.tsx`). Adoption (QueryClientProvider in Providers, queryFn wiring, cache consumers) is deferred to Story 3.5 (results table = first real consumer); the 3.4 combobox stays a pure local component consuming static WILAYAS. [frontend/src/__tests__/tanstack-query-gate.test.tsx]
 
 ## Deferred from: code review of story-3.2-search-api-endpoints (2026-08-05)
 

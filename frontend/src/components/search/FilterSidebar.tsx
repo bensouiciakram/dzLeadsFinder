@@ -9,16 +9,7 @@ import { KeywordField } from '@/components/search/KeywordField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer'
-import { Select, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { INDUSTRIES, type Industry } from '@/data/industries'
 import {
   EMPTY_FILTERS,
@@ -162,7 +153,7 @@ export function FilterSidebar({
 
         <section data-testid="filter-group">
           <h3 className="text-caption text-muted-foreground">{t('search.filters.wilaya')}</h3>
-          <div className="mt-2">{wilayaField ?? <WilayaPlaceholder describedById={groupId('wilaya-soon')} />}</div>
+          <div className="mt-2">{wilayaField}</div>
         </section>
 
         {tab === 'people' && (
@@ -284,26 +275,5 @@ export function FilterSidebar({
         </DrawerContent>
       </Drawer>
     </>
-  )
-}
-
-function WilayaPlaceholder({ describedById }: { describedById: string }) {
-  const t = useTranslations()
-
-  return (
-    <div>
-      <Select disabled>
-        <SelectTrigger
-          data-testid="wilaya-placeholder"
-          aria-describedby={describedById}
-          className="min-h-11 w-full justify-start text-start md:h-8"
-        >
-          <SelectValue placeholder={t('search.filters.wilaya_placeholder')} />
-        </SelectTrigger>
-      </Select>
-      <p id={describedById} className="mt-1 text-caption text-muted-foreground">
-        {t('search.filters.wilaya_soon')}
-      </p>
-    </div>
   )
 }

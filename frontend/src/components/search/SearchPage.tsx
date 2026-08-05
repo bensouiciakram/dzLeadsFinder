@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 
 import { FilterSidebar } from '@/components/search/FilterSidebar'
+import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import { Button } from '@/components/ui/button'
 import {
   buildFiltersPayload,
@@ -33,6 +34,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [result, setResult] = useState<SearchResult | null>(null)
   const [rateLimitMessage, setRateLimitMessage] = useState<string | undefined>(undefined)
   const [lastFilters, setLastFilters] = useState<StagedFilters | null>(null)
+  const [wilayas, setWilayas] = useState<number[]>([])
   const inFlightRef = useRef(false)
 
   const runSearch = async (filters: StagedFilters) => {
@@ -79,7 +81,9 @@ export function SearchPage({ tab }: SearchPageProps) {
         busy={phase === 'loading'}
         rateLimited={phase === 'rate_limited'}
         rateLimitMessage={rateLimitMessage}
-        onSubmit={(filters) => void runSearch(filters)}
+        wilayaField={<WilayaCombobox value={wilayas} onChange={setWilayas} />}
+        wilayaCount={wilayas.length}
+        onSubmit={(filters) => void runSearch({ ...filters, wilayas })}
       />
       <main className="min-w-0 grow px-gutter py-6 md:px-gutter-desktop">
         <h1 className="sr-only">{t('search.title')}</h1>

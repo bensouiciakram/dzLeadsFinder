@@ -277,7 +277,10 @@
       "select_all": "Select all",
       "clear_group": "Clear",
       "include_unknown_size": "Include unknown size",
-      "wilaya_soon": "Wilaya picker coming soon",
+      "wilaya_clear": "Clear wilaya selection",
+      "wilaya_label": "Search wilayas by code or name",
+      "wilaya_more": "+{count} more",
+      "wilaya_remove": "Remove {name}",
       "keyword_hint": "Diacritics don't matter — \"café\" finds \"cafe\""
     },
     "results": {

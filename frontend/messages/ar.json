@@ -277,7 +277,10 @@
       "select_all": "تحديد الكل",
       "clear_group": "مسح",
       "include_unknown_size": "تضمين الحجم غير المعروف",
-      "wilaya_soon": "محدد الولايات قريبًا",
+      "wilaya_clear": "مسح تحديد الولايات",
+      "wilaya_label": "ابحث عن الولايات بالرمز أو الاسم",
+      "wilaya_more": "+{count} أخرى",
+      "wilaya_remove": "إزالة {name}",
       "keyword_hint": "التشكيل لا يؤثر — «café» يجد «cafe»"
     },
     "results": {

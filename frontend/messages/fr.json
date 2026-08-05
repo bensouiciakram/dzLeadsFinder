@@ -277,7 +277,10 @@
       "select_all": "Tout sélectionner",
       "clear_group": "Effacer",
       "include_unknown_size": "Inclure les tailles inconnues",
-      "wilaya_soon": "Sélecteur de wilayas bientôt disponible",
+      "wilaya_clear": "Effacer la sélection de wilayas",
+      "wilaya_label": "Rechercher des wilayas par code ou par nom",
+      "wilaya_more": "+{count} autres",
+      "wilaya_remove": "Retirer {name}",
       "keyword_hint": "Les accents ne comptent pas — « café » trouve aussi « cafe »"
     },
     "results": {

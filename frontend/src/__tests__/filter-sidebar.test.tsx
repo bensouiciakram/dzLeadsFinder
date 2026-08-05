@@ -84,21 +84,21 @@ describe('FilterSidebar desktop', () => {
     expect(within(industryGroup).getByRole('checkbox', { name: 'Construction' })).toBeInTheDocument()
   })
 
-  it('renders a disabled wilaya placeholder trigger with a coming-soon caption', () => {
-    renderSidebar()
-
-    const trigger = screen.getByTestId('wilaya-placeholder')
-    expect(trigger).toBeDisabled()
-    expect(trigger).toHaveTextContent('search.filters.wilaya_placeholder')
-    const caption = screen.getByText('search.filters.wilaya_soon')
-    expect(caption.id).toBe(trigger.getAttribute('aria-describedby'))
-  })
-
   it('renders a custom wilaya field in place of the placeholder', () => {
     renderSidebar({ wilayaField: <div data-testid="custom-wilaya" /> })
 
     expect(screen.getByTestId('custom-wilaya')).toBeInTheDocument()
     expect(screen.queryByTestId('wilaya-placeholder')).not.toBeInTheDocument()
+  })
+
+  it('keeps active wilayas in the badge after Clear All (wilayaCount is a live active-filter count)', () => {
+    renderSidebar({ wilayaCount: 3 })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.clear' }))
+
+    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(within(trigger).getByText('3')).toBeInTheDocument()
   })
 
   it('stages edits without firing the query', () => {

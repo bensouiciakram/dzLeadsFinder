@@ -28,6 +28,8 @@ if (
   typeof document.elementFromPoint !== 'function'
 ) {
   document.elementFromPoint = () => {
+    const combobox = document.querySelector('[data-slot="combobox-content"]')
+    if (combobox) return combobox
     const popup = document.querySelector('[data-slot="drawer-popup"]')
     return popup ?? document.body
   }
