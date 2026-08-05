@@ -9,11 +9,20 @@ import { INDUSTRIES } from '@/data/industries'
 import { WILAYAS } from '@/data/wilayas'
 import type { StagedFilters } from '@/lib/api/search-service'
 
+export type ChipsFacet =
+  | 'industries'
+  | 'wilayas'
+  | 'seniorities'
+  | 'sizes'
+  | 'keyword'
+  | 'includeUnknownSize'
+
 type Chip = {
   key: string
   label: string
   code?: string
-  patch: Partial<StagedFilters>
+  facet: ChipsFacet
+  value: number | string | boolean
 }
 
 function MaybeArabic({ text }: { text: string }) {
@@ -27,10 +36,10 @@ function MaybeArabic({ text }: { text: string }) {
 
 export type ActiveFilterChipsProps = {
   filters: StagedFilters
-  onPatch: (patch: Partial<StagedFilters>) => void
+  onRemove: (facet: ChipsFacet, value: number | string | boolean) => void
 }
 
-export function ActiveFilterChips({ filters, onPatch }: ActiveFilterChipsProps) {
+export function ActiveFilterChips({ filters, onRemove }: ActiveFilterChipsProps) {
   const t = useTranslations()
   const locale = useLocale()
 
@@ -39,11 +48,7 @@ export function ActiveFilterChips({ filters, onPatch }: ActiveFilterChipsProps) 
     const industry = INDUSTRIES.find((candidate) => candidate.id === id)
     if (industry === undefined) continue
     const name = locale === 'ar' ? industry.name_ar : locale === 'fr' ? industry.name_fr : industry.name_en
-    chips.push({
-      key: `industry-${id}`,
-      label: name,
-      patch: { industries: filters.industries.filter((candidate) => candidate !== id) },
-    })
+    chips.push({ key: `industry-${id}`, label: name, facet: 'industries', value: id })
   }
   for (const code of filters.wilayas) {
     const wilaya = WILAYAS.find((candidate) => candidate.code === code)
@@ -52,35 +57,36 @@ export function ActiveFilterChips({ filters, onPatch }: ActiveFilterChipsProps) 
       key: `wilaya-${code}`,
       label: wilayaDisplayName(wilaya, locale),
       code: String(code),
-      patch: { wilayas: filters.wilayas.filter((candidate) => candidate !== code) },
+      facet: 'wilayas',
+      value: code,
     })
   }
   for (const seniority of filters.seniorities) {
     chips.push({
       key: `seniority-${seniority}`,
       label: t(`search.seniority.${seniority}`),
-      patch: { seniorities: filters.seniorities.filter((candidate) => candidate !== seniority) },
+      facet: 'seniorities',
+      value: seniority,
     })
   }
   for (const size of filters.sizes) {
     chips.push({
       key: `size-${size}`,
-      label: t(bandLabelKey(size)),
-      patch: { sizes: filters.sizes.filter((candidate) => candidate !== size) },
+      label:
+        bandLabelKey(size) === null ? size : t(bandLabelKey(size) as string),
+      facet: 'sizes',
+      value: size,
     })
   }
   if (filters.keyword.trim().length > 0) {
-    chips.push({
-      key: 'keyword',
-      label: filters.keyword,
-      patch: { keyword: '' },
-    })
+    chips.push({ key: 'keyword', label: filters.keyword, facet: 'keyword', value: filters.keyword })
   }
   if (filters.includeUnknownSize) {
     chips.push({
       key: 'unknown-size',
       label: t('search.filters.include_unknown_size'),
-      patch: { includeUnknownSize: false },
+      facet: 'includeUnknownSize',
+      value: true,
     })
   }
 
@@ -101,7 +107,7 @@ export function ActiveFilterChips({ filters, onPatch }: ActiveFilterChipsProps) 
             type="button"
             aria-label={t('search.results.chip_remove', { name: chip.label })}
             className="flex size-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:size-4"
-            onClick={() => onPatch(chip.patch)}
+            onClick={() => onRemove(chip.facet, chip.value)}
           >
             <XIcon className="pointer-events-none size-4" />
           </button>

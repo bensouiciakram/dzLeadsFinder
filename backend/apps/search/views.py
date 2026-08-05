@@ -64,8 +64,8 @@ def _order_by(qs: QuerySet, field: str, direction: str, sort_map: dict[str, str]
     key = sort_map[field]
     expression: Expression = _SIZE_BAND_ORDER if key == 'size_band' else F(key)
     if direction == 'desc':
-        return qs.order_by(expression.desc(nulls_last=True))
-    return qs.order_by(expression.asc(nulls_last=True))
+        return qs.order_by(expression.desc(nulls_last=True), 'id')
+    return qs.order_by(expression.asc(nulls_last=True), 'id')
 
 
 def _truncated_payload(total: int, page: int, user: object) -> dict[str, object]:
@@ -116,7 +116,7 @@ def _people_row(person: Person, locale: str) -> dict[str, object]:
         'id': str(person.id),
         'name': person.name,
         'role': person.role,
-        'company_name': company.name if company is not None else None,
+        'company_name': (company.name or None) if company is not None else None,
         'company_id': str(company.id) if company is not None else None,
         'wilaya_code': wilaya.code if wilaya is not None else None,
         'wilaya_name': getattr(wilaya, f'name_{locale}') if wilaya is not None else None,

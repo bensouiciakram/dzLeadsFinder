@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { CheckboxGroup } from '@/components/search/CheckboxGroup'
 import { KeywordField } from '@/components/search/KeywordField'
+import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -40,6 +41,32 @@ function industryName(industry: Industry, locale: string): string {
   return industry.name_en
 }
 
+export type ChipRemoveEvent = {
+  facet: ChipsFacet
+  value: number | string | boolean
+}
+
+export function removeFacetValue(
+  filters: StagedFilters,
+  facet: ChipsFacet,
+  value: number | string | boolean,
+): StagedFilters {
+  switch (facet) {
+    case 'industries':
+      return { ...filters, industries: filters.industries.filter((item) => item !== value) }
+    case 'wilayas':
+      return { ...filters, wilayas: filters.wilayas.filter((item) => item !== value) }
+    case 'seniorities':
+      return { ...filters, seniorities: filters.seniorities.filter((item) => item !== value) }
+    case 'sizes':
+      return { ...filters, sizes: filters.sizes.filter((item) => item !== value) }
+    case 'keyword':
+      return { ...filters, keyword: '' }
+    case 'includeUnknownSize':
+      return { ...filters, includeUnknownSize: false }
+  }
+}
+
 export type FilterSidebarProps = {
   tab: SearchTab
   applied?: StagedFilters
@@ -48,7 +75,7 @@ export type FilterSidebarProps = {
   rateLimitMessage?: string
   wilayaField?: ReactNode
   wilayaCount?: number
-  stagedPatch?: Partial<StagedFilters>
+  chipRemove?: ChipRemoveEvent
   clearNonce?: number
   onClearAllRequest?: () => void
   onSubmit: (filters: StagedFilters) => void
@@ -62,7 +89,7 @@ export function FilterSidebar({
   rateLimitMessage,
   wilayaField,
   wilayaCount = 0,
-  stagedPatch,
+  chipRemove,
   clearNonce = 0,
   onClearAllRequest,
   onSubmit,
@@ -87,10 +114,10 @@ export function FilterSidebar({
   }, [applied])
 
   useEffect(() => {
-    if (stagedPatch === undefined) return
+    if (chipRemove === undefined) return
     dirtyRef.current = true
-    setDraft((current) => ({ ...current, ...stagedPatch }))
-  }, [stagedPatch])
+    setDraft((current) => removeFacetValue(current, chipRemove.facet, chipRemove.value))
+  }, [chipRemove])
 
   useEffect(() => {
     if (clearNonce === 0) return
@@ -288,18 +315,25 @@ export function FilterSidebar({
           </Badge>
         </DrawerTrigger>
         <span className="sr-only" role="status">
-          {t('search.filters.badge', { count: badgeCount })}
+          {t('search.filters.badge', { count: String(badgeCount) })}
         </span>
         <DrawerContent>
-          <DrawerHeader className="relative border-b border-border">
-            <DrawerTitle>{t('search.filters.title')}</DrawerTitle>
-            <DrawerClose
-              aria-label={t('common.actions.close')}
-              className="absolute end-4 top-3 inline-flex size-11 items-center justify-center rounded-lg hover:bg-muted md:size-8"
-            >
-              <XIcon />
-            </DrawerClose>
-          </DrawerHeader>
+        <DrawerHeader className="relative border-b border-border">
+          <DrawerTitle>{t('search.filters.title')}</DrawerTitle>
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="absolute end-14 top-3 min-h-11 cursor-pointer rounded-md text-caption text-primary hover:text-primary-hover md:h-8"
+          >
+            {t('search.filters.clear')}
+          </button>
+          <DrawerClose
+            aria-label={t('common.actions.close')}
+            className="absolute end-4 top-3 inline-flex size-11 items-center justify-center rounded-lg hover:bg-muted md:size-8"
+          >
+            <XIcon />
+          </DrawerClose>
+        </DrawerHeader>
           <div className="grow overflow-y-auto p-4">{renderGroups('drawer')}</div>
           <DrawerFooter className="border-t border-border">{renderApply('drawer')}</DrawerFooter>
         </DrawerContent>

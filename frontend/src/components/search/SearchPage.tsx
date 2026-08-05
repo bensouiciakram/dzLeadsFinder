@@ -1,13 +1,13 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
-import { ActiveFilterChips } from '@/components/search/ActiveFilterChips'
-import { FilterSidebar } from '@/components/search/FilterSidebar'
+import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
+import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
 import {
   ResultsTable,
   columnLabelKey,
@@ -16,6 +16,7 @@ import {
 import { ResultsTableStackedRow } from '@/components/search/ResultsTableStackedRow'
 import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   buildFiltersPayload,
   searchService,
@@ -26,6 +27,8 @@ import {
 } from '@/lib/api/search-service'
 
 const PAGE_SIZE = 100
+const MAX_NAVIGABLE_PAGES = 10
+const SKELETON_CARDS = 3
 
 type Phase = 'idle' | 'loading' | 'error' | 'rate_limited'
 
@@ -53,6 +56,7 @@ export type SearchPageProps = {
 
 export function SearchPage({ tab }: SearchPageProps) {
   const t = useTranslations()
+  const queryClient = useQueryClient()
   const [submitted, setSubmitted] = useState<Submitted | null>(null)
   const [submitNonce, setSubmitNonce] = useState(0)
   const [applied, setApplied] = useState<StagedFilters | null>(null)
@@ -61,7 +65,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [announcement, setAnnouncement] = useState<string | null>(null)
   const [wilayas, setWilayas] = useState<number[]>([])
   const [wilayaQuery, setWilayaQuery] = useState('')
-  const [stagedPatch, setStagedPatch] = useState<Partial<StagedFilters> | null>(null)
+  const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
   const [clearNonce, setClearNonce] = useState(0)
 
   const query = useQuery({
@@ -97,6 +101,7 @@ export function SearchPage({ tab }: SearchPageProps) {
 
   useEffect(() => {
     if (!query.isError) return
+    setAnnouncement(null)
     const error = query.error as SearchError | null
     if (error?.response?.status === 429) {
       setRateLimitMessage(error.response.data?.detail)
@@ -109,11 +114,16 @@ export function SearchPage({ tab }: SearchPageProps) {
     }
   }, [query.isSuccess, submitted])
 
-  const runSearch = (filters: StagedFilters) => {
+  const beginSearch = () => {
+    void queryClient.cancelQueries({ queryKey: ['search', tab] })
     setRateLimitMessage(undefined)
-    setStagedPatch(null)
+    setChipRemove(null)
     setAnnouncement(null)
     setSubmitNonce((nonce) => nonce + 1)
+  }
+
+  const runSearch = (filters: StagedFilters) => {
+    beginSearch()
     setSubmitted({
       filters,
       filtersJson: JSON.stringify(buildFiltersPayload(filters, tab)),
@@ -125,14 +135,15 @@ export function SearchPage({ tab }: SearchPageProps) {
   const handleSortChange = (next: SortState) => {
     if (submitted === null) return
     setSort(next)
+    beginSearch()
     const announcementKey =
       next.dir === null
         ? 'search.results.sort_default'
         : next.dir === 'asc'
           ? 'search.results.sort_asc'
           : 'search.results.sort_desc'
-    setAnnouncement(t(announcementKey, { column: t(columnLabelKey(next.field)) }))
-    setSubmitNonce((nonce) => nonce + 1)
+    const columnKey = next.dir === null ? columnLabelKey('name') : columnLabelKey(next.field)
+    setAnnouncement(t(announcementKey, { column: t(columnKey) }))
     setSubmitted((current) =>
       current === null ? null : { ...current, page: 1, sort: sortParamFor(next) },
     )
@@ -140,13 +151,13 @@ export function SearchPage({ tab }: SearchPageProps) {
 
   const handlePage = (next: number) => {
     if (submitted === null || query.data === undefined) return
+    beginSearch()
     setAnnouncement(
       t('search.results.pagination', {
         current: String(next),
         total: String(totalPages(query.data.total)),
       }),
     )
-    setSubmitNonce((nonce) => nonce + 1)
     setSubmitted((current) => (current === null ? null : { ...current, page: next }))
   }
 
@@ -158,11 +169,19 @@ export function SearchPage({ tab }: SearchPageProps) {
     setClearNonce((nonce) => nonce + 1)
     setWilayas([])
     setWilayaQuery('')
-    setStagedPatch(null)
+    setChipRemove(null)
     setApplied(null)
     setSubmitted(null)
+    setSort(null)
     setAnnouncement(null)
     setRateLimitMessage(undefined)
+  }
+
+  const handleChipRemove = (facet: ChipsFacet, value: number | string | boolean) => {
+    setChipRemove({ facet, value })
+    if (facet === 'wilayas' && typeof value === 'number') {
+      setWilayas((current) => current.filter((code) => code !== value))
+    }
   }
 
   const rows =
@@ -193,7 +212,7 @@ export function SearchPage({ tab }: SearchPageProps) {
           />
         }
         wilayaCount={wilayas.length}
-        stagedPatch={stagedPatch ?? undefined}
+        chipRemove={chipRemove ?? undefined}
         clearNonce={clearNonce}
         onClearAllRequest={handleClearAll}
         onSubmit={(filters) => void runSearch({ ...filters, wilayas })}
@@ -276,6 +295,20 @@ export function SearchPage({ tab }: SearchPageProps) {
               {phase === 'loading' && (
                 <div className="mt-4">
                   <ResultsTable tab={tab} rows={[]} sort={sort} onSortChange={handleSortChange} skeleton />
+                  <div className="flex flex-col gap-3 md:hidden">
+                    {Array.from({ length: SKELETON_CARDS }, (_, index) => (
+                      <div
+                        key={`skeleton-card-${index}`}
+                        data-testid="skeleton-card"
+                        aria-hidden="true"
+                        className="rounded-lg border border-border bg-card p-gutter"
+                      >
+                        <Skeleton className="h-5 w-2/3" />
+                        <Skeleton className="mt-2 h-4 w-full" />
+                        <Skeleton className="mt-2 h-4 w-1/2" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -290,7 +323,7 @@ export function SearchPage({ tab }: SearchPageProps) {
               {phase === 'idle' && query.data !== undefined && query.data.total > 0 && (
                 <div className="mt-4">
                   {applied !== null && (
-                    <ActiveFilterChips filters={applied} onPatch={setStagedPatch} />
+                    <ActiveFilterChips filters={applied} onRemove={handleChipRemove} />
                   )}
                   <div data-testid="results-slot" className="mt-4">
                     <ResultsTable tab={tab} rows={rows} sort={sort} onSortChange={handleSortChange} />
@@ -344,5 +377,5 @@ export function SearchPage({ tab }: SearchPageProps) {
 }
 
 function totalPages(total: number): number {
-  return Math.max(1, Math.ceil(total / PAGE_SIZE))
+  return Math.min(MAX_NAVIGABLE_PAGES, Math.max(1, Math.ceil(total / PAGE_SIZE)))
 }

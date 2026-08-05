@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
-import { isArabic } from '@/components/search/ResultsTable'
+import { bandLabelKey, isArabic } from '@/components/search/ResultsTable'
 import type {
   CompanyResultRow,
   PeopleResultRow,
@@ -24,7 +24,7 @@ function EmDash() {
 }
 
 function CompanyLink({ name, companyId }: { name: string | null; companyId: string | null }) {
-  if (name === null || companyId === null) return <EmDash />
+  if (!name || companyId === null) return <EmDash />
   return (
     <Link
       href={`/companies/${companyId}`}
@@ -40,9 +40,9 @@ function RevealSlot() {
   return (
     <button
       type="button"
-      aria-disabled="true"
+      disabled
       data-testid="reveal-slot"
-      className="mt-3 flex w-full min-h-11 items-center justify-center rounded-md text-small text-primary md:min-h-8"
+      className="mt-3 flex w-full min-h-11 items-center justify-center rounded-md text-small text-primary disabled:opacity-50 md:min-h-8"
     >
       {t('common.actions.reveal')}
     </button>
@@ -82,7 +82,9 @@ export function ResultsTableStackedRow({ tab, rows }: ResultsTableStackedRowProp
               company?.industry ?? null,
               company?.size_band === null
                 ? null
-                : t(`search.size.${company?.size_band?.replace('-', '_').replace('+', '_plus')}`),
+                : bandLabelKey(company?.size_band ?? '') === null
+                  ? company?.size_band ?? null
+                  : t(bandLabelKey(company?.size_band ?? '') as string),
             ]
         return (
           <article
@@ -105,11 +107,24 @@ export function ResultsTableStackedRow({ tab, rows }: ResultsTableStackedRowProp
               </p>
             ))}
             <WilayaLine code={row.wilaya_code} name={row.wilaya_name} />
-            {people && person?.company_name !== null ? (
+            {people && (
               <p className="mt-0.5 text-small">
-                <CompanyLink name={person?.company_name ?? null} companyId={person?.company_id ?? null} />
+                {person?.company_name === null ? (
+                  <EmDash />
+                ) : (
+                  <CompanyLink
+                    name={person?.company_name ?? null}
+                    companyId={person?.company_id ?? null}
+                  />
+                )}
               </p>
-            ) : null}
+            )}
+            {!people && (
+              <p className="mt-0.5 text-small text-muted-foreground">
+                {t('search.results.columns.people_count')}:{' '}
+                <span className="tabular-nums">{String(company?.people_count ?? 0)}</span>
+              </p>
+            )}
             <RevealSlot />
           </article>
         )

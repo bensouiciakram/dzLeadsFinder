@@ -77,6 +77,13 @@ class TestPeopleSearchResults:
         assert row['wilaya_code'] == 31
         assert row['revealed'] is False
 
+    def test_empty_company_name_becomes_none(self, search_session: _Session) -> None:
+        client, _ = search_session('en')
+        company = _company('')
+        _person('Amina', company=company)
+        row = client.get('/api/search/people/').json()['results'][0]
+        assert row['company_name'] is None
+
     def test_wilaya_name_follows_user_locale(self, search_session: _Session) -> None:
         wilaya = Wilaya.objects.get(code=31)
         _person('Karim', company=_company('Alpha', wilaya=wilaya))

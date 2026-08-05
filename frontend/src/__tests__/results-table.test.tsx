@@ -92,13 +92,20 @@ describe('bandLabelKey', () => {
     expect(bandLabelKey('11-50')).toBe('search.size.11_50')
     expect(bandLabelKey('500+')).toBe('search.size.500_plus')
   })
+
+  it('returns null for unknown bands so raw values render instead of keys', () => {
+    expect(bandLabelKey('1000+')).toBeNull()
+  })
 })
 
 describe('isArabic', () => {
-  it('detects Arabic script fragments', () => {
+  it('detects pure Arabic-script fragments', () => {
     expect(isArabic('وهران')).toBe(true)
     expect(isArabic('Oran')).toBe(false)
-    expect(isArabic('الجزائر SARL')).toBe(true)
+  })
+
+  it('does not wrap mixed Latin/Arabic strings as RTL', () => {
+    expect(isArabic('الجزائر SARL')).toBe(false)
   })
 })
 
@@ -358,6 +365,31 @@ describe('ResultsTable rows', () => {
     peopleTable()
     expect(screen.getAllByTestId('reveal-slot')).toHaveLength(2)
     expect(screen.getAllByText('common.actions.reveal').length).toBeGreaterThan(1)
+    for (const slot of screen.getAllByTestId('reveal-slot')) {
+      expect(slot).toBeDisabled()
+    }
+  })
+
+  it('renders an unknown size band as its raw value', () => {
+    render(
+      <ResultsTable
+        tab="companies"
+        rows={[{ ...COMPANY_ROWS[0], size_band: '1000+' }]}
+        sort={null}
+        onSortChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('1000+')).toBeInTheDocument()
+    expect(screen.queryByText('search.size.1000_plus')).toBeNull()
+  })
+
+  it('renders skeleton rows as aria-hidden placeholders', () => {
+    render(
+      <ResultsTable tab="people" rows={[]} sort={null} onSortChange={vi.fn()} skeleton />,
+    )
+    for (const row of screen.getAllByTestId('skeleton-row')) {
+      expect(row).toHaveAttribute('aria-hidden', 'true')
+    }
   })
 })
 

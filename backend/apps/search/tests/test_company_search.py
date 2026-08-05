@@ -287,6 +287,23 @@ class TestCompanySearchSorting:
         assert response.status_code == 400
         assert response.json()['code'] == 'invalid_sort'
 
+    def test_sort_ties_break_by_id_for_stable_pagination(self, search_session: _Session) -> None:
+        client, _ = search_session('en')
+        industry = Industry.objects.create(
+            name_ar='ألفا', name_fr='Alpha', name_en='Alpha'
+        )
+        first = _company('Same Name Co', industry=industry)
+        second = _company('Same Name Co', industry=industry)
+        first_run = client.get(
+            '/api/search/companies/', {'sort': 'industry:asc'}
+        ).json()['results']
+        second_run = client.get(
+            '/api/search/companies/', {'sort': 'industry:asc'}
+        ).json()['results']
+        first_ids = [row['id'] for row in first_run]
+        assert first_ids == [row['id'] for row in second_run]
+        assert set(first_ids) == {str(first.id), str(second.id)}
+
 
 class TestCompanySearchRateLimit:
     def test_people_and_company_searches_share_daily_usage(self, search_session: _Session) -> None:

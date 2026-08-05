@@ -111,6 +111,20 @@ describe('ResultsTableStackedRow', () => {
     expect(slot).toHaveClass('w-full')
     expect(slot).toHaveClass('min-h-11')
     expect(slot).toHaveTextContent('common.actions.reveal')
+    expect(slot).toBeDisabled()
+  })
+
+  it('renders an em-dash company line for company-less people (same data as the table)', () => {
+    render(<ResultsTableStackedRow tab="people" rows={PEOPLE_ROWS} />)
+    const second = screen.getAllByTestId('stacked-card')[1]
+    expect(within(second).getAllByText('—').length).toBeGreaterThan(1)
+  })
+
+  it('renders the People count line on company cards with tabular numerals', () => {
+    render(<ResultsTableStackedRow tab="companies" rows={COMPANY_ROWS} />)
+    const first = screen.getAllByTestId('stacked-card')[0]
+    expect(within(first).getByText(/search\.results\.columns\.people_count/)).toBeInTheDocument()
+    expect(within(first).getByText('2')).toHaveClass('tabular-nums')
   })
 
   it('renders null cells as muted em-dashes', () => {

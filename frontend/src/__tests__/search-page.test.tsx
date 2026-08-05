@@ -540,4 +540,103 @@ describe('SearchPage', () => {
     )
     expect(call).toHaveBeenLastCalledWith(expectedPayload, 1, 'name:asc', expect.any(AbortSignal))
   })
+
+  it('round-trips a wilaya chip removal into the payload and the combobox', async () => {
+    const { call, resolve } = deferredResult({
+      results: [{ id: '1', name: 'A' }],
+      total: 3,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+    hoisted.searchPeople.mockImplementation(call)
+    renderPage(<SearchPage tab="people" />)
+
+    const input = screen.getByRole('combobox')
+    fireEvent.mouseDown(input)
+    fireEvent.mouseUp(input)
+    fireEvent.click(input)
+    input.focus()
+    fireEvent.click(await screen.findByRole('option', { name: '31 — Oran' }))
+    fireEvent.click(await screen.findByRole('option', { name: '16 — Algiers' }))
+    fireEvent.keyDown(input, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    resolve()
+    await screen.findByText('search.results.count')
+
+    const chipArea = screen.getByTestId('active-filter-chips')
+    const wilayaChip = Array.from(
+      chipArea.querySelectorAll('span[class*="rounded-full"]'),
+    ).find((chip) => chip.textContent?.includes('31 — Oran')) as HTMLElement
+    fireEvent.click(within(wilayaChip).getByRole('button'))
+
+    expect(screen.queryByText('31 — Oran')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    const expectedPayload = JSON.stringify(
+      buildFiltersPayload(
+        { industries: [], wilayas: [16], seniorities: [], sizes: [], includeUnknownSize: false, keyword: '' },
+        'people',
+      ),
+    )
+    expect(call).toHaveBeenLastCalledWith(expectedPayload, 1, 'name:asc', expect.any(AbortSignal))
+  })
+
+  it('caps pagination at the 1,000-row navigable limit for truncated sets', async () => {
+    const { call, resolve } = deferredResult({
+      results: [{ id: '1', name: 'A' }],
+      total: 1050,
+      page: 1,
+      truncated: true,
+      refine_prompt: 'refine',
+    })
+    hoisted.searchPeople.mockImplementation(call)
+    renderPage(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    resolve()
+    await screen.findByText('search.results.count')
+
+    expect(screen.getAllByText('search.results.pagination').length).toBeGreaterThan(0)
+    expect(screen.getByText('search.results.truncated')).toBeInTheDocument()
+  })
+
+  it('resets the sort when Clear All is used so the next search defaults again', async () => {
+    const { call, resolve } = deferredResult({
+      results: [{ id: '1', name: 'A' }],
+      total: 3,
+      page: 1,
+      truncated: false,
+      refine_prompt: null,
+    })
+    hoisted.searchPeople.mockImplementation(call)
+    renderPage(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    resolve()
+    await screen.findByText('search.results.count')
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.sort.name' }))
+    await screen.findByText('search.results.sort_asc')
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.clear' }))
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+
+    expect(call).toHaveBeenLastCalledWith(expect.any(String), 1, 'name:asc', expect.any(AbortSignal))
+  })
+
+  it('renders mobile skeleton cards alongside the table skeletons while loading', async () => {
+    const { call, resolve } = deferredResult()
+    hoisted.searchPeople.mockImplementation(call)
+    renderPage(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+
+    expect(screen.getAllByTestId('skeleton-row').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('skeleton-card').length).toBeGreaterThan(0)
+
+    resolve()
+    await screen.findByText('search.results.count')
+    expect(screen.queryByTestId('skeleton-card')).toBeNull()
+  })
 })

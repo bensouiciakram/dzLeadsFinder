@@ -63,7 +63,10 @@ export function sortCycle(field: SortField, current: SortState | null): SortStat
   return { field, dir: null }
 }
 
-export function bandLabelKey(band: string): string {
+const KNOWN_BANDS = ['1-10', '11-50', '51-200', '201-500', '500+']
+
+export function bandLabelKey(band: string): string | null {
+  if (!KNOWN_BANDS.includes(band)) return null
   return `search.size.${band.replace('-', '_').replace('+', '_plus')}`
 }
 
@@ -87,7 +90,7 @@ export function columnLabelKey(field: SortField): string {
 }
 
 export function isArabic(text: string): boolean {
-  return /[\u0600-\u06FF]/.test(text)
+  return /[\u0600-\u06FF]/.test(text) && !/[\u0041-\u024F]/.test(text)
 }
 
 function MaybeArabic({ text }: { text: string }) {
@@ -113,7 +116,7 @@ function WilayaCell({ code, name }: { code: number | null; name: string | null }
 }
 
 function CompanyLink({ name, companyId }: { name: string | null; companyId: string | null }) {
-  if (name === null || companyId === null) return <EmDash />
+  if (!name || companyId === null) return <EmDash />
   return (
     <Link
       href={`/companies/${companyId}`}
@@ -129,9 +132,9 @@ function RevealSlot() {
   return (
     <button
       type="button"
-      aria-disabled="true"
+      disabled
       data-testid="reveal-slot"
-      className="min-h-11 w-full rounded-md text-small text-primary md:min-h-8"
+      className="min-h-11 w-full rounded-md text-small text-primary disabled:opacity-50 md:min-h-8"
     >
       {t('common.actions.reveal')}
     </button>
@@ -173,7 +176,15 @@ function CompanyCells({ row }: { row: CompanyResultRow }) {
         <WilayaCell code={row.wilaya_code} name={row.wilaya_name} />
       </TableCell>
       <TableCell>
-        {row.size_band === null ? <EmDash /> : <span>{t(bandLabelKey(row.size_band))}</span>}
+        {row.size_band === null ? (
+          <EmDash />
+        ) : (
+          <span>
+            {bandLabelKey(row.size_band) === null
+              ? row.size_band
+              : t(bandLabelKey(row.size_band) as string)}
+          </span>
+        )}
       </TableCell>
       <TableCell className="tabular-nums">{String(row.people_count)}</TableCell>
     </>
@@ -243,10 +254,15 @@ export function ResultsTable({ tab, rows, sort, onSortChange, skeleton = false }
             })}
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="[&_tr:last-child]:border-b">
           {skeleton
             ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
-                <TableRow key={`skeleton-${index}`} data-testid="skeleton-row" className="h-12 hover:bg-muted">
+                <TableRow
+                  key={`skeleton-${index}`}
+                  data-testid="skeleton-row"
+                  aria-hidden="true"
+                  className="h-12 hover:bg-muted"
+                >
                   {columns.map((column) => (
                     <TableCell key={column.headerKey} className="px-2">
                       <Skeleton className="h-4 w-full" />

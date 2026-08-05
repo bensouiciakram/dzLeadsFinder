@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { FilterSidebar } from '@/components/search/FilterSidebar'
+import { FilterSidebar, removeFacetValue } from '@/components/search/FilterSidebar'
 import { EMPTY_FILTERS, type StagedFilters } from '@/lib/api/search-service'
 
 const EMPTY: StagedFilters = { ...EMPTY_FILTERS }
@@ -110,13 +110,46 @@ describe('FilterSidebar desktop', () => {
     expect(within(trigger).queryByText('4')).toBeNull()
   })
 
-  it('applies a staged patch from chip removals into the draft', () => {
-    const { rerender, props } = renderSidebar()
-    const patch: Partial<StagedFilters> = { industries: [7] }
-    rerender(<FilterSidebar {...props} stagedPatch={patch} />)
+  it('applies a chip removal to the draft with remove semantics', () => {
+    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1, 4] } })
+    const remove: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
+      facet: 'industries',
+      value: 1,
+    }
+    rerender(<FilterSidebar {...props} chipRemove={remove} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [7] }))
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
+  })
+
+  it('preserves sidebar edits made after a chip removal (no replace clobber)', () => {
+    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1] } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Advertising' }))
+    const remove: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
+      facet: 'industries',
+      value: 1,
+    }
+    rerender(<FilterSidebar {...props} chipRemove={remove} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
+  })
+
+  it('applies sequential chip removals of the same facet cumulatively', () => {
+    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1, 4, 9] } })
+    const removeOne: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
+      facet: 'industries',
+      value: 1,
+    }
+    rerender(<FilterSidebar {...props} chipRemove={removeOne} />)
+    const removeTwo: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
+      facet: 'industries',
+      value: 4,
+    }
+    rerender(<FilterSidebar {...props} chipRemove={removeTwo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [9] }))
   })
 
   it('resets the draft when the clear nonce bumps', () => {
@@ -418,6 +451,33 @@ describe('FilterSidebar mobile drawer', () => {
     await screen.findByRole('dialog', { name: 'search.filters.title' })
 
     expect(document.querySelector('[data-slot="drawer-swipe-handle"]')).not.toBeNull()
+  })
+
+  it('offers Clear All inside the drawer and forwards it to the page', async () => {
+    const onClearAllRequest = vi.fn()
+    renderSidebar({ wilayaCount: 2, onClearAllRequest })
+
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'search.filters.clear' }))
+    expect(onClearAllRequest).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('removeFacetValue', () => {
+  it('removes a value from each array facet', () => {
+    const base: StagedFilters = { ...EMPTY, industries: [1, 4], wilayas: [31], seniorities: ['director'], sizes: ['1-10'] }
+    expect(removeFacetValue(base, 'industries', 1).industries).toEqual([4])
+    expect(removeFacetValue(base, 'wilayas', 31).wilayas).toEqual([])
+    expect(removeFacetValue(base, 'seniorities', 'director').seniorities).toEqual([])
+    expect(removeFacetValue(base, 'sizes', '1-10').sizes).toEqual([])
+  })
+
+  it('clears the keyword and the unknown-size toggle', () => {
+    const base: StagedFilters = { ...EMPTY, keyword: 'oran', includeUnknownSize: true }
+    expect(removeFacetValue(base, 'keyword', 'oran').keyword).toBe('')
+    expect(removeFacetValue(base, 'includeUnknownSize', true).includeUnknownSize).toBe(false)
   })
 })
 

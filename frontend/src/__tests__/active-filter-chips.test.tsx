@@ -15,9 +15,9 @@ const FILTERS: StagedFilters = {
 }
 
 function renderChips(filters: StagedFilters = FILTERS) {
-  const onPatch = vi.fn()
-  const view = render(<ActiveFilterChips filters={filters} onPatch={onPatch} />)
-  return { onPatch, ...view }
+  const onRemove = vi.fn()
+  const view = render(<ActiveFilterChips filters={filters} onRemove={onRemove} />)
+  return { onRemove, ...view }
 }
 
 function chipLabels(): string[] {
@@ -57,41 +57,41 @@ describe('ActiveFilterChips', () => {
 
   it('renders nothing when no filters are active', () => {
     const { container } = render(
-      <ActiveFilterChips filters={EMPTY_FILTERS} onPatch={vi.fn()} />,
+      <ActiveFilterChips filters={EMPTY_FILTERS} onRemove={vi.fn()} />,
     )
     expect(container.innerHTML).toBe('')
   })
 
-  it('stages an industry removal with the remaining list', () => {
-    const { onPatch } = renderChips()
+  it('reports an industry removal with its facet and value', () => {
+    const { onRemove } = renderChips()
     const container = screen.getByTestId('active-filter-chips')
     const remove = container.querySelector('button')
     fireEvent.click(remove!)
-    expect(onPatch).toHaveBeenCalledWith({ industries: [4] })
+    expect(onRemove).toHaveBeenCalledWith('industries', 1)
   })
 
-  it('stages a wilaya removal keeping the other wilayas', () => {
-    const { onPatch } = renderChips()
+  it('reports a wilaya removal with its code', () => {
+    const { onRemove } = renderChips()
     const container = screen.getByTestId('active-filter-chips')
     const wilayaChip = Array.from(
       container.querySelectorAll('span[class*="rounded-full"]'),
     ).find((chip) => chip.querySelector('span.text-small')?.textContent === '31 — Oran') as HTMLElement
     fireEvent.click(within(wilayaChip).getByRole('button'))
-    expect(onPatch).toHaveBeenCalledWith({ wilayas: [16] })
+    expect(onRemove).toHaveBeenCalledWith('wilayas', 31)
   })
 
-  it('clears the keyword via its chip', () => {
-    const { onPatch } = renderChips()
+  it('reports the keyword removal', () => {
+    const { onRemove } = renderChips()
     const container = screen.getByTestId('active-filter-chips')
     const keywordChip = Array.from(
       container.querySelectorAll('span[class*="rounded-full"]'),
     ).find((chip) => chip.querySelector('span.text-small')?.textContent === 'oran') as HTMLElement
     fireEvent.click(within(keywordChip).getByRole('button'))
-    expect(onPatch).toHaveBeenCalledWith({ keyword: '' })
+    expect(onRemove).toHaveBeenCalledWith('keyword', 'oran')
   })
 
-  it('stages the unknown-size toggle off', () => {
-    const { onPatch } = renderChips()
+  it('reports the unknown-size toggle removal', () => {
+    const { onRemove } = renderChips()
     const container = screen.getByTestId('active-filter-chips')
     const toggleChip = Array.from(
       container.querySelectorAll('span[class*="rounded-full"]'),
@@ -101,7 +101,7 @@ describe('ActiveFilterChips', () => {
         'search.filters.include_unknown_size',
     ) as HTMLElement
     fireEvent.click(within(toggleChip).getByRole('button'))
-    expect(onPatch).toHaveBeenCalledWith({ includeUnknownSize: false })
+    expect(onRemove).toHaveBeenCalledWith('includeUnknownSize', true)
   })
 
   it('gives every remove button a labelled, keyboard-reachable 44px target', () => {
@@ -124,6 +124,15 @@ describe('ActiveFilterChips', () => {
     )
     expect(code).toBeDefined()
     expect(code).toHaveClass('tabular-nums')
+  })
+
+  it('renders an unknown size band as its raw value rather than an i18n key', () => {
+    const { onRemove } = renderChips({ ...EMPTY_FILTERS, sizes: ['1000+'] })
+    expect(chipLabels()).toEqual(['1000+'])
+    const container = screen.getByTestId('active-filter-chips')
+    const chip = container.querySelector('span[class*="rounded-full"]') as HTMLElement
+    fireEvent.click(within(chip).getByRole('button'))
+    expect(onRemove).toHaveBeenCalledWith('sizes', '1000+')
   })
 
   it('uses no physical-property classes in the chip markup', () => {
