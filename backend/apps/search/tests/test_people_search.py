@@ -210,6 +210,15 @@ class TestPeopleSearchSorting:
         rows = client.get('/api/search/people/', {'sort': 'role:asc'}).json()['results']
         assert [row['role'] for row in rows] == ['Directeur', 'Gérant']
 
+    def test_null_role_sorts_last_in_both_directions(self, search_session: _Session) -> None:
+        client, _ = search_session('en')
+        _person('A', role='Directeur')
+        _person('B')
+        asc = client.get('/api/search/people/', {'sort': 'role:asc'}).json()['results']
+        desc = client.get('/api/search/people/', {'sort': 'role:desc'}).json()['results']
+        assert [row['name'] for row in asc] == ['A', 'B']
+        assert [row['name'] for row in desc] == ['A', 'B']
+
     def test_invalid_sort_returns_400(self, search_session: _Session) -> None:
         client, _ = search_session('en')
         response = client.get('/api/search/people/', {'sort': 'email:asc'})
@@ -254,6 +263,14 @@ class TestPeopleSearchPagination:
         _person('A')
         response = client.get('/api/search/people/', {'page': '10'})
         assert response.status_code == 200
+
+    def test_page_out_of_range_precedes_quota(self, search_session: _Session) -> None:
+        client, user = search_session('en')
+        _person('A')
+        DailyUsage.objects.create(user=user, search_count=30)
+        response = client.get('/api/search/people/', {'page': '11'})
+        assert response.status_code == 400
+        assert response.json()['code'] == 'page_out_of_range'
 
 
 class TestPeopleSearchRateLimit:

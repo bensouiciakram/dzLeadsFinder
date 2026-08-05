@@ -135,6 +135,22 @@ class TestParseFiltersInvalid:
             parse_filters('{"include_unknown_size": true}')
         assert 'invalid_filter' in exc.value.get_codes()
 
+    def test_size_rejected_on_people(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            parse_filters('{"size": ["11-50"]}')
+        assert 'invalid_filter' in exc.value.get_codes()
+
+    def test_seniority_rejected_on_companies(self) -> None:
+        with pytest.raises(ValidationError) as exc:
+            parse_filters('{"seniority": ["director"]}', include_company_fields=True)
+        assert 'invalid_filter' in exc.value.get_codes()
+
+    def test_oversized_payload_rejected(self) -> None:
+        huge = '{"keyword": "' + 'a' * 9000 + '"}'
+        with pytest.raises(ValidationError) as exc:
+            parse_filters(huge)
+        assert 'invalid_filters' in exc.value.get_codes()
+
 
 class TestParseSort:
     def test_none_defaults_to_name_asc(self) -> None:

@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of story-3.2-search-api-endpoints (2026-08-05)
+
+- Rate-limit check-then-increment TOCTOU: the quota SELECT and the atomic upsert span the search query, so a concurrent burst at count = limit-1 can exceed the 30/100 cap. One-statement `INSERT ... ON CONFLICT DO UPDATE ... WHERE search_count < limit RETURNING` would require increment-before-success (conflicts with Q8) and a PG transaction + row lock; needs a Postgres-backed CI job to be exercised. Spine-documented pattern. [backend/apps/search/quota.py]
+- PG keyword path exercised only via string assertions in CI (SQLite fallback runs behavior tests); real-PostgreSQL verification was done ad-hoc in this review. Add a Postgres-backed CI job that runs the search API tests against PG (deferred-work 2.2 precedent). [backend/apps/search/fts.py]
+
 ## Deferred from: code review of 3-1-search-database-schema (2026-08-04)
 
 - `bulk_create` / `bulk_update` / `QuerySet.update()` skip the `save()` override, leaving `search_normalized` empty/stale (tsvector silently empty). Requirement for story 3.2 (search API) and Epic 6 (scraper pipeline): writers must set `search_normalized` explicitly or write per-row. [backend/apps/search/models.py]

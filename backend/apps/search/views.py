@@ -1,6 +1,7 @@
 """Search API endpoint views for People and Company search."""
 
-from django.db.models import Count, F, Q
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
+from django.db.models.expressions import Expression
 from django.db.models.query import QuerySet
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -11,6 +12,7 @@ from apps.search import quota
 from apps.search.filters import (
     COMPANY_SORT_FIELDS,
     PEOPLE_SORT_FIELDS,
+    SIZE_BANDS,
     SearchFilters,
     parse_filters,
     parse_page,
@@ -35,6 +37,12 @@ _COMPANY_SORT: dict[str, str] = {
     'people_count': 'people_count',
 }
 
+_SIZE_BAND_ORDER = Case(
+    *[When(size_band=band, then=Value(index)) for index, band in enumerate(SIZE_BANDS, start=1)],
+    default=None,
+    output_field=IntegerField(),
+)
+
 
 def _locale(user: object) -> str:
     locale = getattr(user, 'locale', 'en')
@@ -53,10 +61,10 @@ def _quota_error(user: object) -> Response | None:
 
 def _order_by(qs: QuerySet, field: str, direction: str, sort_map: dict[str, str]) -> QuerySet:
     key = sort_map[field]
-    nulls_last = True if key == 'company__name' else None
+    expression: Expression = _SIZE_BAND_ORDER if key == 'size_band' else F(key)
     if direction == 'desc':
-        return qs.order_by(F(key).desc(nulls_last=nulls_last))
-    return qs.order_by(F(key).asc(nulls_last=nulls_last))
+        return qs.order_by(expression.desc(nulls_last=True))
+    return qs.order_by(expression.asc(nulls_last=True))
 
 
 def _truncated_payload(total: int, page: int, user: object) -> dict[str, object]:
@@ -152,11 +160,11 @@ class PeopleSearchView(APIView):
             page = parse_page(request.query_params.get('page'))
         except ValidationError as exc:
             return _validation_response(exc)
+        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
+            return _page_out_of_range()
         error = _quota_error(request.user)
         if error is not None:
             return error
-        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
-            return _page_out_of_range()
         queryset = Person.objects.select_related('company__wilaya_code')
         for condition in _people_conditions(filters):
             queryset = queryset.filter(condition)
@@ -185,11 +193,11 @@ class CompanySearchView(APIView):
             page = parse_page(request.query_params.get('page'))
         except ValidationError as exc:
             return _validation_response(exc)
+        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
+            return _page_out_of_range()
         error = _quota_error(request.user)
         if error is not None:
             return error
-        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
-            return _page_out_of_range()
         queryset = Company.objects.select_related('industry', 'wilaya_code').annotate(
             people_count=Count('people')
         )

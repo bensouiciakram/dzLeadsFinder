@@ -132,6 +132,23 @@ class TestSqliteKeywordBehavior:
         Person.objects.create(name='Karim', company=company, source='test')
         assert Person.objects.filter().count() == 2
 
+    def test_operator_words_are_treated_as_literals(self, schema_user: object) -> None:
+        company = Company.objects.create(name='SARL ÉLECTRICITÉ', source='test')
+        Person.objects.create(name='Anderson Ornot', role='Gérant', company=company, source='test')
+        clause = people_keyword_q('and or not')
+        assert clause is not None
+        matches = list(Person.objects.filter(clause).values_list('name', flat=True))
+        assert matches == ['Anderson Ornot']
+
+    def test_multi_word_keyword_ands_tokens(self, schema_user: object) -> None:
+        company = Company.objects.create(name='SARL ÉLECTRICITÉ', source='test')
+        Person.objects.create(name='Mohamed Amine', role='Gérant', company=company, source='test')
+        Person.objects.create(name='Mohamed Karim', role='Gérant', company=company, source='test')
+        clause = people_keyword_q('mohamed amine')
+        assert clause is not None
+        matches = list(Person.objects.filter(clause).values_list('name', flat=True))
+        assert matches == ['Mohamed Amine']
+
 
 class TestPostgresContract:
     def test_people_clause_uses_websearch_on_people_column(
@@ -144,7 +161,7 @@ class TestPostgresContract:
         assert clause is not None
         raws = _collect_raw_sqls(clause)
         assert raws, 'expected at least one RawSQL in the people clause'
-        expected = "people.search_vector @@ websearch_to_tsquery('simple', unaccent(%s))"
+        expected = "people.search_vector @@ plainto_tsquery('simple', unaccent(%s))"
         assert any(expected == raw.sql for raw in raws)
         assert _has_company_subquery(clause)
 
@@ -157,7 +174,7 @@ class TestPostgresContract:
         clause = people_keyword_q('cafe')
         assert clause is not None
         raws = _collect_raw_sqls(clause)
-        expected = "companies.search_vector @@ websearch_to_tsquery('simple', unaccent(%s))"
+        expected = "companies.search_vector @@ plainto_tsquery('simple', unaccent(%s))"
         assert any(expected == raw.sql for raw in raws)
 
     def test_company_clause_uses_companies_column(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -168,7 +185,7 @@ class TestPostgresContract:
         assert clause is not None
         raws = _collect_raw_sqls(clause)
         assert len(raws) == 1
-        expected = "companies.search_vector @@ websearch_to_tsquery('simple', unaccent(%s))"
+        expected = "companies.search_vector @@ plainto_tsquery('simple', unaccent(%s))"
         assert expected == raws[0].sql
 
     def test_clauses_only_reference_main_tables(self, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -27,6 +27,8 @@ COMPANY_SORT_FIELDS: frozenset[str] = frozenset(
 
 SORT_DIRECTIONS: frozenset[str] = frozenset({'asc', 'desc'})
 
+MAX_FILTERS_LENGTH: int = 8192
+
 
 @dataclass
 class SearchFilters:
@@ -43,6 +45,8 @@ def parse_filters(raw: str | None, *, include_company_fields: bool = False) -> S
 
     if not raw:
         return SearchFilters()
+    if len(raw) > MAX_FILTERS_LENGTH:
+        raise ValidationError('filters payload is too large.', code='invalid_filters')
     try:
         payload: Any = json.loads(raw)
     except json.JSONDecodeError:

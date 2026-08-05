@@ -226,6 +226,29 @@ class TestCompanySearchSorting:
         assert by_size == ['C2', 'C1']
         assert by_wilaya == ['C2', 'C1']
 
+    def test_size_band_sort_follows_band_order_not_lexicographic(
+        self, search_session: _Session
+    ) -> None:
+        client, _ = search_session('en')
+        _company('A', size_band='500+')
+        _company('B', size_band='51-200')
+        _company('C', size_band='1-10')
+        _company('D', size_band=None)
+        asc = [
+            row['name']
+            for row in client.get(
+                '/api/search/companies/', {'sort': 'size_band:asc'}
+            ).json()['results']
+        ]
+        desc = [
+            row['name']
+            for row in client.get(
+                '/api/search/companies/', {'sort': 'size_band:desc'}
+            ).json()['results']
+        ]
+        assert asc == ['C', 'B', 'A', 'D']
+        assert desc == ['A', 'B', 'C', 'D']
+
 
 class TestCompanySearchRateLimit:
     def test_people_and_company_searches_share_daily_usage(self, search_session: _Session) -> None:

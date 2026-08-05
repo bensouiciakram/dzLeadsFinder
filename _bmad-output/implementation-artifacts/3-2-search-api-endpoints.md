@@ -2,14 +2,14 @@
 story_id: 3.2
 epic: 3
 title: Story 3.2 — Search API Endpoints
-status: review
+status: done
 frs: [FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13]
 ads: [AD-3, AD-11]
 ---
 
 # Story 3.2: Search API Endpoints
 
-Status: review
+Status: done
 
 ## Story
 
@@ -162,7 +162,18 @@ So that **the frontend can query B2B contact data with structured filters**.
 
 ## Review Findings
 
-(none yet — populated by code review)
+- [x] [Review][Patch] Wrong-endpoint filters silently ignored: `size` on `/people/` and `seniority` on `/companies/` pass validation and are dropped by the condition builders → 200 with unfiltered rows. Gate both fields by `include_company_fields` context (like `include_unknown_size`). [serializers.py:17, views.py:72-100] — FIXED: `validate_size`/`validate_seniority` reject with `invalid_filter`; 2 new tests.
+- [x] [Review][Patch] `size_band` sort is lexicographic (`500+` < `51-200`): map bands to a `Case/When` numeric order for the companies sort key; test with real band values. [views.py:31-36,106] — FIXED: `_SIZE_BAND_ORDER` Case with band-index + default None (unknown/null → last in both directions); 1 new test.
+- [x] [Review][Patch] Unbounded `filters` payload: multi-MB JSON parses + giant IN clause before the quota gate. Cap the raw param length (new `MAX_FILTERS_LENGTH` constant) → 400 `invalid_filters`; test oversized payload. [filters.py:19-33] — FIXED: `MAX_FILTERS_LENGTH = 8192`; 1 new test.
+- [x] [Review][Patch] Error precedence: quota check precedes the `page_out_of_range` guard, so a quota-exhausted user gets 429 on `page=11` instead of the documented 400 invariant. Reorder: page guard first, then quota. [views.py:155-167,186-193] — FIXED; 1 new test.
+- [x] [Review][Patch] NULL placement flips between sort directions (`role`/`size_band`/wilaya sorts rely on DB defaults): apply `nulls_last=True` to every sort key so nulls stay at the end in both directions. [views.py:93-101] — FIXED (universal `nulls_last=True`); 1 new test.
+- [x] [Review][Patch] `websearch_to_tsquery` treats `and`/`or`/`not` as operators → empty tsquery → zero results on PG while SQLite substring-matches; multi-word AND vs contiguous-substring drift. Switch to `plainto_tsquery('simple', unaccent(%s))` (literal-AND semantics, no operator parsing — FR-13 is plain free text) and make the SQLite fallback AND-of-tokens per sanitized word. Update fts contract tests + story decision note. [fts.py:41-58] — FIXED: plainto_tsquery + `_sqlite_keyword_q` token-AND; contract tests updated, 2 new behavior tests; verified against real PostgreSQL 16 (below).
+- [x] [Review][Patch] `MAX_KEYWORD_LENGTH` (quota.py) is dead — the serializer hardcodes `max_length=200`. Reference the constant. [serializers.py:17, quota.py:10] — FIXED.
+- [x] [Review][Defer] Check-then-increment TOCTOU: the SELECT count → long query → upsert window lets a concurrent burst exceed the 30/100 cap. One-statement `DO UPDATE ... WHERE search_count < limit RETURNING` would change counting semantics (increment-before-success conflicts with Q8) and needs a PG transaction + row lock untestable on SQLite CI. Spine-documented pattern (§682-685); V1 acceptance. [quota.py:41-55] — deferred, documented in deferred-work.md.
+- [x] [Review][Verification] PG keyword path verified against real PostgreSQL 16 in Docker (`postgres:16-alpine`, TZ=Africa/Algiers): all migrations apply cleanly; the real `fts.py` clauses (vendor-guarded branch) executed end-to-end — `electricite`/`électricité` → SARL ÉLECTRICITÉ, `gérant` → GÉRANT role, `شَرِكَة` (tashkeel) → شركة التجارة, `sarl electricite` multi-word AND, `and or not` literal (no error, no false matches), people matched via the `company__in` subquery; EXPLAIN shows Bitmap Index Scan on `companies_search_vector_gin`. Container torn down.
+- [x] [Review][Defer] Company row shape deviates from the literal epic AC field list (`wilaya` → `wilaya_code` + `wilaya_name`, plus `industry_id`) — documented decision 8 (localized names + frontend filter mapping); AC intent satisfied.
+
+Dismissed as by-design/noise: industry ids above 2^31-1 (DRF `IntegerField` default `max_value` → 400 `invalid_filter`, not 500), unknown industry/wilaya codes → empty results (decision 3: type/range validation only; FR-10 consequence "never returns non-existent codes" satisfied), page beyond last data page → 200 empty (standard REST pagination; truncation contract governs only offset ≥ 1000), upsert failure → 500 (fail-safe rate-limit accounting — silently skipping the increment would weaken the limit), keyword normalization double-handling (subsumed by the plainto_tsquery patch + token-AND fallback).
 
 ## Dev Agent Record
 
@@ -212,4 +223,5 @@ deepseek-v4-flash (opencode)
 ## Change Log
 
 - 2026-08-05: Story created (ready-for-dev) from epic 3.2 spec; Winston architect consultation resolved 10 design decisions (query-side normalization + vendor-guarded websearch_to_tsquery with main-table-only raw SQL + company subquery, atomic ON CONFLICT upsert, strict-but-forward-compatible filter contract, truncation invariant offset>=1000 → 400, 429 shape with trilingual dicts, revealed placeholder false, sort whitelists, locale-keyed name resolution, quota constants, no John consultation); validated against checklist; sprint-status 3-2 → ready-for-dev.
-- 2026-08-05: Implemented (TDD): RED suites for quota/filters/fts/people/company/truncation → quota.py + filters.py + serializers.py + fts.py + views.py + urls.py + config include → GREEN 344 backend (230 + 114) / 171 frontend regression, ruff 0 / mypy strict 0 / makemigrations clean. Dev-stage amendments recorded: DRF ValidationError list-body → explicit `_validation_response` responses; `nulls_last=None` not False; `Q(company__in=...)` tree-walking contract tests; `_Session` fixture typing. Status → review; sprint 3-2 → review. Commit(s) pending review.
+- 2026-08-05: Implemented (TDD): RED suites for quota/filters/fts/people/company/truncation → quota.py + filters.py + serializers.py + fts.py + views.py + urls.py + config include → GREEN 344 backend (230 + 114) / 171 frontend regression, ruff 0 / mypy strict 0 / makemigrations clean. Dev-stage amendments recorded: DRF ValidationError list-body → explicit `_validation_response` responses; `nulls_last=None` not False; `Q(company__in=...)` tree-walking contract tests; `_Session` fixture typing. Status → review; sprint 3-2 → review. Commit `d226b51`.
+- 2026-08-05: Code review (3 parallel layers: Blind Hunter → Edge Case Hunter → Acceptance Auditor — 21 raw findings → 7 patches + 2 deferred documented + 1 real-PG verification + 11 dismissed). Patches: endpoint-scoped filter fields (`size`/`seniority` rejected on the wrong endpoint), band-logical `size_band` sort (Case/When), `MAX_FILTERS_LENGTH` payload cap, page-guard-before-quota error precedence, universal `nulls_last=True`, `websearch_to_tsquery` → `plainto_tsquery` (literal word-AND — operator-word keywords no longer return empty on PG) + token-AND SQLite fallback, `MAX_KEYWORD_LENGTH` constant wiring. Verification: real PostgreSQL 16 in Docker — migrations apply; `fts.py` clauses executed end-to-end (unaccent French, tashkeel-stripped Arabic, multi-word AND, operator words as literals, company subquery, GIN index scan confirmed). Deferred: check-then-increment TOCTOU (documented), PG-backed CI job (documented in deferred-work.md). Post-review gates: 352 backend / 171 frontend tests green, ruff 0 / mypy strict 0 / i18n ✓. Status → done; sprint 3-2 → done (epic-3 stays in-progress). Commit(s) pending.
