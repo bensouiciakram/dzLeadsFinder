@@ -37,7 +37,7 @@ if (
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
-  useLocale: () => 'en',
+  useLocale: vi.fn(() => 'en'),
 }))
 
 vi.mock('next/navigation', () => ({

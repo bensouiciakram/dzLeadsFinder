@@ -82,6 +82,14 @@
   font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Noto Naskh Arabic", "Noto Kufi Arabic", sans-serif;
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;

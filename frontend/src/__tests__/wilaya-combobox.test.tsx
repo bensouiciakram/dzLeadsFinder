@@ -1,5 +1,6 @@
 ﻿import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
+import { useLocale } from 'next-intl'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -70,6 +71,12 @@ describe('filterWilayas', () => {
     expect(filterWilayas(fixture, 'Adrar').map((w) => w.code)).toEqual([1])
   })
 
+  it('matches codes written with leading zeros', () => {
+    expect(filterWilayas(fixture, '01').map((w) => w.code)).toEqual([1])
+    expect(filterWilayas(fixture, '031').map((w) => w.code)).toEqual([31])
+    expect(filterWilayas(fixture, '0').map((w) => w.code)).toEqual([])
+  })
+
   it('returns all wilayas for an empty or whitespace query', () => {
     expect(filterWilayas(fixture, '').map((w) => w.code)).toEqual([1, 31])
     expect(filterWilayas(fixture, '   ').map((w) => w.code)).toEqual([1, 31])
@@ -134,7 +141,7 @@ describe('WilayaCombobox filtering', () => {
 
     fireEvent.change(input, { target: { value: 'zzzz' } })
 
-    expect(await screen.findByText('search.wilayas.no_results')).toBeInTheDocument()
+    expect(await screen.findByText('trust.wilayas.no_results')).toBeInTheDocument()
     expect(screen.queryAllByRole('option')).toHaveLength(0)
   })
 })
@@ -223,6 +230,61 @@ describe('WilayaCombobox selection and chips', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('does not remove a chip on Backspace during IME composition', () => {
+    const { onChange } = renderCombobox([31, 1])
+    const input = screen.getByRole('combobox')
+
+    fireEvent.keyDown(input, {
+      key: 'Backspace',
+      isComposing: true,
+    })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('removes exactly the last selected chip on Backspace once, even beyond the chip limit', () => {
+    const { onChange } = renderCombobox([31, 1, 2, 58])
+    const input = screen.getByRole('combobox')
+
+    fireEvent.keyDown(input, { key: 'Backspace' })
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith([31, 1, 2])
+  })
+
+  it('keeps the selection when Escape is pressed while the popup is closed', async () => {
+    const { onChange } = renderCombobox([31])
+    const input = openPopup()
+    await screen.findAllByRole('option')
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    await waitFor(() => {
+      expect(screen.queryAllByRole('option')).toHaveLength(0)
+    })
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('renders a consistent empty state for codes that are not in the taxonomy', () => {
+    const { onChange } = renderCombobox([999])
+
+    expect(screen.queryByLabelText('999 — ')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'search.filters.wilaya_clear' })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'search.filters.wilaya_placeholder')
+
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Backspace' })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('deduplicates repeated codes in the selection', () => {
+    const { onChange } = renderCombobox([31, 31])
+
+    expect(screen.getAllByLabelText('31 — Oran')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.wilaya_remove' }))
+    expect(onChange).toHaveBeenCalledWith([])
+  })
+
   it('caps visible chips at 3 and shows the "+N more" overflow indicator', () => {
     renderCombobox([31, 1, 2, 58])
 
@@ -284,6 +346,26 @@ describe('WilayaCombobox accessibility', () => {
     expect(screen.getByTestId('wilaya-chips')).toHaveClass('md:min-h-8')
   })
 
+  it('gives the clear affordance a 44px touch target on mobile', () => {
+    renderCombobox([31])
+
+    expect(screen.getByRole('button', { name: 'search.filters.wilaya_clear' })).toHaveClass(
+      'size-11',
+    )
+    expect(screen.getByRole('button', { name: 'search.filters.wilaya_clear' })).toHaveClass(
+      'md:size-4',
+    )
+  })
+
+  it('gives option rows a 44px touch target on mobile', async () => {
+    renderCombobox()
+    openPopup()
+
+    const option = await screen.findByRole('option', { name: '31 — Oran' })
+    expect(option).toHaveClass('min-h-11')
+    expect(option).toHaveClass('md:min-h-8')
+  })
+
   it('closes the popup on Esc and returns focus to the input', async () => {
     renderCombobox()
     const input = openPopup()
@@ -295,6 +377,23 @@ describe('WilayaCombobox accessibility', () => {
       expect(screen.queryAllByRole('option')).toHaveLength(0)
     })
     expect(document.activeElement).toBe(input)
+  })
+})
+
+describe('WilayaCombobox Arabic locale', () => {
+  it('renders option rows and chips with Arabic names and lang="ar" fragments', async () => {
+    vi.mocked(useLocale).mockReturnValue('ar')
+    renderCombobox([31])
+
+    expect(screen.getByText('وهران')).toHaveAttribute('lang', 'ar')
+
+    const input = openPopup()
+    await screen.findAllByRole('option')
+    const option = screen.getByRole('option', { name: '31 — وهران' })
+    expect(within(option).getByText('31')).toBeInTheDocument()
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    vi.mocked(useLocale).mockReturnValue('en')
   })
 })
 

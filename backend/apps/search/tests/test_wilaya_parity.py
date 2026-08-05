@@ -33,21 +33,27 @@ def _parse_ts_array(path: Path, array_name: str, row_re: re.Pattern[str]) -> lis
         (
             i
             for i, line in enumerate(lines)
-            if f'export const {array_name}' in line and '= [' in line
+            if line.strip().startswith(f'export const {array_name}:') and '= [' in line
         ),
         None,
     )
     assert start is not None, f'{path.name}: export const {array_name} array not found'
     rows: list[tuple[str, ...]] = []
-    for line in lines[start + 1 :]:
+    closing_index: int | None = None
+    for index, line in enumerate(lines[start + 1 :], start=start + 1):
         stripped = line.strip()
         if stripped == ']':
+            closing_index = index
             break
         if not stripped:
             continue
         match = row_re.fullmatch(stripped)
         assert match is not None, f'{path.name}: unparsable row: {stripped}'
         rows.append(match.groups())
+    assert closing_index is not None, f'{path.name}: {array_name} array never closed with "]"'
+    assert all(not line.strip() for line in lines[closing_index + 1 :]), (
+        f'{path.name}: unexpected content after the {array_name} closing bracket'
+    )
     return rows
 
 
@@ -55,12 +61,19 @@ class TestWilayaParity:
     def test_frontend_wilayas_lockstep_with_backend(self) -> None:
         rows = _parse_ts_array(FRONTEND_DATA / 'wilayas.ts', 'WILAYAS', WILAYA_ROW_RE)
         assert len(rows) == 58
-        assert [int(row[0]) for row in rows] == list(range(1, 59))
+        frontend_codes = [int(row[0]) for row in rows]
+        assert frontend_codes == list(range(1, 59))
+        backend_codes = [row['code'] for row in WILAYAS]
+        assert len(backend_codes) == len(set(backend_codes)), (
+            'backend wilayas.py has duplicate codes'
+        )
+        assert set(frontend_codes) == set(backend_codes), (
+            'frontend and backend wilaya code sets drifted'
+        )
         backend = {row['code']: row for row in WILAYAS}
         for row in rows:
             code, name_ar, name_fr, name_en = int(row[0]), row[2], row[4], row[6]
             assert name_ar and name_fr and name_en, f'wilaya {code} has a blank name'
-            assert code in backend, f'wilaya {code} missing from backend data'
             backend_row = backend[code]
             assert backend_row['name_ar'] == name_ar, f'wilaya {code}: name_ar drift'
             assert backend_row['name_fr'] == name_fr, f'wilaya {code}: name_fr drift'
@@ -72,8 +85,12 @@ class TestIndustryParity:
         rows = _parse_ts_array(FRONTEND_DATA / 'industries.ts', 'INDUSTRIES', INDUSTRY_ROW_RE)
         assert len(rows) == len(INDUSTRIES)
         assert [int(row[0]) for row in rows] == list(range(1, len(rows) + 1))
-        for row in rows:
+        for index, row in enumerate(rows):
             assert row[2] and row[4] and row[6], f'industry {row[0]} has a blank name'
-        assert [row[6] for row in rows] == [
-            industry['name_en'] for industry in INDUSTRIES
-        ], 'name_en order drifted from the backend seed order (seed order = serial ids)'
+            backend_row = INDUSTRIES[index]
+            assert backend_row['name_ar'] == row[2], f'industry {row[0]}: name_ar drift'
+            assert backend_row['name_fr'] == row[4], f'industry {row[0]}: name_fr drift'
+            assert backend_row['name_en'] == row[6], (
+                f'industry {row[0]}: name_en drift from the backend seed order '
+                '(seed order = serial ids)'
+            )

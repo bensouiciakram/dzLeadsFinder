@@ -17,7 +17,6 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox'
 import { WILAYAS, type Wilaya } from '@/data/wilayas'
-import { cn } from '@/lib/utils'
 
 const CHIP_LIMIT = 3
 
@@ -34,7 +33,7 @@ export function wilayaDisplayLabel(wilaya: Wilaya, locale: string): string {
 }
 
 export function filterWilayas(wilayas: Wilaya[], query: string): Wilaya[] {
-  const q = query.trim().toLowerCase()
+  const q = query.trim().toLowerCase().replace(/^0+(?=\d)/, '')
   if (!q) return wilayas
   return wilayas.filter(
     (wilaya) =>
@@ -56,13 +55,14 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
   const anchor = useComboboxAnchor()
   const [query, setQuery] = useState('')
 
-  const selected = useMemo(
-    () =>
-      value
-        .map((code) => WILAYAS.find((wilaya) => wilaya.code === code))
-        .filter((wilaya): wilaya is Wilaya => wilaya !== undefined),
-    [value],
-  )
+  const selected = useMemo(() => {
+    const byCode = new Map<number, Wilaya>()
+    for (const code of value) {
+      const wilaya = WILAYAS.find((candidate) => candidate.code === code)
+      if (wilaya && !byCode.has(code)) byCode.set(code, wilaya)
+    }
+    return Array.from(byCode.values())
+  }, [value])
 
   const options = useMemo(() => filterWilayas(WILAYAS, query), [query])
 
@@ -75,9 +75,34 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
     update(value.filter((candidate) => candidate !== code))
   }
 
+  const suppressBaseUI = (event: KeyboardEvent<HTMLInputElement>) => {
+    const withSuppression = event as KeyboardEvent<HTMLInputElement> & {
+      preventBaseUIHandler?: () => void
+    }
+    withSuppression.preventBaseUIHandler?.()
+  }
+
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if ((event.key === 'Backspace' || event.key === 'Delete') && query === '' && value.length > 0) {
-      update(value.slice(0, -1))
+    const withComposition = event as KeyboardEvent<HTMLInputElement> & { isComposing?: boolean }
+    if (event.nativeEvent.isComposing || withComposition.isComposing) {
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        suppressBaseUI(event)
+      }
+      return
+    }
+    if (event.key === 'Escape') {
+      const popupOpen = event.currentTarget.getAttribute('aria-expanded') === 'true'
+      if (!popupOpen) {
+        event.preventDefault()
+        suppressBaseUI(event)
+        setQuery('')
+      }
+      return
+    }
+    if ((event.key === 'Backspace' || event.key === 'Delete') && query === '' && selected.length > 0) {
+      event.preventDefault()
+      suppressBaseUI(event)
+      update(value.filter((code) => code !== selected[selected.length - 1].code))
     }
   }
 
@@ -114,7 +139,7 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
                     aria-label={t('search.filters.wilaya_remove', {
                       name: wilayaDisplayName(wilaya, locale),
                     })}
-                    className="ms-1 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground md:size-4"
+                    className="ms-1 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:size-4"
                     onClick={() => removeChip(wilaya.code)}
                   >
                     <XIcon className="pointer-events-none size-4" />
@@ -123,7 +148,7 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
               ))}
               {values.length > CHIP_LIMIT && (
                 <span className="text-caption text-muted-foreground">
-                  {t('search.filters.wilaya_more', { count: values.length - CHIP_LIMIT })}
+                  {t('search.filters.wilaya_more', { count: String(values.length - CHIP_LIMIT) })}
                 </span>
               )}
               <ComboboxChipsInput
@@ -134,24 +159,26 @@ export function WilayaCombobox({ value, onChange }: WilayaComboboxProps) {
             </>
           )}
         </ComboboxValue>
-        {value.length > 0 && (
+        {selected.length > 0 && (
           <button
             type="button"
             aria-label={t('search.filters.wilaya_clear')}
-            className={cn(
-              'ms-1 inline-flex min-h-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground md:min-h-8',
-            )}
+            className="ms-1 inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:size-4"
             onClick={() => update([])}
           >
             <XIcon className="pointer-events-none size-4" />
           </button>
         )}
       </BaseCombobox.Chips>
-      <ComboboxContent anchor={anchor}>
-        <ComboboxEmpty>{t('search.wilayas.no_results')}</ComboboxEmpty>
+      <ComboboxContent anchor={anchor} aria-label={t('search.filters.wilaya')}>
+        <ComboboxEmpty>{t('trust.wilayas.no_results')}</ComboboxEmpty>
         <ComboboxList className="max-h-70">
           {(wilaya: Wilaya) => (
-            <ComboboxItem key={wilaya.code} value={wilaya} className="min-h-11 md:min-h-8">
+            <ComboboxItem
+              key={wilaya.code}
+              value={wilaya}
+              className="min-h-11 data-highlighted:bg-muted md:min-h-8"
+            >
               <span className="tabular-nums">{wilaya.code}</span>
               <span className="text-muted-foreground">—</span>
               <WilayaName wilaya={wilaya} locale={locale} />
