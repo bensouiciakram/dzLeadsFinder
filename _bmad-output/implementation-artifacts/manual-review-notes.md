@@ -10,3 +10,12 @@ Rough manual review notes per story, recorded as standalone commits before the n
 - Verdict: **No issues found.**
 - Observations:
   - None. Proceed with Story 3.6 (Saved Searches).
+
+## Story 3.6 — Saved Searches
+
+- Commit reviewed: `a485102` (Story 3.6: apply code review fixes — 14 patches)
+- Date: 2026-08-06
+- Reviewer: human (bensouici akram)
+- Verdict: **No issues found.**
+- Observations:
+  - None. Proceed with Story 3.7 (Checklist Card).
