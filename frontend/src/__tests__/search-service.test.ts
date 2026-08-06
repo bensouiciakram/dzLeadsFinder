@@ -1,3 +1,9 @@
+import axios from 'axios'
+import type {
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -99,7 +105,7 @@ describe('SearchService', () => {
     return getMock
   }
 
-  it('queries /api/search/people/ with JSON-encoded filters and default page/sort', async () => {
+  it('queries /search/people/ with JSON-encoded filters and default page/sort', async () => {
     const service = new SearchService()
     const getMock = stubClient(service, {
       results: [],
@@ -112,7 +118,7 @@ describe('SearchService', () => {
     const result = await service.searchPeople('{"industry":[1]}')
 
     expect(getMock).toHaveBeenCalledTimes(1)
-    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+    expect(getMock).toHaveBeenCalledWith('/search/people/', {
       params: { filters: '{"industry":[1]}', page: 1, sort: 'name:asc' },
     })
     expect(result.total).toBe(0)
@@ -131,12 +137,12 @@ describe('SearchService', () => {
 
     await service.searchPeople('{}', 2, 'name:desc')
 
-    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+    expect(getMock).toHaveBeenCalledWith('/search/people/', {
       params: { filters: '{}', page: 2, sort: 'name:desc' },
     })
   })
 
-  it('queries /api/search/companies/ with the same contract', async () => {
+  it('queries /search/companies/ with the same contract', async () => {
     const service = new SearchService()
     const getMock = stubClient(service, {
       results: [],
@@ -148,7 +154,7 @@ describe('SearchService', () => {
 
     const result = await service.searchCompanies('{"size":["1-10"]}')
 
-    expect(getMock).toHaveBeenCalledWith('/api/search/companies/', {
+    expect(getMock).toHaveBeenCalledWith('/search/companies/', {
       params: { filters: '{"size":["1-10"]}', page: 1, sort: 'name:asc' },
     })
     expect(result.total).toBe(3)
@@ -176,10 +182,36 @@ describe('SearchService', () => {
 
     await service.searchPeople('{}', 2, 'name:asc', controller.signal)
 
-    expect(getMock).toHaveBeenCalledWith('/api/search/people/', {
+    expect(getMock).toHaveBeenCalledWith('/search/people/', {
       params: { filters: '{}', page: 2, sort: 'name:asc' },
       signal: controller.signal,
     })
+  })
+
+  it('never double-prefixes the API base URL (real axios merge guard)', async () => {
+    const urls: string[] = []
+    const adapter = async (
+      config: InternalAxiosRequestConfig,
+    ): Promise<AxiosResponse> => {
+      urls.push(axios.getUri({ baseURL: config.baseURL, url: config.url }))
+      return {
+        data: { results: [], total: 0, page: 1, truncated: false, refine_prompt: null },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      }
+    }
+    const service = new SearchService({ adapter } as AxiosRequestConfig)
+
+    await service.searchPeople('{}')
+    await service.searchCompanies('{}')
+
+    expect(urls).toEqual(['/api/search/people/', '/api/search/companies/'])
+    for (const url of urls) {
+      expect(url.startsWith('/api/')).toBe(true)
+      expect(url).not.toContain('/api/api/')
+    }
   })
 
   it('types people rows with the 3.2 people key set', async () => {

@@ -104,7 +104,7 @@ export class SearchService extends HttpClient {
     signal?: AbortSignal,
   ): Promise<SearchResult<PeopleResultRow>> {
     const { data } = await this.client.get<SearchResult<PeopleResultRow>>(
-      '/api/search/people/',
+      '/search/people/',
       { params: { filters: filtersJson, page, sort }, signal },
     )
     return data
@@ -117,7 +117,7 @@ export class SearchService extends HttpClient {
     signal?: AbortSignal,
   ): Promise<SearchResult<CompanyResultRow>> {
     const { data } = await this.client.get<SearchResult<CompanyResultRow>>(
-      '/api/search/companies/',
+      '/search/companies/',
       { params: { filters: filtersJson, page, sort }, signal },
     )
     return data
