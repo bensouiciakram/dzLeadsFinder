@@ -3,6 +3,7 @@
 from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.db.models.expressions import Expression
 from django.db.models.query import QuerySet
+from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -19,7 +20,8 @@ from apps.search.filters import (
     parse_sort,
 )
 from apps.search.fts import company_keyword_q, people_keyword_q
-from apps.search.models import Company, Person
+from apps.search.models import Company, Person, SavedSearch
+from apps.search.serializers import SavedSearchSerializer
 
 _LOCALES = frozenset({'ar', 'fr', 'en'})
 
@@ -216,3 +218,54 @@ class CompanySearchView(APIView):
         }
         payload.update(_truncated_payload(total, page, request.user))
         return Response(payload)
+
+
+class SavedSearchListView(APIView):
+    def get(self, request: Request) -> Response:
+        rows = SavedSearch.objects.filter(user_id=request.user.id).order_by('-created_at')
+        return Response(SavedSearchSerializer(rows, many=True).data)
+
+    def post(self, request: Request) -> Response:
+        limit = quota.saved_search_limit_for(request.user)
+        count = SavedSearch.objects.filter(user_id=request.user.id).count()
+        if count >= limit:
+            message = quota.SAVED_SEARCH_LIMIT_MESSAGES[_locale(request.user)].format(
+                limit=limit
+            )
+            return Response(
+                {
+                    'detail': message,
+                    'code': 'saved_search_limit_exceeded',
+                    'limit': limit,
+                },
+                status=400,
+            )
+        serializer = SavedSearchSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _validation_response(
+                ValidationError(serializer.errors)
+            )
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=201)
+
+
+class SavedSearchDetailView(APIView):
+    def _row(self, request: Request, pk: str) -> SavedSearch:
+        row = get_object_or_404(
+            SavedSearch.objects.filter(user_id=request.user.id), pk=pk
+        )
+        assert isinstance(row, SavedSearch)
+        return row
+
+    def put(self, request: Request, pk: str) -> Response:
+        row = self._row(request, pk)
+        serializer = SavedSearchSerializer(row, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return _validation_response(ValidationError(serializer.errors))
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request: Request, pk: str) -> Response:
+        row = self._row(request, pk)
+        row.delete()
+        return Response(status=204)

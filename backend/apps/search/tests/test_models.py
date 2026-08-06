@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, connection
 from django.utils import timezone
 
-from apps.search.models import Company, DailyUsage, Industry, Person, Wilaya
+from apps.search.models import Company, DailyUsage, Industry, Person, SavedSearch, Wilaya
 
 User = get_user_model()
 
@@ -24,9 +24,10 @@ def _table_columns(table: str) -> dict[str, Any]:
 
 
 class TestTablesExist:
-    def test_all_five_tables_present(self) -> None:
+    def test_all_six_tables_present(self) -> None:
         tables = connection.introspection.table_names()
-        for table in ('companies', 'people', 'daily_usage', 'wilayas', 'industries'):
+        expected = ('companies', 'people', 'daily_usage', 'wilayas', 'industries', 'saved_searches')
+        for table in expected:
             assert table in tables
 
     def test_table_names_match_spine(self) -> None:
@@ -35,6 +36,7 @@ class TestTablesExist:
         assert DailyUsage._meta.db_table == 'daily_usage'
         assert Wilaya._meta.db_table == 'wilayas'
         assert Industry._meta.db_table == 'industries'
+        assert SavedSearch._meta.db_table == 'saved_searches'
 
 
 class TestPrimaryKeys:

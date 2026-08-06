@@ -10,24 +10,42 @@ import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterS
 import {
   ResultsTable,
   columnLabelKey,
+  type SortField,
   type SortState,
 } from '@/components/search/ResultsTable'
 import { ResultsTableStackedRow } from '@/components/search/ResultsTableStackedRow'
+import {
+  SavedSearchesList,
+  type SavedSearchSnapshot,
+} from '@/components/search/SavedSearchesList'
 import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSearchResults, type SearchSubmitted } from '@/hooks/useSearchResults'
 import {
   buildFiltersPayload,
+  filtersPayloadToStaged,
   type CompanyResultRow,
   type PeopleResultRow,
   type SearchTab,
   type StagedFilters,
 } from '@/lib/api/search-service'
+import type { SavedSearchRow, SavedSearchType } from '@/lib/api/saved-search-service'
+import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
 
 const PAGE_SIZE = 100
 const MAX_NAVIGABLE_PAGES = 10
 const SKELETON_CARDS = 3
+
+const SORT_FIELDS: readonly SortField[] = [
+  'name',
+  'role',
+  'company_name',
+  'wilaya_code',
+  'industry',
+  'size_band',
+  'people_count',
+]
 
 function sortParamFor(sort: SortState | null): string {
   return sort !== null && sort.dir !== null ? `${sort.field}:${sort.dir}` : 'name:asc'
@@ -47,14 +65,37 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [wilayaQuery, setWilayaQuery] = useState('')
   const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
   const [clearNonce, setClearNonce] = useState(0)
+  const [savedTargetId, setSavedTargetId] = useState<string | null>(null)
+  const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
 
-  const onSuccess = useCallback((filters: StagedFilters) => setApplied(filters), [])
+  const onSuccess = useCallback(
+    (filters: StagedFilters) => {
+      setApplied(filters)
+      if (savedTargetId !== null) {
+        setActiveSavedId(savedTargetId)
+        setSavedTargetId(null)
+      }
+    },
+    [savedTargetId],
+  )
 
   const { query, phase, rateLimitMessage, beginSearch } = useSearchResults({
     tab,
     submitted,
     onSuccess,
   })
+
+  const activeSearch: SavedSearchSnapshot | null =
+    applied === null
+      ? null
+      : {
+          type: tabToSavedType(tab),
+          filters: buildFiltersPayload({ ...applied, wilayas }, tab),
+          sort:
+            sort !== null && sort.dir !== null
+              ? { field: sort.field, dir: sort.dir }
+              : null,
+        }
 
   useEffect(() => {
     if (query.isError) setAnnouncement(null)
@@ -73,6 +114,30 @@ export function SearchPage({ tab }: SearchPageProps) {
       filtersJson: JSON.stringify(buildFiltersPayload(filters, tab)),
       page: 1,
       sort: sortParamFor(sort),
+    })
+  }
+
+  const handleRerun = (row: SavedSearchRow) => {
+    const rowTab: SearchTab = savedTypeToTab(row.type)
+    const staged = filtersPayloadToStaged(row.filters, rowTab)
+    const sortField = SORT_FIELDS.includes(row.sort?.field as SortField)
+      ? (row.sort?.field as SortField)
+      : null
+    const nextSort: SortState | null =
+      row.sort !== null && row.sort.dir !== null && sortField !== null
+        ? { field: sortField, dir: row.sort.dir }
+        : null
+    setSavedTargetId(row.id)
+    setWilayas(staged.wilayas)
+    setWilayaQuery('')
+    setChipRemove(null)
+    setSort(nextSort)
+    startSearch()
+    setSubmitted({
+      filters: staged,
+      filtersJson: JSON.stringify(buildFiltersPayload(staged, rowTab)),
+      page: 1,
+      sort: sortParamFor(nextSort),
     })
   }
 
@@ -118,6 +183,8 @@ export function SearchPage({ tab }: SearchPageProps) {
     setSubmitted(null)
     setSort(null)
     setAnnouncement(null)
+    setActiveSavedId(null)
+    setSavedTargetId(null)
   }
 
   const handleChipRemove = (facet: ChipsFacet, value: number | string | boolean) => {
@@ -158,6 +225,14 @@ export function SearchPage({ tab }: SearchPageProps) {
         chipRemove={chipRemove ?? undefined}
         clearNonce={clearNonce}
         onClearAllRequest={handleClearAll}
+        savedSearchesSlot={
+          <SavedSearchesList
+            tab={tab}
+            activeSearchId={activeSavedId}
+            activeSearch={activeSearch}
+            onRerun={handleRerun}
+          />
+        }
         onSubmit={(filters) => void runSearch({ ...filters, wilayas })}
       />
       <main className="min-w-0 grow px-gutter py-6 md:px-gutter-desktop">

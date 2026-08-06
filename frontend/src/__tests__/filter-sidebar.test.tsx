@@ -465,6 +465,40 @@ describe('FilterSidebar mobile drawer', () => {
   })
 })
 
+describe('FilterSidebar saved-searches slot', () => {
+  it('renders the slot inside the desktop aside below the filter groups', () => {
+    renderSidebar({ savedSearchesSlot: <div data-testid="saved-slot" /> })
+    const aside = screen.getByTestId('filter-sidebar')
+    const slot = screen.getByTestId('saved-slot')
+    const lastGroup = screen.getAllByTestId('filter-group').at(-1)
+    expect(lastGroup).toBeDefined()
+    expect(
+      (lastGroup as HTMLElement).compareDocumentPosition(slot) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(aside.contains(slot)).toBe(true)
+  })
+
+  it('renders the slot inside the mobile drawer below the groups', async () => {
+    renderSidebar({ savedSearchesSlot: <div data-testid="saved-slot" /> })
+    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
+    const drawer = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    const slot = within(drawer).getByTestId('saved-slot')
+    const groups = within(drawer).getAllByTestId('filter-group')
+    const lastGroup = groups.at(-1)
+    expect(lastGroup).toBeDefined()
+    expect(
+      (lastGroup as HTMLElement).compareDocumentPosition(slot) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('renders nothing when the slot is unwired (backward compatible)', () => {
+    renderSidebar()
+    expect(screen.queryByTestId('saved-slot')).not.toBeInTheDocument()
+  })
+})
+
 describe('removeFacetValue', () => {
   it('removes a value from each array facet', () => {
     const base: StagedFilters = { ...EMPTY, industries: [1, 4], wilayas: [31], seniorities: ['director'], sizes: ['1-10'] }

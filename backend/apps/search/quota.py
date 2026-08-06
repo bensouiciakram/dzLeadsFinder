@@ -5,9 +5,12 @@ from django.utils import timezone
 
 SEARCH_DAILY_LIMITS: dict[str, int] = {'free': 30, 'starter': 100}
 
+SAVED_SEARCH_CAPS: dict[str, int] = {'free': 5, 'starter': 25}
+
 PAGE_SIZE: int = 100
 MAX_NAVIGABLE_RESULTS: int = 1000
 MAX_KEYWORD_LENGTH: int = 200
+MAX_SAVED_SEARCH_NAME_LENGTH: int = 100
 
 SEARCH_LIMIT_MESSAGES: dict[str, str] = {
     'ar': 'لقد بلغت الحد اليومي للبحث ({limit}) — قيّد بحثك أو عد غداً.',
@@ -27,6 +30,18 @@ REFINE_PROMPT_MESSAGES: dict[str, str] = {
     'en': 'You have reached 1,000 results — refine your filters to see more.',
 }
 
+SAVED_SEARCH_LIMIT_MESSAGES: dict[str, str] = {
+    'ar': 'بلغت الحد الأقصى للحسابات المحفوظة ({limit}) — احذف واحدة أو قم بالترقية.',
+    'fr': (
+        'Vous avez atteint la limite de recherches enregistrées ({limit}) — '
+        'supprimez-en une ou passez à Starter.'
+    ),
+    'en': (
+        'You have reached the saved search limit ({limit}). '
+        'Delete one or upgrade to Starter.'
+    ),
+}
+
 UPSERT_SEARCH_COUNT_SQL: str = (
     'INSERT INTO daily_usage (user_id, date, search_count) VALUES (%s, %s, 1) '
     'ON CONFLICT (user_id, date) DO UPDATE SET search_count = daily_usage.search_count + 1'
@@ -36,6 +51,11 @@ UPSERT_SEARCH_COUNT_SQL: str = (
 def daily_limit_for(user: object) -> int:
     tier = getattr(user, 'tier', 'free')
     return SEARCH_DAILY_LIMITS.get(tier, SEARCH_DAILY_LIMITS['free'])
+
+
+def saved_search_limit_for(user: object) -> int:
+    tier = getattr(user, 'tier', 'free')
+    return SAVED_SEARCH_CAPS.get(tier, SAVED_SEARCH_CAPS['free'])
 
 
 def daily_limit_reached(user: object) -> bool:

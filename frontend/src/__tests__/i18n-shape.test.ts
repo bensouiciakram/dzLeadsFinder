@@ -43,3 +43,30 @@ describe('wilaya combobox i18n shapes (×3 locales)', () => {
     }
   })
 })
+
+describe('saved searches i18n shapes (×3 locales)', () => {
+  it('declares the {limit} interpolation param in the cap tooltips in every locale', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.search.saved.cap_tooltip_free).toContain('{limit}')
+      expect(messages.search.saved.cap_tooltip_starter).toContain('{limit}')
+    }
+  })
+
+  it('resolves every key the saved-searches list renders in all locales', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.search.saved.title).toBeTruthy()
+      expect(messages.search.saved.save).toBeTruthy()
+      expect(messages.search.saved.name_placeholder).toBeTruthy()
+      expect(messages.search.saved.name_label).toBeTruthy()
+      expect(messages.search.saved.name_too_long).toBeTruthy()
+      expect(messages.search.saved.empty).toBeTruthy()
+      expect(messages.search.saved.delete_confirm).toBeTruthy()
+      expect(messages.search.saved.max_capacity).toBeTruthy()
+      expect(messages.search.saved.cap_tooltip_free).toBeTruthy()
+      expect(messages.search.saved.cap_tooltip_starter).toBeTruthy()
+      expect(messages.search.saved.rename).toBeTruthy()
+      expect(messages.search.saved.rename_title).toBeTruthy()
+      expect(messages.search.saved.actions).toBeTruthy()
+    }
+  })
+})

@@ -329,9 +329,16 @@
       "title": "Recherches enregistrées",
       "save": "Enregistrer la recherche actuelle",
       "name_placeholder": "Nommez cette recherche...",
-      "empty": "Aucune recherche enregistrée",
+      "name_label": "Nom",
+      "name_too_long": "Le nom ne peut pas dépasser 100 caractères",
+      "empty": "Enregistrez une recherche pour la réutiliser plus tard",
       "delete_confirm": "Supprimer cette recherche enregistrée ?",
-      "max_capacity": "Vous avez atteint la limite de recherches enregistrées"
+      "max_capacity": "Vous avez atteint la limite de recherches enregistrées",
+      "cap_tooltip_free": "Limite du plan gratuit : {limit} recherches enregistrées",
+      "cap_tooltip_starter": "Limite du plan Starter : {limit} recherches enregistrées",
+      "rename": "Renommer",
+      "rename_title": "Renommer la recherche enregistrée",
+      "actions": "Actions de la recherche enregistrée"
     }
   },
   "settings": {

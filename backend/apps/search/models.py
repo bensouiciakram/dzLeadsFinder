@@ -149,3 +149,33 @@ class DailyUsage(models.Model):
 
     def __str__(self) -> str:
         return f'{self.user_id} @ {self.date}'
+
+
+class SavedSearch(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='saved_searches',
+    )
+    name = models.TextField()
+    type = models.CharField(
+        max_length=10,
+        choices=[('people', 'people'), ('company', 'company')],
+    )
+    filters = models.JSONField(default=dict)
+    sort = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'saved_searches'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(type__in=['people', 'company']),
+                name='saved_searches_type_check',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return str(self.name)

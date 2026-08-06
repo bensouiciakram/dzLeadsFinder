@@ -11,6 +11,7 @@ import {
   SearchService,
   buildFiltersPayload,
   countActiveFilters,
+  filtersPayloadToStaged,
   type StagedFilters,
 } from '@/lib/api/search-service'
 
@@ -95,6 +96,55 @@ describe('buildFiltersPayload', () => {
       seniority: [],
       keyword: '',
     })
+  })
+})
+
+describe('filtersPayloadToStaged', () => {
+  const full: StagedFilters = {
+    industries: [4, 9],
+    wilayas: [31, 16],
+    seniorities: ['owner_founder', 'director'],
+    sizes: ['1-10', '500+'],
+    includeUnknownSize: true,
+    keyword: 'oran',
+  }
+
+  it('round-trips people payloads exactly (JSONB contract)', () => {
+    const staged = filtersPayloadToStaged(buildFiltersPayload(full, 'people'), 'people')
+    expect(staged).toEqual({
+      industries: [4, 9],
+      wilayas: [31, 16],
+      seniorities: ['owner_founder', 'director'],
+      sizes: [],
+      includeUnknownSize: false,
+      keyword: 'oran',
+    })
+    expect(buildFiltersPayload(staged, 'people')).toEqual(buildFiltersPayload(full, 'people'))
+  })
+
+  it('round-trips companies payloads exactly (JSONB contract)', () => {
+    const staged = filtersPayloadToStaged(buildFiltersPayload(full, 'companies'), 'companies')
+    expect(staged).toEqual({
+      industries: [4, 9],
+      wilayas: [31, 16],
+      seniorities: [],
+      sizes: ['1-10', '500+'],
+      includeUnknownSize: true,
+      keyword: 'oran',
+    })
+    expect(buildFiltersPayload(staged, 'companies')).toEqual(
+      buildFiltersPayload(full, 'companies'),
+    )
+  })
+
+  it('degrades missing or foreign keys to empty defaults', () => {
+    expect(filtersPayloadToStaged({}, 'people')).toEqual(EMPTY_FILTERS)
+    expect(filtersPayloadToStaged({ industry: 'x', wilaya: [true] }, 'people')).toEqual(
+      EMPTY_FILTERS,
+    )
+    expect(filtersPayloadToStaged({ seniority: ['director'] }, 'companies')).toEqual(
+      EMPTY_FILTERS,
+    )
   })
 })
 

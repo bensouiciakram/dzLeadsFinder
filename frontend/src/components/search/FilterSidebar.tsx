@@ -78,6 +78,7 @@ export type FilterSidebarProps = {
   chipRemove?: ChipRemoveEvent
   clearNonce?: number
   onClearAllRequest?: () => void
+  savedSearchesSlot?: ReactNode
   onSubmit: (filters: StagedFilters) => void
 }
 
@@ -92,6 +93,7 @@ export function FilterSidebar({
   chipRemove,
   clearNonce = 0,
   onClearAllRequest,
+  savedSearchesSlot,
   onSubmit,
 }: FilterSidebarProps) {
   const t = useTranslations()
@@ -300,7 +302,10 @@ export function FilterSidebar({
             {t('search.filters.clear')}
           </button>
         </div>
-        <div className="grow overflow-y-auto px-4 pb-4">{renderGroups('aside')}</div>
+        <div className="grow overflow-y-auto px-4 pb-4">
+          {renderGroups('aside')}
+          {savedSearchesSlot}
+        </div>
         <div className="border-t border-border">
           <div className="border-inline-end border-border">{renderApply('aside')}</div>
         </div>
@@ -334,7 +339,10 @@ export function FilterSidebar({
             <XIcon />
           </DrawerClose>
         </DrawerHeader>
-          <div className="grow overflow-y-auto p-4">{renderGroups('drawer')}</div>
+          <div className="grow overflow-y-auto p-4">
+            {renderGroups('drawer')}
+            {savedSearchesSlot}
+          </div>
           <DrawerFooter className="border-t border-border">{renderApply('drawer')}</DrawerFooter>
         </DrawerContent>
       </Drawer>

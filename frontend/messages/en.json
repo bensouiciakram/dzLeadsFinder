@@ -329,9 +329,16 @@
       "title": "Saved Searches",
       "save": "Save Current Search",
       "name_placeholder": "Name this search...",
-      "empty": "No saved searches yet",
+      "name_label": "Name",
+      "name_too_long": "Name must be 100 characters or fewer",
+      "empty": "Save a search to reuse it later",
       "delete_confirm": "Delete this saved search?",
-      "max_capacity": "You have reached the saved search limit"
+      "max_capacity": "You have reached the saved search limit",
+      "cap_tooltip_free": "Free tier limit: {limit} saved searches",
+      "cap_tooltip_starter": "Starter tier limit: {limit} saved searches",
+      "rename": "Rename",
+      "rename_title": "Rename saved search",
+      "actions": "Saved search actions"
     }
   },
   "settings": {

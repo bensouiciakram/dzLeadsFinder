@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.search.models import Company, DailyUsage, Industry, Person, Wilaya
+from apps.search.models import Company, DailyUsage, Industry, Person, SavedSearch, Wilaya
 
 
 @admin.register(DailyUsage)
@@ -8,6 +8,23 @@ class DailyUsageAdmin(admin.ModelAdmin):
     list_display = ('user', 'date', 'search_count', 'export_rows')
     search_fields = ('user__email',)
     list_filter = ('date',)
+
+
+@admin.register(SavedSearch)
+class SavedSearchAdmin(admin.ModelAdmin):
+    list_display = ('user', 'name', 'type', 'created_at')
+    search_fields = ('user__email', 'name')
+    list_filter = ('type',)
+    readonly_fields = ('id', 'user', 'name', 'type', 'filters', 'sort', 'created_at', 'updated_at')
+
+    def has_add_permission(self, request: object) -> bool:
+        return False
+
+    def has_delete_permission(self, request: object, obj: object | None = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: object, obj: object | None = None) -> bool:
+        return False
 
 
 @admin.register(Wilaya)

@@ -52,6 +52,31 @@ export function buildFiltersPayload(
   }
 }
 
+function numberList(value: unknown): number[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is number => typeof item === 'number' && Number.isInteger(item))
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
+export function filtersPayloadToStaged(
+  payload: Record<string, unknown>,
+  tab: SearchTab,
+): StagedFilters {
+  return {
+    industries: numberList(payload.industry),
+    wilayas: numberList(payload.wilaya),
+    seniorities: tab === 'people' ? stringList(payload.seniority) : [],
+    sizes: tab === 'companies' ? stringList(payload.size) : [],
+    includeUnknownSize:
+      tab === 'companies' ? payload.include_unknown_size === true : false,
+    keyword: typeof payload.keyword === 'string' ? payload.keyword : '',
+  }
+}
+
 export type PeopleResultRow = {
   id: string
   name: string
