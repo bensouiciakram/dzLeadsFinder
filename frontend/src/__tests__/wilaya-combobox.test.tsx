@@ -170,6 +170,26 @@ describe('WilayaCombobox selection and chips', () => {
     expect(onChange).toHaveBeenCalledWith([1])
   })
 
+  it('removes exactly the chip whose remove button receives Enter', () => {
+    const { onChange } = renderCombobox([31, 1])
+    const removeButtons = screen.getAllByRole('button', { name: 'search.filters.wilaya_remove' })
+
+    fireEvent.keyDown(removeButtons[0], { key: 'Enter' })
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith([1])
+  })
+
+  it('removes exactly the chip whose remove button receives Space', () => {
+    const { onChange } = renderCombobox([31, 1])
+    const removeButtons = screen.getAllByRole('button', { name: 'search.filters.wilaya_remove' })
+
+    fireEvent.keyDown(removeButtons[1], { key: ' ' })
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith([31])
+  })
+
   it('selects an option with Enter on the highlighted option', async () => {
     const { onChange } = renderCombobox()
     const input = openPopup()

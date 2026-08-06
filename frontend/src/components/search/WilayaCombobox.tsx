@@ -154,6 +154,13 @@ export function WilayaCombobox({
                     })}
                     className="ms-1 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:size-4"
                     onClick={() => removeChip(wilaya.code)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        removeChip(wilaya.code)
+                      }
+                    }}
                   >
                     <XIcon className="pointer-events-none size-4" />
                   </button>
