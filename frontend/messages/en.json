@@ -338,6 +338,7 @@
       "cap_tooltip_starter": "Starter tier limit: {limit} saved searches",
       "rename": "Rename",
       "rename_title": "Rename saved search",
+      "retry": "Retry",
       "actions": "Saved search actions"
     }
   },

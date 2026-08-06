@@ -1,5 +1,7 @@
 """Search API endpoint views for People and Company search."""
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.db.models.expressions import Expression
 from django.db.models.query import QuerySet
@@ -226,26 +228,30 @@ class SavedSearchListView(APIView):
         return Response(SavedSearchSerializer(rows, many=True).data)
 
     def post(self, request: Request) -> Response:
-        limit = quota.saved_search_limit_for(request.user)
-        count = SavedSearch.objects.filter(user_id=request.user.id).count()
-        if count >= limit:
-            message = quota.SAVED_SEARCH_LIMIT_MESSAGES[_locale(request.user)].format(
-                limit=limit
-            )
-            return Response(
-                {
-                    'detail': message,
-                    'code': 'saved_search_limit_exceeded',
-                    'limit': limit,
-                },
-                status=400,
-            )
         serializer = SavedSearchSerializer(data=request.data)
         if not serializer.is_valid():
-            return _validation_response(
-                ValidationError(serializer.errors)
+            return _validation_response(ValidationError(serializer.errors))
+        limit = quota.saved_search_limit_for(request.user)
+        # Lock the user row so concurrent creates (two tabs) serialize on the
+        # count-then-insert — the cap can never be exceeded by a burst.
+        with transaction.atomic():
+            locked_user = get_user_model().objects.select_for_update().get(
+                pk=request.user.id
             )
-        serializer.save(user=request.user)
+            count = SavedSearch.objects.filter(user_id=locked_user.id).count()
+            if count >= limit:
+                message = quota.SAVED_SEARCH_LIMIT_MESSAGES[_locale(request.user)].format(
+                    limit=limit
+                )
+                return Response(
+                    {
+                        'detail': message,
+                        'code': 'saved_search_limit_exceeded',
+                        'limit': limit,
+                    },
+                    status=400,
+                )
+            serializer.save(user=locked_user)
         return Response(serializer.data, status=201)
 
 

@@ -124,6 +124,13 @@ describe('SavedSearchesList', () => {
     expect(screen.getByText('Oran importers')).toBeInTheDocument()
   })
 
+  it('wraps pure-Arabic names in a bidi span (3.5 rule)', async () => {
+    renderList({ rows: [row({ name: 'فقط في الجزائر' })] })
+    const wrapper = (await screen.findByText('فقط في الجزائر')).closest('span')
+    expect(wrapper).toHaveAttribute('lang', 'ar')
+    expect(wrapper).toHaveAttribute('dir', 'rtl')
+  })
+
   it('re-runs on row click with the full row', async () => {
     const { onRerun } = renderList({ rows: [row()] })
     const nameButton = await screen.findByText('Importers Oran')
@@ -186,6 +193,30 @@ describe('SavedSearchesList', () => {
     expect(savedSearchService.remove).not.toHaveBeenCalled()
   })
 
+  it('surfaces a delete failure inline and stays open', async () => {
+    vi.mocked(savedSearchService.remove).mockRejectedValueOnce(new Error('boom'))
+    renderList({ rows: [row()] })
+    await screen.findByText('Importers Oran')
+    fireEvent.click(screen.getByLabelText('search.saved.actions'))
+    fireEvent.click(await screen.findByText('common.actions.delete'))
+    fireEvent.click(await screen.findByText('common.actions.delete'))
+    expect(await screen.findByText('common.states.error')).toBeInTheDocument()
+    expect(await screen.findByText('search.saved.delete_confirm')).toBeInTheDocument()
+  })
+
+  it('returns focus to the save trigger after the create dialog closes', async () => {
+    const user = userEvent.setup()
+    renderList({ rows: [] })
+    const save = await screen.findByText('search.saved.save')
+    await user.click(save)
+    const input = await screen.findByLabelText('search.saved.name_label')
+    expect(input).toBeInTheDocument()
+    await user.click(await screen.findByText('common.actions.cancel'))
+    await waitFor(() => {
+      expect(document.activeElement).toBe(save.closest('button'))
+    })
+  })
+
   it('disables save at the free cap with a tooltip (aria-disabled, focusable)', async () => {
     const user = userEvent.setup()
     const rows = Array.from({ length: 5 }, (_, index) =>
@@ -197,6 +228,27 @@ describe('SavedSearchesList', () => {
     expect(save.closest('button')).toHaveAttribute('aria-disabled', 'true')
     await user.hover(save)
     expect(await screen.findByText('search.saved.cap_tooltip_free')).toBeInTheDocument()
+  })
+
+  it('keeps the cap tooltip keyboard-reachable via focus', async () => {
+    const rows = Array.from({ length: 5 }, (_, index) =>
+      row({ id: `row-${index}`, name: `saved ${index}` }),
+    )
+    renderList({ rows })
+    await screen.findByText('saved 4')
+    const save = screen.getByText('search.saved.save')
+    fireEvent.focus(save.closest('button') as HTMLElement)
+    expect(await screen.findByText('search.saved.cap_tooltip_free')).toBeInTheDocument()
+  })
+
+  it('does not open the create dialog when at cap', async () => {
+    const rows = Array.from({ length: 5 }, (_, index) =>
+      row({ id: `row-${index}`, name: `saved ${index}` }),
+    )
+    renderList({ rows })
+    await screen.findByText('saved 4')
+    fireEvent.click(screen.getByText('search.saved.save'))
+    expect(screen.queryByLabelText('search.saved.name_label')).not.toBeInTheDocument()
   })
 
   it('enables save below the free cap', async () => {
@@ -303,7 +355,7 @@ describe('SavedSearchesList', () => {
     renderList({ rows: [] })
     expect(await screen.findByText('common.states.error')).toBeInTheDocument()
     vi.mocked(savedSearchService.list).mockResolvedValue([row()])
-    fireEvent.click(screen.getByText('search.results.retry'))
+    fireEvent.click(screen.getByText('search.saved.retry'))
     expect(await screen.findByText('Importers Oran')).toBeInTheDocument()
   })
 

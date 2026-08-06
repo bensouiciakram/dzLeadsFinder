@@ -3,7 +3,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
@@ -30,7 +30,7 @@ import {
   type SearchTab,
   type StagedFilters,
 } from '@/lib/api/search-service'
-import type { SavedSearchRow, SavedSearchType } from '@/lib/api/saved-search-service'
+import type { SavedSearchRow, SavedSearchSort, SavedSearchType } from '@/lib/api/saved-search-service'
 import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
 
 const PAGE_SIZE = 100
@@ -65,19 +65,19 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [wilayaQuery, setWilayaQuery] = useState('')
   const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
   const [clearNonce, setClearNonce] = useState(0)
-  const [savedTargetId, setSavedTargetId] = useState<string | null>(null)
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
+  const savedTargetRef = useRef<string | null>(null)
 
-  const onSuccess = useCallback(
-    (filters: StagedFilters) => {
-      setApplied(filters)
-      if (savedTargetId !== null) {
-        setActiveSavedId(savedTargetId)
-        setSavedTargetId(null)
-      }
-    },
-    [savedTargetId],
-  )
+  const onSuccess = useCallback((filters: StagedFilters) => {
+    setApplied(filters)
+    // The active indicator tracks the LAST RE-RUN only: a success without a
+    // pending target clears the highlight (the results no longer match the
+    // row — e.g. after a manual Apply or sort change); a failed re-run
+    // clears the target via the error effect, so a later unrelated success
+    // can never mark the wrong row.
+    setActiveSavedId(savedTargetRef.current)
+    savedTargetRef.current = null
+  }, [])
 
   const { query, phase, rateLimitMessage, beginSearch } = useSearchResults({
     tab,
@@ -85,17 +85,34 @@ export function SearchPage({ tab }: SearchPageProps) {
     onSuccess,
   })
 
-  const activeSearch: SavedSearchSnapshot | null =
-    applied === null
-      ? null
-      : {
-          type: tabToSavedType(tab),
-          filters: buildFiltersPayload({ ...applied, wilayas }, tab),
-          sort:
-            sort !== null && sort.dir !== null
-              ? { field: sort.field, dir: sort.dir }
-              : null,
-        }
+  useEffect(() => {
+    if (query.isError) savedTargetRef.current = null
+  }, [query.isError])
+
+  const activeSearch: SavedSearchSnapshot | null = useMemo(() => {
+    if (submitted === null) return null
+    let filters: Record<string, unknown>
+    try {
+      filters = JSON.parse(submitted.filtersJson) as Record<string, unknown>
+    } catch {
+      return null
+    }
+    // The snapshot is the search that was actually executed (the submitted
+    // payload + sort param), never a mix of staged state — a save captures
+    // exactly what produced the visible results (D6).
+    const [field, dir] = submitted.sort.split(':')
+    const sortState: SavedSearchSort | null =
+      submitted.sort === 'name:asc'
+        ? null
+        : dir === 'asc' || dir === 'desc'
+          ? { field, dir }
+          : null
+    return {
+      type: tabToSavedType(tab),
+      filters,
+      sort: sortState,
+    }
+  }, [submitted, tab])
 
   useEffect(() => {
     if (query.isError) setAnnouncement(null)
@@ -107,14 +124,18 @@ export function SearchPage({ tab }: SearchPageProps) {
     setAnnouncement(null)
   }
 
-  const runSearch = (filters: StagedFilters) => {
+  const submitSearch = (filters: StagedFilters, sortState: SortState | null) => {
     startSearch()
     setSubmitted({
       filters,
       filtersJson: JSON.stringify(buildFiltersPayload(filters, tab)),
       page: 1,
-      sort: sortParamFor(sort),
+      sort: sortParamFor(sortState),
     })
+  }
+
+  const runSearch = (filters: StagedFilters) => {
+    submitSearch(filters, sort)
   }
 
   const handleRerun = (row: SavedSearchRow) => {
@@ -123,22 +144,16 @@ export function SearchPage({ tab }: SearchPageProps) {
     const sortField = SORT_FIELDS.includes(row.sort?.field as SortField)
       ? (row.sort?.field as SortField)
       : null
+    const sortDir = row.sort?.dir
     const nextSort: SortState | null =
-      row.sort !== null && row.sort.dir !== null && sortField !== null
-        ? { field: sortField, dir: row.sort.dir }
+      sortField !== null && (sortDir === 'asc' || sortDir === 'desc')
+        ? { field: sortField, dir: sortDir }
         : null
-    setSavedTargetId(row.id)
+    savedTargetRef.current = row.id
     setWilayas(staged.wilayas)
     setWilayaQuery('')
-    setChipRemove(null)
     setSort(nextSort)
-    startSearch()
-    setSubmitted({
-      filters: staged,
-      filtersJson: JSON.stringify(buildFiltersPayload(staged, rowTab)),
-      page: 1,
-      sort: sortParamFor(nextSort),
-    })
+    submitSearch(staged, nextSort)
   }
 
   const handleSortChange = (next: SortState) => {
@@ -184,7 +199,7 @@ export function SearchPage({ tab }: SearchPageProps) {
     setSort(null)
     setAnnouncement(null)
     setActiveSavedId(null)
-    setSavedTargetId(null)
+    savedTargetRef.current = null
   }
 
   const handleChipRemove = (facet: ChipsFacet, value: number | string | boolean) => {

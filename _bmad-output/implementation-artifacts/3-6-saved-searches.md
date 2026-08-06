@@ -2,7 +2,7 @@
 story_id: 3.6
 epic: 3
 title: Story 3.6 — Saved Searches
-Status: review
+status: done
 frs: [FR-8, FR-7]
 ads: [AD-3, AD-8, AD-9, AD-18, AD-20, AD-21]
 ux_drs: [UX-DR20, UX-DR22, UX-DR24]
@@ -11,7 +11,7 @@ baseline_commit: ba0d54e
 
 # Story 3.6: Saved Searches
 
-Status: review
+Status: done
 
 ## Story
 
@@ -251,6 +251,25 @@ So that **I don't have to re-enter the same filter combinations every time**.
 - [Source: https://ui.shadcn.com/r/styles/base-nova/dialog.json] base-nova `dialog` (Base UI Dialog; registry dep: button only) — verified 2026-08-06
 - [Source: https://ui.shadcn.com/r/styles/base-nova/dropdown-menu.json] base-nova `dropdown-menu` (Base UI Menu; no registry deps) — verified 2026-08-06
 
+## Review Findings
+
+- [x] [Review][Patch] Saved-searches cache was not user-scoped — the list query key `['saved-searches','list']` survived logout, so a second user logging in within the 60s staleTime saw the first user's rows. [hooks/useSavedSearches.ts, lib/queryKeys/savedSearches.ts] — FIXED: the list key is now scoped by `user.email` (`savedSearchesKeys.list(userKey)`); mutations invalidate via `savedSearchesKeys.all` (prefix — covers every user's key); cache-scope test added.
+- [x] [Review][Patch] `savedTargetId` could mark the wrong row active: a failed re-run left the target pending, so any later successful search (manual Apply, retry) consumed it and highlighted the failed row; conversely a manual re-search left the old highlight stale. [SearchPage.tsx] — FIXED: target moved to a ref, cleared on query error (error effect) and consumed only by the re-run's own success; any success WITHOUT a pending target clears the highlight (honest active indicator).
+- [x] [Review][Patch] The at-cap Save button was `aria-disabled` but still opened the create dialog (a guaranteed 400). [SavedSearchesList.tsx] — FIXED: `onClick` returns early at cap; the tooltip promise ("disabled") now matches behavior; test added (no dialog opens at cap).
+- [x] [Review][Patch] Delete failures were silent with an unhandled rejection (double-click could fire a second DELETE against a 404 row). [SavedSearchesList.tsx] — FIXED: `handleDelete` try/catch surfaces `common.states.error` inline in the confirm dialog; both buttons disabled while `remove.isPending`; tests added (failure stays open + error rendered).
+- [x] [Review][Patch] Stored `sort.dir` was unvalidated on re-run (only the field was whitelisted) — `{field:'role'}` or `dir:'sideways'` produced an invalid sort param → 400 on re-run. [SearchPage.tsx] — FIXED: dir must be exactly 'asc'|'desc' else the re-run degrades to the server default.
+- [x] [Review][Patch] Backend cap check was read-then-insert with no atomicity — two concurrent POSTs (two tabs) could both pass the count and exceed the cap. [views.py] — FIXED: the user row is locked with `select_for_update()` inside `transaction.atomic()` around count+create; validation now precedes the cap check (spec order — an at-cap user with an invalid payload gets the field error, not the cap error); test added.
+- [x] [Review][Patch] The save snapshot mixed `applied` filters with the LIVE `wilayas` state and the optimistic sort — a staged chip removal or a save during a re-run flight persisted a filter+sort combination that never executed. [SearchPage.tsx] — FIXED: the snapshot derives from `submitted` (the payload JSON + sort param of the search actually executed); `'name:asc'` (the implicit default) stores `sort: null` per D6.
+- [x] [Review][Patch] Cap-tooltip keyboard reachability was unverified (the wrapper span is not focusable; only hover was tested). [SavedSearchesList.tsx, saved-searches-list.test.tsx] — FIXED: focus-based test added (`fireEvent.focus` opens the tooltip — Base UI focusin delegation works).
+- [x] [Review][Patch] `handleRerun` inlined the submit path instead of reusing `runSearch` (spec: re-run through the existing path). [SearchPage.tsx] — FIXED: extracted `submitSearch(filters, sortState)`; `runSearch` and `handleRerun` both go through it.
+- [x] [Review][Patch] Client name-length boundary counted UTF-16 units while the backend counts code points — a 60-emoji name (120 units) was rejected client-side. [lib/validation/saved-search.ts] — FIXED: zod `.refine` counts code points (`[...value].length`), mirroring the backend.
+- [x] [Review][Patch] Pure-Arabic saved names rendered without the 3.5 per-fragment bidi wrapper. [SavedSearchesList.tsx] — FIXED: local `MaybeArabic` (the 3.5 per-component pattern) wraps the row name; `lang="ar" dir="rtl"` test added.
+- [x] [Review][Patch] `search.results.retry` was reused inside the saved-searches section — cross-family key per the story gotcha. [SavedSearchesList.tsx, messages ×3] — FIXED: new `search.saved.retry` ×3 (+ shape test).
+- [x] [Review][Patch] Dialog focus-trap/focus-return was untested (spec 5.1). [saved-searches-list.test.tsx] — FIXED: focus-return test (close create dialog → focus lands back on the Save trigger via userEvent).
+- [x] [Review][Patch] Loose test tolerances: malformed-id accepted (400, 404) and unauthenticated accepted (401, 403). [test_saved_search_api.py] — FIXED: tightened to exact 404 / 401.
+
+Dismissed as by-design/noise: (1) transient badge over-count between a re-run click and query success (self-corrects on success; the alternative — delaying the wilaya state — would break the combobox chips during flight; consistent with the applied-only-on-success contract); (2) `filtersPayloadToStaged` does not coerce numeric strings (strict filtering is safer than coercing garbage — the defensive contract is intentionally strict, deviating from the impl note's "coerce" wording).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -316,3 +335,4 @@ deepseek-v4-flash (opencode)
 
 - 2026-08-06: Story created (ready-for-dev) from epic 3.6 spec; Sally UX consultation resolved 6 design decisions (stock base-nova dialog for the naming prompt + RHF+zod per AD-18 — one-field schema with next-intl-key messages; stock base-nova dropdown-menu for the action menu; re-run through the existing runSearch path with wilaya/sort restore + per-tab list scoping; cap UX = aria-disabled + keyboard-reachable tooltip (free 5 / starter 25), plain disabled when no active search; empty hint amended to the AC literal + names never localized + active-search indicator; JSONB round-trip = buildFiltersPayload JSON + {field,dir} sort with payload identity tests). John PM consultation: caps 5/25 confirmed (PRD Open Q2 assumption stands), duplicate names allowed, names never localized, rename never re-runs. Winston architect consultation: SavedSearch model per the spine DDL, 4 user-scoped endpoints with 404-on-foreign-rows, cap enforcement + localized messages in quota.py, re-runs counted only via the search views, admin read-only, maintenance_tasks entry verified. Backend work confirmed in scope (model + migration + endpoints — the table does not exist yet). Registry items dialog + dropdown-menu verified zero-new-deps (Base UI). sprint-status 3-6 → ready-for-dev (epic-3 stays in-progress).
 - 2026-08-06: Implemented (TDD): RED suites (model 11, API 27, service 5, hooks 7, list 18, dialog 9, integration 5) → backend SavedSearch model + 0005 migration + caps + 4 user-scoped endpoints + read-only admin → frontend service/factory/schema → AD-21 hooks (first real mutation consumers) → dialog + dropdown-menu registry adds (base-nova, zero new deps) → SavedSearchesList + SavedSearchNameDialog → filtersPayloadToStaged round-trip → FilterSidebar savedSearchesSlot (aside + drawer) → SearchPage wiring (activeSearch snapshot, handleRerun with wilaya/sort restore through the runSearch path, activeSavedId on success, sort-field whitelist guard) → i18n +7 keys ×3 + empty amend + shape tests. GREEN: frontend 432 tests (369 + 63), lint 0 / typecheck 0 / check:i18n 413×3 ✓; backend 404 pytest (359 + 45) / ruff 0 / mypy strict 0. Real-stack E2E verified on the docker stack (migrate applied to PG16, DDL + CREATE/LIST/PUT/DELETE/re-run through the search endpoint; test user cleaned). Dev-stage amendments: type/tab conversion helpers (singular 'company' vs plural 'companies'), aria-disabled=atCap||undefined, sort-field whitelist guard on stored JSON, badge assertion via waitFor (effect timing), userEvent.hover for the Base UI tooltip. Status → review; sprint 3-6 → review (epic-3 stays in-progress).
+- 2026-08-06: Code review (3 parallel layers: Blind Hunter → Edge Case Hunter → Acceptance Auditor — 19 raw findings → 14 patches + 5 merged/absorbed + 2 dismissed). Patches: user-scoped list query key (cross-user cache exposure within staleTime closed), ref-based re-run target lifecycle (failed re-runs can never mark the wrong row; manual re-searches clear the highlight), at-cap Save click guard (tooltip promise honored), delete error surface + pending-disable (unhandled rejection + duplicate-DELETE closed), stored sort.dir validation on re-run, backend `select_for_update` cap lock + validate-before-cap order, save snapshot derived from `submitted` (never-executed filter+sort combos closed), keyboard-reachable cap tooltip verified by test, `submitSearch` extraction (runSearch path reuse), code-point name-length boundary, pure-Arabic bidi wrapper, `search.saved.retry` ×3 (cross-family key closed), dialog focus-return test, tightened backend test tolerances (exact 404/401). Dismissed (documented): transient badge over-count during re-run flight (self-correcting by design), strict (non-coercing) filtersPayloadToStaged. Post-review gates: frontend 438 tests green (432 + 6), lint 0 / typecheck 0 / check:i18n ✓; backend 405 pytest (404 + 1) / ruff 0 / mypy strict 0. Status → done; sprint 3-6 → done (epic-3 stays in-progress).

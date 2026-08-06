@@ -5,7 +5,7 @@ export const savedSearchNameSchema = z.object({
     .string()
     .trim()
     .min(1, 'common.errors.required')
-    .max(100, 'search.saved.name_too_long'),
+    .refine((value) => [...value].length <= 100, 'search.saved.name_too_long'),
 })
 
 export type SavedSearchNameForm = z.infer<typeof savedSearchNameSchema>

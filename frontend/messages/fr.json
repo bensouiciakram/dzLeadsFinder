@@ -338,6 +338,7 @@
       "cap_tooltip_starter": "Limite du plan Starter : {limit} recherches enregistrées",
       "rename": "Renommer",
       "rename_title": "Renommer la recherche enregistrée",
+      "retry": "Réessayer",
       "actions": "Actions de la recherche enregistrée"
     }
   },

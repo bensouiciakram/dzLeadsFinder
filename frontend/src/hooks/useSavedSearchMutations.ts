@@ -31,7 +31,7 @@ export function useSavedSearchMutations(): UseSavedSearchMutationsResult {
   const queryClient = useQueryClient()
 
   const invalidateList = () =>
-    void queryClient.invalidateQueries({ queryKey: savedSearchesKeys.list })
+    void queryClient.invalidateQueries({ queryKey: savedSearchesKeys.all })
 
   const create = useMutation({
     mutationFn: (payload: SavedSearchPayload): Promise<SavedSearchRow> =>

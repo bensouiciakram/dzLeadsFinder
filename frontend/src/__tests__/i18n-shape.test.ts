@@ -66,6 +66,7 @@ describe('saved searches i18n shapes (×3 locales)', () => {
       expect(messages.search.saved.cap_tooltip_starter).toBeTruthy()
       expect(messages.search.saved.rename).toBeTruthy()
       expect(messages.search.saved.rename_title).toBeTruthy()
+      expect(messages.search.saved.retry).toBeTruthy()
       expect(messages.search.saved.actions).toBeTruthy()
     }
   })

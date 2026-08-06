@@ -83,7 +83,7 @@ class TestCreate:
         response = api_client.post(
             '/api/search/saved/', data=_payload(), content_type='application/json'
         )
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_blank_name_rejected(self, search_session: _Session) -> None:
         client, _user = search_session()
@@ -186,6 +186,17 @@ class TestCaps:
         )
         assert response.status_code == 400
         assert '5' in response.json()['detail']
+
+    def test_validation_precedes_cap_check(self, search_session: _Session) -> None:
+        client, user = search_session(locale='en', tier='free')
+        _seed(client, user, 5)
+        response = client.post(
+            '/api/search/saved/',
+            data=_payload(name=''),
+            content_type='application/json',
+        )
+        assert response.status_code == 400
+        assert response.json()['code'] != 'saved_search_limit_exceeded'
 
 
 class TestList:
@@ -295,7 +306,7 @@ class TestUpdate:
             '/api/search/saved/not-a-uuid/', data={'name': 'x'},
             content_type='application/json',
         )
-        assert response.status_code in (400, 404)
+        assert response.status_code == 404
 
     def test_update_requires_auth(self, search_session: _Session) -> None:
         client, user = search_session()
@@ -306,7 +317,7 @@ class TestUpdate:
             data={'name': 'x2'},
             content_type='application/json',
         )
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
 
 class TestDelete:

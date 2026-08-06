@@ -32,6 +32,7 @@ import {
   type SavedSearchType,
 } from '@/lib/api/saved-search-service'
 import type { SearchTab } from '@/lib/api/search-service'
+import { isArabic } from '@/components/search/ResultsTable'
 
 export type SavedSearchSnapshot = {
   type: SavedSearchType
@@ -48,6 +49,15 @@ export type SavedSearchesListProps = {
 
 const CAPS: Record<string, number> = { free: 5, starter: 25 }
 
+function MaybeArabic({ text }: { text: string }) {
+  if (!isArabic(text)) return <>{text}</>
+  return (
+    <span lang="ar" dir="rtl">
+      {text}
+    </span>
+  )
+}
+
 export function SavedSearchesList({
   tab,
   activeSearchId,
@@ -61,6 +71,7 @@ export function SavedSearchesList({
   const [createOpen, setCreateOpen] = useState(false)
   const [renameRow, setRenameRow] = useState<SavedSearchRow | null>(null)
   const [deleteRow, setDeleteRow] = useState<SavedSearchRow | null>(null)
+  const [deleteError, setDeleteError] = useState(false)
 
   const tier = user?.tier ?? 'free'
   const cap = CAPS[tier] ?? CAPS.free
@@ -81,8 +92,13 @@ export function SavedSearchesList({
 
   const handleDelete = async () => {
     if (deleteRow === null) return
-    await remove.mutateAsync(deleteRow.id)
-    setDeleteRow(null)
+    setDeleteError(false)
+    try {
+      await remove.mutateAsync(deleteRow.id)
+      setDeleteRow(null)
+    } catch {
+      setDeleteError(true)
+    }
   }
 
   const saveButton = (
@@ -91,7 +107,10 @@ export function SavedSearchesList({
       size="sm"
       disabled={activeSearch === null}
       aria-disabled={atCap || undefined}
-      onClick={() => setCreateOpen(true)}
+      onClick={() => {
+        if (atCap) return
+        setCreateOpen(true)
+      }}
       className="min-h-11 md:min-h-8"
     >
       {t('search.saved.save')}
@@ -127,7 +146,7 @@ export function SavedSearchesList({
         <div className="mt-3">
           <p className="text-small text-destructive">{t('common.states.error')}</p>
           <Button variant="outline" size="sm" className="mt-2 min-h-11 md:min-h-8" onClick={refetch}>
-            {t('search.results.retry')}
+            {t('search.saved.retry')}
           </Button>
         </div>
       )}
@@ -155,7 +174,7 @@ export function SavedSearchesList({
                   onClick={() => onRerun(row)}
                   className="min-h-11 grow truncate rounded-md px-3 text-start text-small text-foreground hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring md:min-h-8"
                 >
-                  {row.name}
+                  <MaybeArabic text={row.name} />
                 </button>
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -202,12 +221,21 @@ export function SavedSearchesList({
             <DialogTitle>{t('search.saved.delete_confirm')}</DialogTitle>
             <DialogDescription>{deleteRow?.name}</DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-small text-destructive">
+              {t('common.states.error')}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteRow(null)}>
+            <Button variant="outline" onClick={() => setDeleteRow(null)} disabled={remove.isPending}>
               {t('common.actions.cancel')}
             </Button>
-            <Button variant="destructive" onClick={() => void handleDelete()}>
-              {t('common.actions.delete')}
+            <Button
+              variant="destructive"
+              onClick={() => void handleDelete()}
+              disabled={remove.isPending}
+            >
+              {remove.isPending ? t('common.states.loading') : t('common.actions.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

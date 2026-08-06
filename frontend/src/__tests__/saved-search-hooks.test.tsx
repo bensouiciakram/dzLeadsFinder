@@ -96,7 +96,7 @@ describe('useSavedSearches', () => {
 })
 
 describe('useSavedSearchMutations', () => {
-  it('invalidates the list factory key after a create', async () => {
+  it('invalidates the list factory prefix after a create', async () => {
     vi.mocked(savedSearchService.create).mockResolvedValue({
       id: '1',
       name: 'x',
@@ -119,10 +119,10 @@ describe('useSavedSearchMutations', () => {
       sort: null,
     })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.list })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.all })
   })
 
-  it('invalidates the list factory key after a rename', async () => {
+  it('invalidates the list factory prefix after a rename', async () => {
     vi.mocked(savedSearchService.rename).mockResolvedValue({
       id: '1',
       name: 'y',
@@ -140,10 +140,10 @@ describe('useSavedSearchMutations', () => {
 
     await result.current.rename.mutateAsync({ id: '1', name: 'y' })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.list })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.all })
   })
 
-  it('invalidates the list factory key after a remove', async () => {
+  it('invalidates the list factory prefix after a remove', async () => {
     vi.mocked(savedSearchService.remove).mockResolvedValue(undefined)
     const client = freshClient()
     const invalidateSpy = vi.spyOn(client, 'invalidateQueries')
@@ -153,6 +153,17 @@ describe('useSavedSearchMutations', () => {
 
     await result.current.remove.mutateAsync('1')
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.list })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: savedSearchesKeys.all })
+  })
+
+  it('scopes the list query key to the user email', async () => {
+    vi.mocked(savedSearchService.list).mockResolvedValue([])
+    const client = freshClient()
+    const { result } = renderHook(() => useSavedSearches({ user: USER }), {
+      wrapper: wrapperFor(client),
+    })
+    await waitFor(() => expect(result.current.phase).toBe('success'))
+    const cache = client.getQueryCache().getAll()
+    expect(cache.some((entry) => entry.queryKey[2] === 'a@b.dz')).toBe(true)
   })
 })

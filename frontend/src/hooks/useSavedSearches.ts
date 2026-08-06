@@ -18,7 +18,12 @@ export type UseSavedSearchesResult = {
 
 export function useSavedSearches({ user }: { user: SessionUser | null }): UseSavedSearchesResult {
   const query = useQuery({
-    queryKey: savedSearchesKeys.list,
+    // The list key is user-scoped: the cache must never serve one account's
+    // rows to another (logout → login within staleTime on the same browser).
+    // Mutations invalidate via savedSearchesKeys.all (prefix), which covers
+    // every user's list key.
+    queryKey:
+      user === null ? savedSearchesKeys.idle : savedSearchesKeys.list(user.email),
     queryFn: async (): Promise<SavedSearchRow[]> => savedSearchService.list(),
     enabled: user !== null,
     // Saved searches change only via the user's own mutations, and every
