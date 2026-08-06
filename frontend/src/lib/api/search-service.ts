@@ -82,6 +82,20 @@ export type SearchResult<T> = {
   refine_prompt: string | null
 }
 
+export type SearchApiError = {
+  response?: {
+    status?: number
+    data?: { detail?: string }
+  }
+}
+
+export function isRateLimitError(
+  error: unknown,
+): error is SearchApiError & { response: { status: 429 } } {
+  if (typeof error !== 'object' || error === null) return false
+  return (error as SearchApiError).response?.status === 429
+}
+
 export class SearchService extends HttpClient {
   async searchPeople(
     filtersJson: string,

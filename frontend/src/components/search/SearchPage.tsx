@@ -1,10 +1,9 @@
 'use client'
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
@@ -17,9 +16,9 @@ import { ResultsTableStackedRow } from '@/components/search/ResultsTableStackedR
 import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSearchResults, type SearchSubmitted } from '@/hooks/useSearchResults'
 import {
   buildFiltersPayload,
-  searchService,
   type CompanyResultRow,
   type PeopleResultRow,
   type SearchTab,
@@ -29,22 +28,6 @@ import {
 const PAGE_SIZE = 100
 const MAX_NAVIGABLE_PAGES = 10
 const SKELETON_CARDS = 3
-
-type Phase = 'idle' | 'loading' | 'error' | 'rate_limited'
-
-type SearchError = {
-  response?: {
-    status?: number
-    data?: { detail?: string }
-  }
-}
-
-type Submitted = {
-  filters: StagedFilters
-  filtersJson: string
-  page: number
-  sort: string
-}
 
 function sortParamFor(sort: SortState | null): string {
   return sort !== null && sort.dir !== null ? `${sort.field}:${sort.dir}` : 'name:asc'
@@ -56,74 +39,35 @@ export type SearchPageProps = {
 
 export function SearchPage({ tab }: SearchPageProps) {
   const t = useTranslations()
-  const queryClient = useQueryClient()
-  const [submitted, setSubmitted] = useState<Submitted | null>(null)
-  const [submitNonce, setSubmitNonce] = useState(0)
+  const [submitted, setSubmitted] = useState<SearchSubmitted | null>(null)
   const [applied, setApplied] = useState<StagedFilters | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
-  const [rateLimitMessage, setRateLimitMessage] = useState<string | undefined>(undefined)
   const [announcement, setAnnouncement] = useState<string | null>(null)
   const [wilayas, setWilayas] = useState<number[]>([])
   const [wilayaQuery, setWilayaQuery] = useState('')
   const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
   const [clearNonce, setClearNonce] = useState(0)
 
-  const query = useQuery({
-    queryKey:
-      submitted === null
-        ? ['search', 'idle']
-        : ['search', tab, submitted.filtersJson, submitted.page, submitted.sort, submitNonce],
-    queryFn: async ({ signal }) => {
-      if (submitted === null) throw new Error('no search submitted')
-      return tab === 'people'
-        ? searchService.searchPeople(submitted.filtersJson, submitted.page, submitted.sort, signal)
-        : searchService.searchCompanies(
-            submitted.filtersJson,
-            submitted.page,
-            submitted.sort,
-            signal,
-          )
-    },
-    enabled: submitted !== null,
+  const onSuccess = useCallback((filters: StagedFilters) => setApplied(filters), [])
+
+  const { query, phase, rateLimitMessage, beginSearch } = useSearchResults({
+    tab,
+    submitted,
+    onSuccess,
   })
 
-  const rateLimited =
-    query.isError &&
-    (query.error as SearchError | null)?.response?.status === 429
-
-  const phase: Phase = query.isError
-    ? rateLimited
-      ? 'rate_limited'
-      : 'error'
-    : submitted !== null && query.isPending
-      ? 'loading'
-      : 'idle'
-
   useEffect(() => {
-    if (!query.isError) return
-    setAnnouncement(null)
-    const error = query.error as SearchError | null
-    if (error?.response?.status === 429) {
-      setRateLimitMessage(error.response.data?.detail)
-    }
-  }, [query.isError, query.error])
+    if (query.isError) setAnnouncement(null)
+  }, [query.isError])
 
-  useEffect(() => {
-    if (query.isSuccess && submitted !== null) {
-      setApplied(submitted.filters)
-    }
-  }, [query.isSuccess, submitted])
-
-  const beginSearch = () => {
-    void queryClient.cancelQueries({ queryKey: ['search', tab] })
-    setRateLimitMessage(undefined)
+  const startSearch = () => {
+    beginSearch()
     setChipRemove(null)
     setAnnouncement(null)
-    setSubmitNonce((nonce) => nonce + 1)
   }
 
   const runSearch = (filters: StagedFilters) => {
-    beginSearch()
+    startSearch()
     setSubmitted({
       filters,
       filtersJson: JSON.stringify(buildFiltersPayload(filters, tab)),
@@ -135,7 +79,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   const handleSortChange = (next: SortState) => {
     if (submitted === null) return
     setSort(next)
-    beginSearch()
+    startSearch()
     const announcementKey =
       next.dir === null
         ? 'search.results.sort_default'
@@ -151,7 +95,7 @@ export function SearchPage({ tab }: SearchPageProps) {
 
   const handlePage = (next: number) => {
     if (submitted === null || query.data === undefined) return
-    beginSearch()
+    startSearch()
     setAnnouncement(
       t('search.results.pagination', {
         current: String(next),
@@ -174,7 +118,6 @@ export function SearchPage({ tab }: SearchPageProps) {
     setSubmitted(null)
     setSort(null)
     setAnnouncement(null)
-    setRateLimitMessage(undefined)
   }
 
   const handleChipRemove = (facet: ChipsFacet, value: number | string | boolean) => {
