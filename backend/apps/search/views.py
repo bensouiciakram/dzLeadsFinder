@@ -6,6 +6,7 @@ from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.db.models.expressions import Expression
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -275,3 +276,37 @@ class SavedSearchDetailView(APIView):
         row = self._row(request, pk)
         row.delete()
         return Response(status=204)
+
+
+class ChecklistView(APIView):
+    def _state(self, request: Request) -> dict[str, object]:
+        from apps.search.models import DailyUsage
+
+        searched_ever = DailyUsage.objects.filter(
+            user_id=request.user.id, search_count__gt=0
+        ).exists()
+        return {
+            'step_search': searched_ever,
+            # Epic-4 contract: the reveals/exports tables do not exist yet.
+            # When they land, extend with EXISTS clauses on those tables —
+            # the client contract does not change.
+            'step_reveal': False,
+            'step_export': False,
+            'dismissed': request.user.checklist_dismissed_at is not None,
+        }
+
+    def get(self, request: Request) -> Response:
+        return Response(self._state(request))
+
+    def put(self, request: Request) -> Response:
+        data = request.data if isinstance(request.data, dict) else None
+        if data != {'dismissed': True}:
+            return Response(
+                {'detail': 'Only {"dismissed": true} is accepted.', 'code': 'invalid_payload'},
+                status=400,
+            )
+        get_user_model().objects.filter(pk=request.user.id).update(
+            checklist_dismissed_at=timezone.now()
+        )
+        request.user.checklist_dismissed_at = timezone.now()
+        return Response(self._state(request))

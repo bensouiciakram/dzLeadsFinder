@@ -6,10 +6,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SearchPage } from '@/components/search/SearchPage'
 import { buildFiltersPayload, type SearchResult } from '@/lib/api/search-service'
+import type { ChecklistState } from '@/lib/api/checklist-service'
 
 const hoisted = vi.hoisted(() => ({
   searchPeople: vi.fn(),
   searchCompanies: vi.fn(),
+  checklistGet: vi.fn(),
+  savedList: vi.fn(),
 }))
 
 vi.mock('@/lib/api/search-service', async (importOriginal) => {
@@ -23,12 +26,53 @@ vi.mock('@/lib/api/search-service', async (importOriginal) => {
   }
 })
 
+vi.mock('@/lib/api/saved-search-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/saved-search-service')>()
+  return {
+    ...actual,
+    savedSearchService: {
+      list: hoisted.savedList,
+      create: vi.fn(),
+      rename: vi.fn(),
+      remove: vi.fn(),
+    },
+  }
+})
+
+vi.mock('@/lib/api/checklist-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/checklist-service')>()
+  return {
+    ...actual,
+    checklistService: {
+      get: hoisted.checklistGet,
+      dismiss: vi.fn(),
+    },
+  }
+})
+
+vi.mock('@/components/providers/SessionProvider', () => ({
+  useSession: () => ({
+    isAuthenticated: true,
+    status: 'authenticated',
+    user: { email: 'a@b.dz', locale: 'en', tier: 'free', credits_balance: 15, email_verified_at: null },
+    refresh: vi.fn(),
+    logout: vi.fn(),
+  }),
+}))
+
 const RESULT: SearchResult<{ id: string; name: string }> = {
   results: [],
   total: 42,
   page: 1,
   truncated: false,
   refine_prompt: null,
+}
+
+const FRESH_CHECKLIST: ChecklistState = {
+  step_search: false,
+  step_reveal: false,
+  step_export: false,
+  dismissed: false,
 }
 
 function deferredResult(data: SearchResult<{ id: string; name: string }> = RESULT) {
@@ -52,10 +96,14 @@ function renderPage(element: ReactElement) {
 beforeEach(() => {
   hoisted.searchPeople.mockReset()
   hoisted.searchCompanies.mockReset()
+  hoisted.checklistGet.mockReset()
+  hoisted.checklistGet.mockResolvedValue(FRESH_CHECKLIST)
+  hoisted.savedList.mockReset()
+  hoisted.savedList.mockResolvedValue([])
 })
 
 describe('SearchPage', () => {
-  it('renders tab links, the sidebar, the skip link and the pre-search empty state', () => {
+  it('renders tab links, the sidebar, the skip link and the pre-search empty state', async () => {
     renderPage(<SearchPage tab="people" />)
 
     const peopleTab = screen.getByRole('link', { name: 'search.people_tab' })
@@ -66,7 +114,7 @@ describe('SearchPage', () => {
     expect(companiesTab).not.toHaveAttribute('aria-current')
 
     expect(screen.getByTestId('filter-sidebar')).toBeInTheDocument()
-    expect(screen.getByTestId('checklist-slot')).toBeInTheDocument()
+    expect(await screen.findByTestId('checklist-card')).toBeInTheDocument()
     expect(screen.getByText('search.results.not_run')).toBeInTheDocument()
     expect(screen.getByText('search.skip_to_results')).toHaveAttribute('href', '#results')
     expect(screen.queryByText('search.results.count')).not.toBeInTheDocument()

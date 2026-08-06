@@ -1,11 +1,13 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
+import { ChecklistCard } from '@/components/search/ChecklistCard'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
 import {
   ResultsTable,
@@ -32,6 +34,8 @@ import {
 } from '@/lib/api/search-service'
 import type { SavedSearchRow, SavedSearchSort, SavedSearchType } from '@/lib/api/saved-search-service'
 import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
+import type { ChecklistStep } from '@/lib/api/checklist-service'
+import { checklistKeys } from '@/lib/queryKeys/checklist'
 
 const PAGE_SIZE = 100
 const MAX_NAVIGABLE_PAGES = 10
@@ -57,6 +61,7 @@ export type SearchPageProps = {
 
 export function SearchPage({ tab }: SearchPageProps) {
   const t = useTranslations()
+  const queryClient = useQueryClient()
   const [submitted, setSubmitted] = useState<SearchSubmitted | null>(null)
   const [applied, setApplied] = useState<StagedFilters | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
@@ -117,6 +122,26 @@ export function SearchPage({ tab }: SearchPageProps) {
   useEffect(() => {
     if (query.isError) setAnnouncement(null)
   }, [query.isError])
+
+  // A fresh successful search can be the FIRST search ever — the checklist
+  // refetch (invalidation-triggered) flips step 1 server-side and the card's
+  // step-flip effect fires the announcement (one cheap GET per success;
+  // step_search stays true afterwards, so no repeated announcements).
+  useEffect(() => {
+    if (query.isSuccess) {
+      void queryClient.invalidateQueries({ queryKey: checklistKeys.all })
+    }
+  }, [query.isSuccess, queryClient])
+
+  const handleChecklistStepComplete = (step: ChecklistStep) => {
+    const announcementKey =
+      step === 'search'
+        ? 'search.checklist.done_search'
+        : step === 'reveal'
+          ? 'search.checklist.done_reveal'
+          : 'search.checklist.done_export'
+    setAnnouncement(t(announcementKey))
+  }
 
   const startSearch = () => {
     beginSearch()
@@ -278,10 +303,11 @@ export function SearchPage({ tab }: SearchPageProps) {
         </nav>
 
         <section id="results" data-testid="results" className="mt-6">
+          <ChecklistCard onStepComplete={handleChecklistStepComplete} />
+
           {submitted === null && (
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div data-testid="checklist-slot" />
-              <p className="mt-4 text-small text-muted-foreground">{t('search.results.not_run')}</p>
+            <div className="mt-4 rounded-lg border border-border bg-card p-6">
+              <p className="text-small text-muted-foreground">{t('search.results.not_run')}</p>
             </div>
           )}
 

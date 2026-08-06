@@ -340,6 +340,18 @@
       "rename_title": "Rename saved search",
       "retry": "Retry",
       "actions": "Saved search actions"
+    },
+    "checklist": {
+      "title": "Get started",
+      "step_search": "Run your first search",
+      "step_reveal": "Reveal a contact",
+      "step_export": "Export a CSV",
+      "complete": "Complete",
+      "pending": "Not complete yet",
+      "dismiss": "Dismiss checklist",
+      "done_search": "First search complete",
+      "done_reveal": "First contact revealed",
+      "done_export": "First export complete"
     }
   },
   "settings": {

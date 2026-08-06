@@ -71,3 +71,35 @@ describe('saved searches i18n shapes (×3 locales)', () => {
     }
   })
 })
+
+describe('checklist card i18n shapes (×3 locales)', () => {
+  it('declares no interpolation params in the checklist family', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.search.checklist.title).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.step_search).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.step_reveal).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.step_export).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.complete).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.pending).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.dismiss).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.done_search).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.done_reveal).not.toMatch(/\{\w+\}/)
+      expect(messages.search.checklist.done_export).not.toMatch(/\{\w+\}/)
+    }
+  })
+
+  it('resolves every key the checklist card renders in all locales', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.search.checklist.title).toBeTruthy()
+      expect(messages.search.checklist.step_search).toBeTruthy()
+      expect(messages.search.checklist.step_reveal).toBeTruthy()
+      expect(messages.search.checklist.step_export).toBeTruthy()
+      expect(messages.search.checklist.complete).toBeTruthy()
+      expect(messages.search.checklist.pending).toBeTruthy()
+      expect(messages.search.checklist.dismiss).toBeTruthy()
+      expect(messages.search.checklist.done_search).toBeTruthy()
+      expect(messages.search.checklist.done_reveal).toBeTruthy()
+      expect(messages.search.checklist.done_export).toBeTruthy()
+    }
+  })
+})

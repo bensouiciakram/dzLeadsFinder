@@ -18,6 +18,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': (
                 'deleted_at',
                 'deletion_scheduled_at',
+                'checklist_dismissed_at',
                 'is_active',
                 'is_staff',
                 'is_superuser',
@@ -25,7 +26,7 @@ class UserAdmin(BaseUserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    readonly_fields = ('last_active_at', 'token_version', 'date_joined')
+    readonly_fields = ('last_active_at', 'token_version', 'date_joined', 'checklist_dismissed_at')
     add_fieldsets = (
         (None, {
             'classes': ('wide',),

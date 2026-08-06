@@ -340,6 +340,18 @@
       "rename_title": "Renommer la recherche enregistrée",
       "retry": "Réessayer",
       "actions": "Actions de la recherche enregistrée"
+    },
+    "checklist": {
+      "title": "Premiers pas",
+      "step_search": "Lancez votre première recherche",
+      "step_reveal": "Révélez un contact",
+      "step_export": "Exportez un CSV",
+      "complete": "Terminé",
+      "pending": "Pas encore terminé",
+      "dismiss": "Fermer la liste de démarrage",
+      "done_search": "Première recherche terminée",
+      "done_reveal": "Premier contact révélé",
+      "done_export": "Premier export terminé"
     }
   },
   "settings": {

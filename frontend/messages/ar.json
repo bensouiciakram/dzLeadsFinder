@@ -340,6 +340,18 @@
       "rename_title": "إعادة تسمية البحث المحفوظ",
       "retry": "إعادة المحاولة",
       "actions": "إجراءات البحث المحفوظ"
+    },
+    "checklist": {
+      "title": "ابدأ",
+      "step_search": "شغّل أول بحث",
+      "step_reveal": "اعرض جهة اتصال",
+      "step_export": "صدّر ملف CSV",
+      "complete": "مكتمل",
+      "pending": "غير مكتمل بعد",
+      "dismiss": "إغلاق قائمة الخطوات",
+      "done_search": "اكتمل أول بحث",
+      "done_reveal": "تم عرض أول جهة اتصال",
+      "done_export": "اكتمل أول تصدير"
     }
   },
   "settings": {
