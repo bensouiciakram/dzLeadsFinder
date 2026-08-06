@@ -144,6 +144,16 @@ class TestPut:
         assert response.status_code == 400
         assert response.json()['code'] == 'invalid_payload'
 
+    def test_numeric_true_rejected(self, search_session: _Session) -> None:
+        """Python `1 == True` — only the JSON boolean is accepted."""
+        client, _user = search_session()
+        response = client.put(
+            '/api/search/checklist/', data={'dismissed': 1},
+            content_type='application/json',
+        )
+        assert response.status_code == 400
+        assert response.json()['code'] == 'invalid_payload'
+
     def test_empty_payload_rejected(self, search_session: _Session) -> None:
         client, _user = search_session()
         response = client.put(

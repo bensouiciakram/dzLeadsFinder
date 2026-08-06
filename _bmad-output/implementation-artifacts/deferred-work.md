@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of story-3.7-checklist-card (2026-08-06)
+
+- **15-credit-banner handoff**: the checklist card AC says "appears below the 15-credit banner", but the banner does not exist yet (credit surfaces land in Epic 4). 3.7 renders the card as the FIRST child of `#results`. Epic 4 must render the 15-credit welcome banner immediately ABOVE the card (the banner slots before `#results`'s first child — the card's DOM-order test pins the position). [frontend/src/components/search/SearchPage.tsx, frontend/src/components/search/ChecklistCard.tsx]
+- **Step-2/step-3 Epic-4 event contract**: `ChecklistView` GET returns `step_reveal`/`step_export` hard-coded `false` (the `reveals`/`exports` tables do not exist until Epic 4). Contract for 4.x: (a) backend — extend `ChecklistView._state` with `EXISTS` clauses on `reveals`/`exports` replacing the literal False (documented in views.py:296-299; the client contract does not change); (b) frontend — the 4-2 reveal and 4-5 export mutations MUST `invalidateQueries({ queryKey: checklistKeys.all })` on success, or the card's live check-off for steps 2/3 stops working. [backend/apps/search/views.py, frontend/src/hooks/useChecklistMutations.ts]
+
 ## RESOLVED by Story 3.5 (2026-08-05)
 
 - ~~No timeout/abort on search requests~~ — **RESOLVED**: shared `timeout: 20000` in the HttpClient default config (all AD-19 services inherit) + `signal` forwarding on `searchPeople`/`searchCompanies` (queryFn abort on new submit; a hung request can no longer strand the page in loading). [frontend/src/lib/api/http-client.ts, frontend/src/lib/api/search-service.ts]

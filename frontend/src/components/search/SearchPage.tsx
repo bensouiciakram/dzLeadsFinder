@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { ChecklistCard } from '@/components/search/ChecklistCard'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
+import { useSession } from '@/components/providers/SessionProvider'
 import {
   ResultsTable,
   columnLabelKey,
@@ -36,6 +37,7 @@ import type { SavedSearchRow, SavedSearchSort, SavedSearchType } from '@/lib/api
 import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
 import type { ChecklistStep } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
+import { useChecklist } from '@/hooks/useChecklist'
 
 const PAGE_SIZE = 100
 const MAX_NAVIGABLE_PAGES = 10
@@ -62,6 +64,8 @@ export type SearchPageProps = {
 export function SearchPage({ tab }: SearchPageProps) {
   const t = useTranslations()
   const queryClient = useQueryClient()
+  const { user } = useSession()
+  const checklist = useChecklist({ user })
   const [submitted, setSubmitted] = useState<SearchSubmitted | null>(null)
   const [applied, setApplied] = useState<StagedFilters | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
@@ -123,16 +127,37 @@ export function SearchPage({ tab }: SearchPageProps) {
     if (query.isError) setAnnouncement(null)
   }, [query.isError])
 
-  // A fresh successful search can be the FIRST search ever — the checklist
-  // refetch (invalidation-triggered) flips step 1 server-side and the card's
-  // step-flip effect fires the announcement (one cheap GET per success;
-  // step_search stays true afterwards, so no repeated announcements).
+  // Step-1 completion announcement. Two complementary mechanisms:
+  // (a) the card's step-flip effect fires onStepComplete when the refetched
+  // state flips mid-session (the normal path — the pre-flip state was seeded
+  // on the mount fetch);
+  // (b) if the mount checklist fetch FAILED, the card has no pre-flip state
+  // to diff against — its first success seeds silently and no flip is
+  // detected. In that case the checklist had no data at search-success time,
+  // so THIS effect takes over and announces once the refetch lands with
+  // step_search true. Both paths can never double-announce: (b) is armed
+  // only when the checklist data was never seen.
+  const checklistDataSeenRef = useRef(false)
+  if (checklist.state !== null) checklistDataSeenRef.current = true
+  const step1PendingRef = useRef(false)
+
   useEffect(() => {
     if (query.isSuccess) {
+      if (!checklistDataSeenRef.current) step1PendingRef.current = true
       void queryClient.invalidateQueries({ queryKey: checklistKeys.all })
     }
   }, [query.isSuccess, queryClient])
 
+  useEffect(() => {
+    if (!step1PendingRef.current) return
+    if (checklist.state?.step_search !== true) return
+    step1PendingRef.current = false
+    setAnnouncement(t('search.checklist.done_search'))
+  }, [checklist.state, t])
+
+  // Step announcements never clobber a fresher announcement from the user's
+  // own action (sort/page land inside the flip window on the first search):
+  // the user-action feedback wins, the step flip stays visible on the card.
   const handleChecklistStepComplete = (step: ChecklistStep) => {
     const announcementKey =
       step === 'search'
@@ -140,7 +165,7 @@ export function SearchPage({ tab }: SearchPageProps) {
         : step === 'reveal'
           ? 'search.checklist.done_reveal'
           : 'search.checklist.done_export'
-    setAnnouncement(t(announcementKey))
+    setAnnouncement((current) => (current === null ? t(announcementKey) : current))
   }
 
   const startSearch = () => {

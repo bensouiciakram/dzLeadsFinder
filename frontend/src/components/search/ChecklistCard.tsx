@@ -31,13 +31,16 @@ export function ChecklistCard({ onStepComplete }: ChecklistCardProps) {
 
   useEffect(() => {
     if (phase !== 'success') return
+    // A dismissed card is dead UI — never announce flips on a card the user
+    // already dismissed (e.g. dismiss + first search racing in one refetch).
+    if (state?.dismissed === true) return
     const prev = prevCompletedRef.current
     prevCompletedRef.current = completed
     if (prev === null) return
     for (const step of completed) {
       if (!prev.includes(step)) onStepCompleteRef.current?.(step)
     }
-  }, [completed, phase])
+  }, [completed, phase, state?.dismissed])
 
   if (phase !== 'success' || state === null || state.dismissed || completed.length === 3) {
     return null

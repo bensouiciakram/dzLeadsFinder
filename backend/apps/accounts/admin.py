@@ -6,7 +6,15 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('email', 'locale', 'tier', 'credits_balance', 'is_staff', 'last_active_at')
+    list_display = (
+        'email',
+        'locale',
+        'tier',
+        'credits_balance',
+        'is_staff',
+        'last_active_at',
+        'checklist_dismissed_at',
+    )
     list_filter = ('tier', 'locale', 'is_staff', 'is_active')
     search_fields = ('email',)
     ordering = ('-date_joined',)

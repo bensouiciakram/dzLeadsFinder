@@ -300,7 +300,9 @@ class ChecklistView(APIView):
 
     def put(self, request: Request) -> Response:
         data = request.data if isinstance(request.data, dict) else None
-        if data != {'dismissed': True}:
+        # Strict: exactly {"dismissed": true} — Python `==` would admit
+        # {"dismissed": 1} (1 == True), so compare keys and identity.
+        if data is None or data.keys() != {'dismissed'} or data['dismissed'] is not True:
             return Response(
                 {'detail': 'Only {"dismissed": true} is accepted.', 'code': 'invalid_payload'},
                 status=400,

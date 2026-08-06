@@ -137,6 +137,25 @@ describe('SearchPage checklist live check-off', () => {
     const status = screen.getByTestId('results-status')
     expect(within(status).queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('still announces step 1 when the mount checklist fetch failed', async () => {
+    hoisted.checklistGet
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ ...FRESH, step_search: true })
+    renderPage(<SearchPage tab="people" />)
+    await screen.findByText('search.results.not_run')
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    await screen.findByText('search.results.count')
+
+    await waitFor(() => expect(hoisted.checklistGet).toHaveBeenCalledTimes(2))
+
+    const status = screen.getByTestId('results-status')
+    await waitFor(() =>
+      expect(within(status).getByRole('status').textContent).toBe(
+        'search.checklist.done_search',
+      ),
+    )
+  })
 })
 
 describe('SearchPage checklist dismissal', () => {

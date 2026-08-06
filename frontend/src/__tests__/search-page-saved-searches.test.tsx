@@ -15,6 +15,7 @@ const hoisted = vi.hoisted(() => ({
   savedCreate: vi.fn(),
   savedRename: vi.fn(),
   savedRemove: vi.fn(),
+  checklistGet: vi.fn(),
 }))
 
 vi.mock('@/lib/api/search-service', async (importOriginal) => {
@@ -24,6 +25,17 @@ vi.mock('@/lib/api/search-service', async (importOriginal) => {
     searchService: {
       searchPeople: hoisted.searchPeople,
       searchCompanies: hoisted.searchCompanies,
+    },
+  }
+})
+
+vi.mock('@/lib/api/checklist-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/checklist-service')>()
+  return {
+    ...actual,
+    checklistService: {
+      get: hoisted.checklistGet,
+      dismiss: vi.fn(),
     },
   }
 })
@@ -88,6 +100,13 @@ beforeEach(() => {
   hoisted.savedCreate.mockReset()
   hoisted.savedRename.mockReset()
   hoisted.savedRemove.mockReset()
+  hoisted.checklistGet.mockReset()
+  hoisted.checklistGet.mockResolvedValue({
+    step_search: false,
+    step_reveal: false,
+    step_export: false,
+    dismissed: false,
+  })
   hoisted.savedList.mockResolvedValue([])
   hoisted.savedCreate.mockResolvedValue(savedRow())
   hoisted.savedRename.mockResolvedValue(savedRow())

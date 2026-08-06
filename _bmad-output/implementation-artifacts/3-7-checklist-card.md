@@ -2,7 +2,7 @@
 story_id: 3.7
 epic: 3
 title: Story 3.7 — Checklist Card
-Status: review
+Status: done
 frs: [FR-5, FR-14, FR-17]
 ads: [AD-3, AD-8, AD-9, AD-19, AD-20, AD-21]
 ux_drs: [UX-DR16, UX-DR20, UX-DR21]
@@ -11,7 +11,7 @@ baseline_commit: ca46572
 
 # Story 3.7: Checklist Card
 
-Status: review
+Status: done
 
 ## Story
 
@@ -226,7 +226,20 @@ So that **I understand the core workflow and can complete the value loop quickly
 
 ## Review Findings
 
-_(filled during Stage 3 — code review)_
+- [x] [Review][Patch] Step-1 announcement could be permanently lost if the mount checklist GET failed once: the card's `prevCompletedRef` seeds from its FIRST success, so after a transient mount failure the first success arrives with the step already flipped — the seed absorbs it silently and `onStepComplete` never fires (no retry UI existed). [ChecklistCard.tsx, SearchPage.tsx] — FIXED: SearchPage now consumes `useChecklist` itself (same cache key) and arms a `step1PendingRef` whenever a search succeeds while the checklist data was never seen; once the invalidation refetch lands with `step_search: true`, SearchPage announces `done_search` itself. Both paths can never double-announce (the supplementary path is armed only when the card has no pre-flip state to diff). Regression test added (mount GET rejects → search → announcement still fires).
+- [x] [Review][Patch] A step-1 flip landing inside the first search's loading window clobbered a fresher sort/page announcement (background refetch vs user action race). [SearchPage.tsx] — FIXED: `handleChecklistStepComplete` now uses a functional update — step announcements never overwrite an announcement already pending from the user's own action (`current === null ? t(key) : current`); the freshest (user-action) announcement wins, the step flip stays visible on the card. Trade-off documented: in this ~100ms race the step announcement yields to the sort/page feedback; the step AC is met in every non-racing path.
+- [x] [Review][Patch] The card could announce a completion for an INVISIBLE card: dismiss X clicked, then a first search in the same refetch window — the refetch returned `dismissed: true` AND `step_search: true`, and the flip effect (gated only on phase) fired `onStepComplete` for dead UI. [ChecklistCard.tsx] — FIXED: the effect now also returns when `state.dismissed === true`; the all-three-complete vanish still announces (the third step's flip fires before the render-null rule).
+- [x] [Review][Patch] `search-page-saved-searches.test.tsx` (3.6-era) mocked the session but not the checklist service — every test fired one real, silently-failing checklist XHR in jsdom. [search-page-saved-searches.test.tsx] — FIXED: checklist service mock added (the 3.3-retrofit pattern); zero real XHRs.
+- [x] [Review][Patch] Task 1.3 delivered only half its claim: `checklist_dismissed_at` went into `readonly_fields` + the Account State fieldset but NOT `list_display` — the ops visibility leg of the support re-arm path was missing. [backend/apps/accounts/admin.py] — FIXED: added to `list_display`. (Note: the story's own readonly mandate means ops clears the column via shell/admin-data migration rather than the admin UI — spec tension recorded, readonly kept per story.)
+- [x] [Review][Patch] The promised deferred-work.md record for 3.7 was absent (the 15-credit-banner handoff + the step-2/step-3 Epic-4 event contract live only in the story file). [deferred-work.md] — FIXED: 3.7 section added with both records.
+- [x] [Review][Patch] PUT accepted `{"dismissed": 1}` (and `1.0`) because Python `1 == True` — the strict `{'dismissed': True}` literal check was not literal. [backend/apps/search/views.py] — FIXED: `data.keys() != {'dismissed'} or data['dismissed'] is not True` → 400 `invalid_payload`; test added (numeric true rejected).
+- [x] [Review][Patch] The "never applies strikethrough" test asserted `document.body.textContent` — class names never appear in textContent, so the assertion could not fail (the component itself was clean). [checklist-card.test.tsx] — FIXED: asserts the complete label's `className` contains `text-muted-foreground` and NOT `line-through`, plus a scoped class scan of the card's own elements.
+- [x] [Review][Dismissed] Two steps flipping in one refetch drop the first announcement (React batches the two `setAnnouncement` calls — the last survives). Unreachable until Epic 4 (steps 2/3 flip only via their own mutations, one at a time); single-announcement-per-refetch is the live region's contract and the freshest completion is the one announced; both flips stay visible on the card. Documented, not patched.
+- [x] [Review][Dismissed] Blind Hunter layer returned no findings (empty output) — noted; Edge Case Hunter (5 findings) + Acceptance Auditor (4 findings) covered the diff, all routed above.
+
+Dismissed as by-design/noise: (1) the F4 dual-flip batching (see above); (2) the Blind Hunter layer failure (covered by the other two layers).
+
+Post-review gates: frontend 480 tests (479 + 1), lint 0 / typecheck 0 / check:i18n ✓; backend 422 pytest (421 + 1) / ruff 0 / mypy strict 0. Status → done; sprint 3-7 → done (epic-3 stays in-progress).
 
 ## Dev Agent Record
 

@@ -193,9 +193,19 @@ describe('ChecklistCard anatomy', () => {
   })
 
   it('never applies strikethrough to a complete label', async () => {
-    renderCard({ step_search: true, step_reveal: true, step_export: true, dismissed: false })
-    await waitFor(() => expect(checklistService.get).toHaveBeenCalled())
-    expect(document.body.textContent ?? '').not.toContain('line-through')
+    renderCard({ ...FRESH, step_search: true })
+    await screen.findByTestId('checklist-card')
+    const label = screen.getByText('search.checklist.step_search')
+    expect(label.className).toContain('text-muted-foreground')
+    expect(label.className).not.toContain('line-through')
+    const card = screen.getByTestId('checklist-card')
+    const own = Array.from(card.querySelectorAll('*')).filter(
+      (el) => el.getAttribute('data-slot') !== 'button',
+    )
+    const classes = own
+      .flatMap((el) => Array.from(el.classList))
+      .filter((name) => typeof name === 'string')
+    expect(classes.join(' ')).not.toContain('line-through')
   })
 
   it('renders sr-only state per row and hides icons from the a11y tree', async () => {
