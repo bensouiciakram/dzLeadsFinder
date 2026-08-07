@@ -119,6 +119,56 @@ class TestGet:
         body = client.get('/api/search/checklist/').json()
         assert body['step_reveal'] is False
 
+    def test_step_export_true_after_any_export(self, search_session: _Session) -> None:
+        from apps.exports.models import Export
+
+        client, user = search_session()
+        Export.objects.create(
+            user=user, format='csv', row_count=1, credits_cost=1, locale='en'
+        )
+        body = client.get('/api/search/checklist/').json()
+        assert body['step_export'] is True
+
+    def test_step_export_is_cumulative_first_ever(
+        self, search_session: _Session
+    ) -> None:
+        """John PM2 semantics: a 10-day-old export still counts — never today-only."""
+        from apps.exports.models import Export
+
+        client, user = search_session()
+        export = Export.objects.create(
+            user=user, format='csv', row_count=1, credits_cost=1, locale='en'
+        )
+        Export.objects.filter(pk=export.pk).update(
+            created_at=timezone.now() - timedelta(days=10)
+        )
+        body = client.get('/api/search/checklist/').json()
+        assert body['step_export'] is True
+
+    def test_step_export_false_for_other_users_export(
+        self, search_session: _Session
+    ) -> None:
+        from apps.exports.models import Export
+
+        client, user = search_session()
+        Export.objects.create(
+            user=user, format='csv', row_count=1, credits_cost=1, locale='en'
+        )
+        # A fresh client so the second login does not reuse the first user's
+        # session cookie (the shared api_client cookie jar holds one session).
+        other_client = Client()
+        other_email = f'{uuid.uuid4().hex}@example.com'
+        other_user = User.objects.create_user(
+            email=other_email, password='SecurePass123!', locale='en'
+        )
+        other_user.email_verified_at = timezone.now()
+        other_user.save(update_fields=['email_verified_at'])
+        other_client.post(
+            '/api/auth/login/', {'email': other_email, 'password': 'SecurePass123!'}
+        )
+        body = other_client.get('/api/search/checklist/').json()
+        assert body['step_export'] is False
+
     def test_requires_auth(self, api_client: Client) -> None:
         assert api_client.get('/api/search/checklist/').status_code == 401
 

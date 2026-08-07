@@ -301,6 +301,7 @@ class SavedSearchDetailView(APIView):
 
 class ChecklistView(APIView):
     def _state(self, request: Request) -> dict[str, object]:
+        from apps.exports.models import Export
         from apps.search.models import DailyUsage
 
         searched_ever = DailyUsage.objects.filter(
@@ -312,10 +313,10 @@ class ChecklistView(APIView):
             # Cumulative first-ever semantics (John PM2): any reveal row
             # counts — no 30-day window on the journey step.
             'step_reveal': revealed_ever,
-            # Epic-4 contract: the exports table does not exist until 4.4 —
-            # the EXISTS extension lands there. The client contract does not
-            # change.
-            'step_export': False,
+            # Epic-4 contract (3.7 deferred-work entry (b)): the exports
+            # table EXISTS extension — cumulative first-ever, mirroring
+            # step_reveal. The client contract does not change.
+            'step_export': Export.objects.filter(user_id=request.user.id).exists(),
             'dismissed': request.user.checklist_dismissed_at is not None,
         }
 

@@ -26,5 +26,6 @@ urlpatterns = [
     path('api/search/', include('apps.search.urls')),
     path('api/reveal/', include(('apps.credits.urls', 'credits'), namespace='credits-reveal')),
     path('api/credits/', include(('apps.credits.urls', 'credits'), namespace='credits')),
+    path('api/export/', include(('apps.exports.urls', 'exports'), namespace='exports')),
     path('admin/', admin.site.urls),
 ]

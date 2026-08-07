@@ -184,3 +184,41 @@ def user_balances(user: Any) -> dict[str, int]:
         'pack_balance': pack_balance,
         'display_balance': subscription_balance + pack_balance,
     }
+
+
+def debit_export_rows(user: Any, row_count: int, reference_id: str) -> int:
+    """Debit `row_count` credits atomically for an export (FR-17/18).
+
+    Opens NO transaction of its own — the caller owns the atomic block and
+    MUST invoke this function as its first statement, so the SERIALIZABLE
+    guard pins before any query runs (the 4.1 deferred-work composition
+    contract). The user-row `select_for_update` lock serializes the debit
+    with reveals and saved-search caps (the 4.1 precedent); balance is
+    always computed from the ledger (AD-4). The whole N draws from ONE
+    pool (subscription-first, AD-7) — no mixed-drawdown split.
+    """
+    if row_count < 1:
+        raise ValueError('row_count must be a positive integer.')
+    _serializable_guard()
+    get_user_model().objects.select_for_update().get(pk=user.id)
+    subscription_balance, pack_balance = _pool_balances(user)
+    total = subscription_balance + pack_balance
+    if total < row_count:
+        raise InsufficientCreditsError(
+            f'User {user.id} has {total} credits — an export of '
+            f'{row_count} rows costs {row_count}'
+        )
+    pool = 'subscription' if subscription_balance >= row_count else 'pack'
+    CreditLedger.objects.create(
+        user=user,
+        event_type=CreditEventType.EXPORT_ROW_DEBIT,
+        amount=-row_count,
+        balance_after=total - row_count,
+        pool=pool,
+        reference_id=reference_id,
+    )
+    get_user_model().objects.filter(pk=user.id).update(
+        credits_balance=F('credits_balance') - row_count
+    )
+    user.credits_balance -= row_count
+    return total - row_count
