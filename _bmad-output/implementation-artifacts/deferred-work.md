@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: code review of story 4.1 (2026-08-07)
+
+- **SERIALIZABLE guard breaks under composition**: `reveal_contact` runs `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` as the first statement inside its `transaction.atomic()` — PG raises `ProgrammingError` if a future caller (e.g. the 4.2 reveal view) wraps the call in an OUTER atomic block or executes any query before it. Contract: call `reveal_contact` directly, never inside an outer `transaction.atomic()`. The per-user `select_for_update` lock (added in review) carries the concurrency correctness on any isolation level, so the guard is defense-in-depth — the composition hazard is a loud error, not silent corruption. [backend/apps/credits/services.py]
+
 ## Deferred from: code review of story-3.7-checklist-card (2026-08-06)
 
 - **15-credit-banner handoff**: the checklist card AC says "appears below the 15-credit banner", but the banner does not exist yet (credit surfaces land in Epic 4). 3.7 renders the card as the FIRST child of `#results`. Epic 4 must render the 15-credit welcome banner immediately ABOVE the card (the banner slots before `#results`'s first child — the card's DOM-order test pins the position). [frontend/src/components/search/SearchPage.tsx, frontend/src/components/search/ChecklistCard.tsx]

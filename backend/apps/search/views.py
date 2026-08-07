@@ -1,5 +1,7 @@
 """Search API endpoint views for People and Company search."""
 
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Case, Count, F, IntegerField, Q, Value, When
@@ -12,6 +14,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.credits.models import Reveal
 from apps.search import quota
 from apps.search.filters import (
     COMPANY_SORT_FIELDS,
@@ -53,6 +56,21 @@ _SIZE_BAND_ORDER = Case(
 def _locale(user: object) -> str:
     locale = getattr(user, 'locale', 'en')
     return locale if locale in _LOCALES else 'en'
+
+
+def _revealed_ids(user: object, record_type: str, rows: list[object]) -> set[str]:
+    """Record ids with a ≤30d reveal for this user (any row — paid or free)."""
+    if not rows:
+        return set()
+    ids = [str(getattr(row, 'id')) for row in rows]
+    return set(
+        Reveal.objects.filter(
+            user_id=getattr(user, 'id'),
+            record_type=record_type,
+            record_id__in=ids,
+            created_at__gte=timezone.now() - timedelta(days=30),
+        ).values_list('record_id', flat=True)
+    )
 
 
 def _quota_error(user: object) -> Response | None:
@@ -114,7 +132,7 @@ def _company_conditions(filters: SearchFilters) -> list[Q]:
     return conditions
 
 
-def _people_row(person: Person, locale: str) -> dict[str, object]:
+def _people_row(person: Person, locale: str, revealed_ids: set[str]) -> dict[str, object]:
     company = person.company
     wilaya = company.wilaya_code if company is not None else None
     return {
@@ -125,11 +143,11 @@ def _people_row(person: Person, locale: str) -> dict[str, object]:
         'company_id': str(company.id) if company is not None else None,
         'wilaya_code': wilaya.code if wilaya is not None else None,
         'wilaya_name': getattr(wilaya, f'name_{locale}') if wilaya is not None else None,
-        'revealed': False,
+        'revealed': str(person.id) in revealed_ids,
     }
 
 
-def _company_row(company: Company, locale: str) -> dict[str, object]:
+def _company_row(company: Company, locale: str, revealed_ids: set[str]) -> dict[str, object]:
     wilaya = company.wilaya_code
     industry = company.industry
     return {
@@ -141,6 +159,7 @@ def _company_row(company: Company, locale: str) -> dict[str, object]:
         'wilaya_name': getattr(wilaya, f'name_{locale}') if wilaya is not None else None,
         'size_band': company.size_band,
         'people_count': getattr(company, 'people_count', 0),
+        'revealed': str(company.id) in revealed_ids,
     }
 
 
@@ -181,8 +200,9 @@ class PeopleSearchView(APIView):
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
         locale = _locale(request.user)
+        revealed_ids = _revealed_ids(request.user, 'people', rows)
         payload: dict[str, object] = {
-            'results': [_people_row(person, locale) for person in rows],
+            'results': [_people_row(person, locale, revealed_ids) for person in rows],
         }
         payload.update(_truncated_payload(total, page, request.user))
         return Response(payload)
@@ -216,8 +236,9 @@ class CompanySearchView(APIView):
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
         locale = _locale(request.user)
+        revealed_ids = _revealed_ids(request.user, 'company', rows)
         payload: dict[str, object] = {
-            'results': [_company_row(company, locale) for company in rows],
+            'results': [_company_row(company, locale, revealed_ids) for company in rows],
         }
         payload.update(_truncated_payload(total, page, request.user))
         return Response(payload)
@@ -285,12 +306,15 @@ class ChecklistView(APIView):
         searched_ever = DailyUsage.objects.filter(
             user_id=request.user.id, search_count__gt=0
         ).exists()
+        revealed_ever = Reveal.objects.filter(user_id=request.user.id).exists()
         return {
             'step_search': searched_ever,
-            # Epic-4 contract: the reveals/exports tables do not exist yet.
-            # When they land, extend with EXISTS clauses on those tables —
-            # the client contract does not change.
-            'step_reveal': False,
+            # Cumulative first-ever semantics (John PM2): any reveal row
+            # counts — no 30-day window on the journey step.
+            'step_reveal': revealed_ever,
+            # Epic-4 contract: the exports table does not exist until 4.4 —
+            # the EXISTS extension lands there. The client contract does not
+            # change.
             'step_export': False,
             'dismissed': request.user.checklist_dismissed_at is not None,
         }

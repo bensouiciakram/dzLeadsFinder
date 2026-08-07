@@ -6,6 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from django.utils import timezone
 from djoser.serializers import TokenCreateSerializer as DjoserTokenCreateSerializer
 from djoser.views import TokenCreateView as DjoserTokenCreateView
@@ -17,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 
+from apps.credits.models import CreditEventType, CreditLedger, CreditPool
 from tasks.email_tasks import send_password_reset_email, send_verification_email
 
 from ..auth import (
@@ -246,6 +248,23 @@ class VerifyEmailView(APIView):
                 user.email_verified_at = timezone.now()
                 user.credits_balance += FREE_SIGNUP_CREDITS
                 user.save(update_fields=['email_verified_at', 'credits_balance'])
+                # The ledger is the source of truth (AD-4): the cache update
+                # above is only valid WITH the matching ledger row in the same
+                # transaction (2.2 deferred this here — 4.1 owns the ledger).
+                current = (
+                    CreditLedger.objects.filter(user_id=user.id).aggregate(
+                        total=Sum('amount')
+                    )['total']
+                    or 0
+                )
+                CreditLedger.objects.create(
+                    user=user,
+                    event_type=CreditEventType.FREE_SIGNUP,
+                    amount=FREE_SIGNUP_CREDITS,
+                    balance_after=current + FREE_SIGNUP_CREDITS,
+                    pool=CreditPool.SUBSCRIPTION,
+                    description='Free signup credits',
+                )
                 return Response(
                     {'detail': 'Email verified', 'code': 'verified'},
                     status=status.HTTP_200_OK,

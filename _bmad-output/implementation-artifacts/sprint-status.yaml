@@ -1,5 +1,5 @@
 # generated: 2026-07-21T12:52:00+01:00
-# last_updated: 2026-08-06T16:00:00+01:00
+# last_updated: 2026-08-07T13:15:00+01:00
 # project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 #   - done: Completed
 
 generated: 2026-07-21T12:52:00+01:00
-last_updated: 2026-08-06T16:00:00+01:00
+last_updated: 2026-08-07T13:15:00+01:00
 project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 project_key: NOKEY
 tracking_system: file-system
@@ -74,8 +74,8 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Reveal, Credit Metering & Export
-  epic-4: backlog
-  4-1-credit-system-backend: backlog
+  epic-4: in-progress
+  4-1-credit-system-backend: done
   4-2-reveal-api-component: backlog
   4-3-credits-pill-ledger: backlog
   4-4-export-api-backend: backlog

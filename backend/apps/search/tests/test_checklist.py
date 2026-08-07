@@ -10,6 +10,7 @@ from django.db import connection
 from django.test import Client
 from django.utils import timezone
 
+from apps.credits.models import Reveal
 from apps.search.models import DailyUsage
 
 User = get_user_model()
@@ -91,13 +92,32 @@ class TestGet:
         body = client.get('/api/search/checklist/').json()
         assert body['step_search'] is False
 
-    def test_reveal_and_export_stay_false_in_37(self, search_session: _Session) -> None:
-        """Epic-4 contract: the reveals/exports tables do not exist yet — both stay false."""
+    def test_step_export_stays_false_in_41(self, search_session: _Session) -> None:
+        """Epic-4 contract split: the reveals table exists (4.1) — exports land in 4.4."""
+        client, user = search_session()
+        DailyUsage.objects.create(user=user, date=timezone.localdate(), search_count=1)
+        body = client.get('/api/search/checklist/').json()
+        assert body['step_export'] is False
+
+    def test_step_reveal_true_after_any_reveal(self, search_session: _Session) -> None:
+        client, user = search_session()
+        Reveal.objects.create(user=user, record_type='people', record_id='p-1')
+        body = client.get('/api/search/checklist/').json()
+        assert body['step_reveal'] is True
+
+    def test_step_reveal_is_cumulative_first_ever(self, search_session: _Session) -> None:
+        """John PM2 semantics: a 10-day-old reveal still counts — never today-only."""
+        client, user = search_session()
+        Reveal.objects.create(user=user, record_type='people', record_id='p-1')
+        Reveal.objects.update(created_at=timezone.now() - timedelta(days=10))
+        body = client.get('/api/search/checklist/').json()
+        assert body['step_reveal'] is True
+
+    def test_step_reveal_false_without_reveals(self, search_session: _Session) -> None:
         client, user = search_session()
         DailyUsage.objects.create(user=user, date=timezone.localdate(), search_count=1)
         body = client.get('/api/search/checklist/').json()
         assert body['step_reveal'] is False
-        assert body['step_export'] is False
 
     def test_requires_auth(self, api_client: Client) -> None:
         assert api_client.get('/api/search/checklist/').status_code == 401

@@ -20,7 +20,10 @@ class UserAdmin(BaseUserAdmin):
     ordering = ('-date_joined',)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Profile', {'fields': ('locale', 'tier', 'credits_balance', 'email_verified_at')}),
+        # credits_balance is a cache of the ledger (AD-4) — staff edits would
+        # desynchronize it with no ledger row; corrections go through the
+        # append-only ledger admin (4.1).
+        ('Profile', {'fields': ('locale', 'tier', 'email_verified_at')}),
         ('Activity', {'fields': ('last_active_at', 'token_version')}),
         ('Account State', {
             'fields': (
@@ -34,7 +37,13 @@ class UserAdmin(BaseUserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    readonly_fields = ('last_active_at', 'token_version', 'date_joined', 'checklist_dismissed_at')
+    readonly_fields = (
+        'last_active_at',
+        'token_version',
+        'date_joined',
+        'checklist_dismissed_at',
+        'credits_balance',
+    )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),

@@ -63,13 +63,14 @@ class TestCompanySearchResults:
         row = response.json()['results'][0]
         assert set(row.keys()) == {
             'id', 'name', 'industry', 'industry_id', 'wilaya_code', 'wilaya_name', 'size_band',
-            'people_count',
+            'people_count', 'revealed',
         }
         assert row['name'] == 'SARL ÉLECTRICITÉ'
         assert row['industry_id'] == industry.id
         assert row['wilaya_code'] == 31
         assert row['size_band'] is None
         assert row['people_count'] == 0
+        assert row['revealed'] is False
 
     def test_industry_localized_per_locale(self, search_session: _Session) -> None:
         industry = Industry.objects.create(
