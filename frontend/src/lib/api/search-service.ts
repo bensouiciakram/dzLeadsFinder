@@ -97,6 +97,7 @@ export type CompanyResultRow = {
   wilaya_name: string | null
   size_band: string | null
   people_count: number
+  revealed: boolean
 }
 
 export type SearchResult<T> = {

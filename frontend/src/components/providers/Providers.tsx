@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SessionProvider } from './SessionProvider'
 import { LocaleProvider } from './LocaleProvider'
 import { CreditProvider } from './CreditProvider'
+import { ToastProvider } from './ToastProvider'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
         <LocaleProvider>
-          <CreditProvider>{children}</CreditProvider>
+          <ToastProvider>
+            <CreditProvider>{children}</CreditProvider>
+          </ToastProvider>
         </LocaleProvider>
       </SessionProvider>
     </QueryClientProvider>

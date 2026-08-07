@@ -291,7 +291,7 @@ describe('SearchService', () => {
     expect(getMock).toHaveBeenCalledTimes(1)
   })
 
-  it('types company rows with the 3.2 company key set', async () => {
+  it('types company rows with the 3.2 company key set plus the 4.1 revealed flag', async () => {
     const service = new SearchService()
     const getMock = stubClient(service, {
       results: [
@@ -304,6 +304,7 @@ describe('SearchService', () => {
           wilaya_name: 'Algiers',
           size_band: '11-50',
           people_count: 2,
+          revealed: true,
         },
       ],
       total: 1,
@@ -316,6 +317,7 @@ describe('SearchService', () => {
     const first = result.results[0]
     expect(first.people_count).toBe(2)
     expect(first.size_band).toBe('11-50')
+    expect(first.revealed).toBe(true)
     expect(getMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -352,6 +352,20 @@
       "done_search": "First search complete",
       "done_reveal": "First contact revealed",
       "done_export": "First export complete"
+    },
+    "reveal": {
+      "cost": "1 credit",
+      "already_revealed": "Already revealed",
+      "no_credits": "No credits remaining",
+      "failed": "Reveal failed — credits restored",
+      "deducted": "Balance updated — {balance} credits remaining",
+      "content": "Contact details",
+      "field_email": "Email",
+      "field_phone": "Phone",
+      "field_address": "Address",
+      "field_website": "Website",
+      "field_industry": "Industry",
+      "field_size_band": "Size"
     }
   },
   "settings": {

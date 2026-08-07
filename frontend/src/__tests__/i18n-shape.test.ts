@@ -103,3 +103,43 @@ describe('checklist card i18n shapes (×3 locales)', () => {
     }
   })
 })
+
+describe('reveal surface i18n shapes (×3 locales)', () => {
+  const REVEAL_KEYS = [
+    'cost',
+    'already_revealed',
+    'no_credits',
+    'failed',
+    'deducted',
+    'content',
+    'field_email',
+    'field_phone',
+    'field_address',
+    'field_website',
+    'field_industry',
+    'field_size_band',
+  ] as const
+
+  it('resolves every key the reveal surface renders in all locales', () => {
+    for (const messages of [en, fr, ar] as const) {
+      for (const key of REVEAL_KEYS) {
+        expect(messages.search.reveal[key]).toBeTruthy()
+      }
+    }
+  })
+
+  it('declares the {balance} interpolation param in deducted in every locale', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.search.reveal.deducted).toContain('{balance}')
+    }
+  })
+
+  it('declares no interpolation params in the other reveal keys', () => {
+    for (const messages of [en, fr, ar] as const) {
+      for (const key of REVEAL_KEYS) {
+        if (key === 'deducted') continue
+        expect(messages.search.reveal[key]).not.toMatch(/\{\w+\}/)
+      }
+    }
+  })
+})

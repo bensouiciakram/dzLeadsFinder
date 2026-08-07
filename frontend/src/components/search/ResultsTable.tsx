@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -13,6 +14,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  RevealContent,
+  RevealControl,
+  useRevealState,
+} from '@/components/search/RevealControl'
 import type {
   CompanyResultRow,
   PeopleResultRow,
@@ -127,17 +133,19 @@ function CompanyLink({ name, companyId }: { name: string | null; companyId: stri
   )
 }
 
-function RevealSlot() {
-  const t = useTranslations()
+function RevealSlot({ tab, row }: { tab: SearchTab; row: PeopleResultRow | CompanyResultRow }) {
+  return <RevealControl tab={tab} row={row} />
+}
+
+function PeopleExpansionRow({ row }: { row: PeopleResultRow }) {
+  const state = useRevealState({ tab: 'people', row })
+  if (!state.showRegion) return null
   return (
-    <button
-      type="button"
-      disabled
-      data-testid="reveal-slot"
-      className="min-h-11 w-full rounded-md text-small text-primary disabled:opacity-50 md:min-h-8"
-    >
-      {t('common.actions.reveal')}
-    </button>
+    <TableRow className="hover:bg-muted">
+      <TableCell colSpan={PEOPLE_COLUMNS.length} className="px-2 py-3 align-top">
+        <RevealContent state={state} />
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -156,7 +164,7 @@ function PeopleCells({ row }: { row: PeopleResultRow }) {
         <WilayaCell code={row.wilaya_code} name={row.wilaya_name} />
       </TableCell>
       <TableCell className="w-32">
-        <RevealSlot />
+        <RevealSlot tab="people" row={row} />
       </TableCell>
     </>
   )
@@ -271,13 +279,16 @@ export function ResultsTable({ tab, rows, sort, onSortChange, skeleton = false }
                 </TableRow>
               ))
             : rows.map((row) => (
-                <TableRow key={row.id} className="h-12 hover:bg-muted">
-                  {tab === 'people' ? (
-                    <PeopleCells row={row as PeopleResultRow} />
-                  ) : (
-                    <CompanyCells row={row as CompanyResultRow} />
-                  )}
-                </TableRow>
+                <Fragment key={row.id}>
+                  <TableRow className="h-12 hover:bg-muted">
+                    {tab === 'people' ? (
+                      <PeopleCells row={row as PeopleResultRow} />
+                    ) : (
+                      <CompanyCells row={row as CompanyResultRow} />
+                    )}
+                  </TableRow>
+                  {tab === 'people' && <PeopleExpansionRow row={row as PeopleResultRow} />}
+                </Fragment>
               ))}
         </TableBody>
       </Table>

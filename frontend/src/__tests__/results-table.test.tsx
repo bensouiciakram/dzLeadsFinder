@@ -1,6 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
-import { fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import type { ReactNode } from 'react'
 
 import {
   ResultsTable,
@@ -10,6 +12,34 @@ import {
   type SortState,
 } from '@/components/search/ResultsTable'
 import type { CompanyResultRow, PeopleResultRow } from '@/lib/api/search-service'
+import { CreditProvider, useCredits } from '@/components/providers/CreditProvider'
+import { ToastProvider } from '@/components/providers/ToastProvider'
+import type { RevealResult } from '@/lib/api/reveal-service'
+
+const sessionMock = vi.hoisted(() => ({
+  user: {
+    email: 'a@b.dz',
+    locale: 'en',
+    tier: 'free',
+    credits_balance: 15,
+    email_verified_at: null,
+  },
+  refresh: vi.fn(),
+}))
+
+vi.mock('@/components/providers/SessionProvider', () => ({
+  useSession: () => ({ user: sessionMock.user, refresh: sessionMock.refresh }),
+}))
+
+const revealMock = vi.hoisted(() => ({ reveal: vi.fn() }))
+
+vi.mock('@/lib/api/reveal-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/reveal-service')>()
+  return {
+    ...actual,
+    revealService: { reveal: revealMock.reveal },
+  }
+})
 
 const PEOPLE_ROWS: PeopleResultRow[] = [
   {
@@ -44,6 +74,7 @@ const COMPANY_ROWS: CompanyResultRow[] = [
     wilaya_name: 'Oran',
     size_band: '500+',
     people_count: 2,
+    revealed: false,
   },
   {
     id: '7',
@@ -54,12 +85,68 @@ const COMPANY_ROWS: CompanyResultRow[] = [
     wilaya_name: 'الجزائر',
     size_band: null,
     people_count: 0,
+    revealed: false,
   },
 ]
 
+const REVEAL_RESULT: RevealResult = {
+  contact: {
+    record_type: 'people',
+    record_id: '1',
+    name: 'Amina Benali',
+    role: 'Gérante',
+    company_name: 'SARL X',
+    email: 'amina@x.dz',
+    phone: '0550 12 34 56',
+    address: 'Alger Centre',
+  },
+  balances: {
+    subscription_balance: 14,
+    pack_balance: 0,
+    display_balance: 14,
+  },
+}
+
+let creditProbe: { balance: number | null } = { balance: null }
+
+function CreditProbe() {
+  creditProbe = useCredits()
+  return null
+}
+
+function renderTable(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const tree = (content: ReactNode) => (
+    <QueryClientProvider client={client}>
+      <CreditProvider>
+        <ToastProvider>
+          <CreditProbe />
+          {content}
+        </ToastProvider>
+      </CreditProvider>
+    </QueryClientProvider>
+  )
+  const result = render(tree(ui))
+  return {
+    ...result,
+    rerender: (next: ReactNode) => result.rerender(tree(next)),
+  }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  sessionMock.user = {
+    email: 'a@b.dz',
+    locale: 'en',
+    tier: 'free',
+    credits_balance: 15,
+    email_verified_at: null,
+  }
+})
+
 function peopleTable(sort: SortState | null = null) {
   const onSortChange = vi.fn()
-  render(
+  renderTable(
     <ResultsTable tab="people" rows={PEOPLE_ROWS} sort={sort} onSortChange={onSortChange} />,
   )
   return { onSortChange }
@@ -123,7 +210,7 @@ describe('ResultsTable columns', () => {
   })
 
   it('renders the Company column set in DOM order', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent)
@@ -138,7 +225,9 @@ describe('ResultsTable columns', () => {
 
   it('marks every data header sortable except the reveal action column', () => {
     peopleTable()
-    const buttons = screen.getAllByRole('button', { name: /search\./ })
+    const buttons = screen
+      .getAllByRole('button', { name: /^search\.(sort|results|filters)/ })
+      .filter((button) => button.closest('th') !== null)
     expect(buttons.map((b) => b.textContent)).toEqual([
       'search.sort.name',
       'search.results.columns.role',
@@ -152,10 +241,12 @@ describe('ResultsTable columns', () => {
   })
 
   it('renders sortable headers in the Company table including industry', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
-    const buttons = screen.getAllByRole('button', { name: /search\./ })
+    const buttons = screen
+      .getAllByRole('button', { name: /^search\.(sort|results|filters)/ })
+      .filter((button) => button.closest('th') !== null)
     expect(buttons.map((b) => b.textContent)).toEqual([
       'search.sort.name',
       'search.filters.industry',
@@ -180,7 +271,7 @@ describe('ResultsTable columns', () => {
 describe('ResultsTable sort interactions', () => {
   it('cycles asc -> desc -> none on repeated clicks of one header', () => {
     const onSortChange = vi.fn()
-    const { rerender } = render(
+    const { rerender } = renderTable(
       <ResultsTable tab="people" rows={PEOPLE_ROWS} sort={null} onSortChange={onSortChange} />,
     )
     const nameButton = () => screen.getByRole('button', { name: 'search.sort.name' })
@@ -235,7 +326,7 @@ describe('ResultsTable sort interactions', () => {
   })
 
   it('shows the chevron in none/asc/desc states', () => {
-    const { rerender } = render(
+    const { rerender } = renderTable(
       <ResultsTable tab="people" rows={PEOPLE_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const chevron = () => screen.getByTestId('sort-chevron-name')
@@ -277,7 +368,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('renders the company name as a real link in the Company table', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const link = screen.getByRole('link', { name: 'SARL X' })
@@ -314,7 +405,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('wraps Arabic-script wilaya names in lang="ar" dir="rtl"', () => {
-    const { container } = render(
+    const { container } = renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const name = screen.getByText('الجزائر')
@@ -331,7 +422,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('uses tabular-nums on the People count column', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const row = screen.getByText('SARL X').closest('tr') as HTMLElement
@@ -339,7 +430,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('renders size bands through their i18n keys and nulls as em-dash', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     expect(screen.getByText('search.size.500_plus')).toBeInTheDocument()
@@ -348,7 +439,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('renders a zero people count as Western 0', () => {
-    render(
+    renderTable(
       <ResultsTable tab="companies" rows={COMPANY_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const row = screen.getByText('Société Y').closest('tr') as HTMLElement
@@ -361,17 +452,19 @@ describe('ResultsTable rows', () => {
     expect(within(row).getAllByText('—').length).toBeGreaterThan(0)
   })
 
-  it('renders the reveal action slot per row', () => {
+  it('renders the reveal button per row with the credit affordance', () => {
     peopleTable()
-    expect(screen.getAllByTestId('reveal-slot')).toHaveLength(2)
-    expect(screen.getAllByText('common.actions.reveal').length).toBeGreaterThan(1)
-    for (const slot of screen.getAllByTestId('reveal-slot')) {
-      expect(slot).toBeDisabled()
+    const buttons = screen.getAllByTestId('reveal-slot')
+    expect(buttons).toHaveLength(2)
+    for (const button of buttons) {
+      expect(button).toHaveTextContent('common.actions.reveal')
+      expect(button).toHaveTextContent('search.reveal.cost')
+      expect(button).not.toBeDisabled()
     }
   })
 
   it('renders an unknown size band as its raw value', () => {
-    render(
+    renderTable(
       <ResultsTable
         tab="companies"
         rows={[{ ...COMPANY_ROWS[0], size_band: '1000+' }]}
@@ -384,7 +477,7 @@ describe('ResultsTable rows', () => {
   })
 
   it('renders skeleton rows as aria-hidden placeholders', () => {
-    render(
+    renderTable(
       <ResultsTable tab="people" rows={[]} sort={null} onSortChange={vi.fn()} skeleton />,
     )
     for (const row of screen.getAllByTestId('skeleton-row')) {
@@ -393,9 +486,136 @@ describe('ResultsTable rows', () => {
   })
 })
 
+describe('ResultsTable reveal control', () => {
+  it('renders the reveal button with primary tokens and aria wiring', () => {
+    peopleTable()
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).toHaveAttribute('aria-controls', 'reveal-content-1')
+    expect(button).toHaveClass('bg-primary')
+    expect(button).toHaveClass('text-primary-foreground')
+    expect(button).toHaveClass('rounded-md')
+    expect(button).toHaveClass('md:min-h-8')
+    expect(button).toHaveClass('min-h-11')
+    expect(button).toHaveClass('w-full')
+  })
+
+  it('shows a spinner with aria-busy and expands optimistically while pending', () => {
+    revealMock.reveal.mockReturnValue(new Promise(() => {}))
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(button.querySelector('[data-testid="reveal-spinner"]')).not.toBeNull()
+    expect(button.querySelector('.sr-only')).toHaveTextContent('common.actions.reveal')
+    const region = document.getElementById('reveal-content-1')
+    expect(region).not.toBeNull()
+    expect(region).toHaveAttribute('role', 'region')
+    expect(creditProbe.balance).toBe(14)
+  })
+
+  it('ignores a second click while any reveal is in flight', async () => {
+    revealMock.reveal.mockReturnValue(new Promise(() => {}))
+    peopleTable()
+
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    await waitFor(() => expect(revealMock.reveal).toHaveBeenCalledTimes(1))
+  })
+
+  it('renders the contact fields inline and keeps the row expanded on success', async () => {
+    revealMock.reveal.mockResolvedValue(REVEAL_RESULT)
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+
+    await waitFor(() => expect(screen.getByText('amina@x.dz')).toBeInTheDocument())
+    expect(screen.getByText('0550 12 34 56')).toBeInTheDocument()
+    expect(screen.getByText('Alger Centre')).toBeInTheDocument()
+    expect(screen.getByText('search.reveal.field_email')).toBeInTheDocument()
+    expect(screen.getByText('search.reveal.field_phone')).toBeInTheDocument()
+    expect(screen.getByText('search.reveal.field_address')).toBeInTheDocument()
+    expect(document.getElementById('reveal-content-1')).not.toBeNull()
+    expect(screen.getByText('search.reveal.already_revealed')).toBeInTheDocument()
+    expect(screen.getAllByTestId('reveal-slot')).toHaveLength(1)
+    await waitFor(() => expect(creditProbe.balance).toBe(14))
+  })
+
+  it('announces the credit change through the polite toast on success', async () => {
+    revealMock.reveal.mockResolvedValue(REVEAL_RESULT)
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+
+    const toast = await screen.findByRole('status')
+    expect(toast).toHaveTextContent('search.reveal.deducted')
+  })
+
+  it('collapses, rolls the credit back and toasts the failure message on error', async () => {
+    revealMock.reveal.mockRejectedValue(new Error('boom'))
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+
+    const toast = await screen.findByRole('status')
+    expect(toast).toHaveTextContent('search.reveal.failed')
+    expect(document.getElementById('reveal-content-1')).toBeNull()
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).not.toHaveAttribute('aria-busy')
+    await waitFor(() => expect(creditProbe.balance).toBe(15))
+  })
+
+  it('renders the already-revealed badge with auto-visible fields on the free path', async () => {
+    revealMock.reveal.mockResolvedValue(REVEAL_RESULT)
+    renderTable(
+      <ResultsTable
+        tab="people"
+        rows={[{ ...PEOPLE_ROWS[0], revealed: true }, PEOPLE_ROWS[1]]}
+        sort={null}
+        onSortChange={vi.fn()}
+      />,
+    )
+
+    const badge = screen.getByText('search.reveal.already_revealed')
+    expect(badge).toHaveClass('bg-success-container')
+    expect(badge).toHaveClass('text-success-on-container')
+    expect(badge).toHaveClass('rounded-full')
+    await waitFor(() => expect(screen.getByText('amina@x.dz')).toBeInTheDocument())
+    expect(revealMock.reveal).toHaveBeenCalledWith('people', '1')
+    expect(screen.getAllByTestId('reveal-slot')).toHaveLength(1)
+  })
+
+  it('renders the aria-disabled zero-credit button with tooltip and recovery stub', async () => {
+    sessionMock.user = { ...sessionMock.user, credits_balance: 0 }
+    peopleTable()
+
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toBeDisabled()
+    expect(button).toHaveClass('bg-muted')
+    expect(button).toHaveClass('text-muted-strong')
+    expect(button).toHaveClass('border')
+    expect(button).toHaveClass('border-border')
+
+    fireEvent.focus(button)
+    expect(await screen.findByText('search.reveal.no_credits')).toBeInTheDocument()
+
+    fireEvent.click(button)
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+    expect(screen.getByRole('status')).toHaveTextContent('search.reveal.no_credits')
+    expect(revealMock.reveal).not.toHaveBeenCalled()
+  })
+})
+
 describe('ResultsTable RTL', () => {
   it('keeps the underlying DOM column order stable in RTL (FR-2)', () => {
-    const { container } = render(
+    const { container } = renderTable(
       <div dir="rtl">
         <ResultsTable tab="people" rows={PEOPLE_ROWS} sort={null} onSortChange={vi.fn()} />
       </div>,
@@ -411,7 +631,7 @@ describe('ResultsTable RTL', () => {
   })
 
   it('uses no physical-property classes in the table markup', () => {
-    const { container } = render(
+    const { container } = renderTable(
       <ResultsTable tab="people" rows={PEOPLE_ROWS} sort={null} onSortChange={vi.fn()} />,
     )
     const html = container.innerHTML

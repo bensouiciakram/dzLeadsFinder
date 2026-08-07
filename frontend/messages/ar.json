@@ -352,6 +352,20 @@
       "done_search": "اكتمل أول بحث",
       "done_reveal": "تم عرض أول جهة اتصال",
       "done_export": "اكتمل أول تصدير"
+    },
+    "reveal": {
+      "cost": "رصيد واحد",
+      "already_revealed": "تم العرض مسبقاً",
+      "no_credits": "لا رصيد متبقي",
+      "failed": "فشل العرض — تمت استعادة الرصيد",
+      "deducted": "تم تحديث الرصيد — المتبقي {balance} رصيد",
+      "content": "بيانات الاتصال",
+      "field_email": "البريد الإلكتروني",
+      "field_phone": "الهاتف",
+      "field_address": "العنوان",
+      "field_website": "الموقع الإلكتروني",
+      "field_industry": "القطاع",
+      "field_size_band": "الحجم"
     }
   },
   "settings": {
