@@ -1,5 +1,8 @@
 import { HttpClient } from './http-client'
 
+export const SEARCH_PAGE_SIZE = 100
+export const SEARCH_MAX_NAVIGABLE_PAGES = 10
+
 export type SearchTab = 'people' | 'companies'
 
 export type StagedFilters = {

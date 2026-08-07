@@ -95,5 +95,5 @@ export function useSearchResults({ tab, submitted, onSuccess }: UseSearchResults
     setSubmitNonce((nonce) => nonce + 1)
   }
 
-  return { query, phase, rateLimited, rateLimitMessage, beginSearch }
+  return { query, phase, rateLimited, rateLimitMessage, beginSearch, nonce: submitNonce }
 }

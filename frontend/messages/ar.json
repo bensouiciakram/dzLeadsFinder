@@ -133,6 +133,7 @@
       "description": "تظل نقاطك قابلة للاستخدام حتى نهاية فترة الفوترة. لا يوجد استرداد.",
       "confirm": "أنا أفهم، إلغاء اشتراكي"
     },
+    "upgrade_stub": "الترقية إلى Starter",
     "dzone": {
       "title": "منطقة الخطر",
       "delete_account": "حذف الحساب",
@@ -557,5 +558,34 @@
       },
       "trust_title": "مصمم للشركات الجزائرية"
     }
+  },
+  "export": {
+    "modal": {
+      "title": "تصدير النتائج — CSV [PENDING REVIEW]",
+      "title_free": "تصدير النتائج — CSV (مجاني) [PENDING REVIEW]",
+      "rows": "الصفوف [PENDING REVIEW]",
+      "rows_capped": "الصفوف (الحد المجاني: أول 5 حسب الترتيب الحالي) [PENDING REVIEW]",
+      "cost_breakdown": "التكلفة: {revealed} مُظهَر + {unrevealed} غير مُظهَر = {total} أرصدة [PENDING REVIEW]",
+      "balance_after": "الرصيد بعد التصدير [PENDING REVIEW]",
+      "include_unrevealed": "تضمين الصفوف التي لم أُظهرها بعد (تُحتسب أرصدة) [PENDING REVIEW]",
+      "confirm": "تأكيد التصدير (−{count} أرصدة) [PENDING REVIEW]",
+      "preview_notice": "هكذا سيبدو ملف CSV تمامًا — بما في ذلك العلامة المائية",
+      "preview_label": "معاينة CSV [PENDING REVIEW]",
+      "preview_error": "تعذّر حساب المعاينة — حاول مجددًا [PENDING REVIEW]",
+      "calculating": "جارٍ الحساب… [PENDING REVIEW]",
+      "xlsx_upgrade": "الترقية لاستخدام تصدير Excel [PENDING REVIEW]",
+      "come_back_tomorrow": "بلغت حد التصدير (5,000 صف خلال 24 ساعة) — عُد غدًا",
+      "insufficient": "أرصدة غير كافية — أعد الشحن أو قم بالترقية للتصدير [PENDING REVIEW]",
+      "error_credits": "لا توجد أرصدة كافية لهذا التصدير [PENDING REVIEW]",
+      "error_concurrent": "يتم تشغيل تصدير آخر — انتظر قليلًا وحاول مجددًا [PENDING REVIEW]",
+      "error_generic": "تعذّر تجهيز التصدير — حاول مجددًا [PENDING REVIEW]",
+      "header_name": "الاسم",
+      "header_role": "الوظيفة",
+      "header_company": "الشركة",
+      "header_wilaya": "الولاية",
+      "header_industry": "القطاع",
+      "header_people_count": "عدد الأشخاص"
+    },
+    "watermark": "DZLeads Free — قم بالترقية لإزالة العلامة المائية [PENDING REVIEW]"
   }
 }

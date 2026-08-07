@@ -199,3 +199,130 @@ describe('credits surface i18n shapes (×3 locales)', () => {
     }
   })
 })
+
+describe('export modal i18n shapes (×3 locales)', () => {
+  const MODAL_KEYS = [
+    'title',
+    'title_free',
+    'rows',
+    'rows_capped',
+    'cost_breakdown',
+    'balance_after',
+    'include_unrevealed',
+    'confirm',
+    'preview_notice',
+    'preview_label',
+    'preview_error',
+    'calculating',
+    'xlsx_upgrade',
+    'come_back_tomorrow',
+    'insufficient',
+    'error_credits',
+    'error_concurrent',
+    'error_generic',
+    'header_name',
+    'header_role',
+    'header_company',
+    'header_wilaya',
+    'header_industry',
+    'header_people_count',
+  ] as const
+
+  it('resolves every key the export modal renders in all locales', () => {
+    for (const messages of [en, fr, ar] as const) {
+      for (const key of MODAL_KEYS) {
+        expect(messages.export.modal[key]).toBeTruthy()
+      }
+      expect(messages.export.watermark).toBeTruthy()
+      expect(messages.billing.upgrade_stub).toBeTruthy()
+    }
+  })
+
+  it('declares the interpolation params on the parameterized keys', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.export.modal.cost_breakdown).toContain('{revealed}')
+      expect(messages.export.modal.cost_breakdown).toContain('{unrevealed}')
+      expect(messages.export.modal.cost_breakdown).toContain('{total}')
+      expect(messages.export.modal.confirm).toContain('{count}')
+    }
+  })
+
+  it('declares no interpolation params in the plain export keys', () => {
+    for (const messages of [en, fr, ar] as const) {
+      for (const key of MODAL_KEYS) {
+        if (
+          key === 'cost_breakdown' ||
+          key === 'confirm'
+        ) {
+          continue
+        }
+        expect(messages.export.modal[key]).not.toMatch(/\{\w+\}/)
+      }
+      expect(messages.export.watermark).not.toMatch(/\{\w+\}/)
+    }
+  })
+
+  it('pins the come-back-tomorrow copy verbatim (EXPERIENCE.md:98, no trailing period)', () => {
+    expect(en.export.modal.come_back_tomorrow).toBe(
+      'Export limit reached (5,000 rows per 24 h) — come back tomorrow'
+    )
+    expect(fr.export.modal.come_back_tomorrow).toBe(
+      "Limite d'export atteinte (5 000 lignes par 24 h) — revenez demain"
+    )
+    expect(ar.export.modal.come_back_tomorrow).toBe(
+      'بلغت حد التصدير (5,000 صف خلال 24 ساعة) — عُد غدًا'
+    )
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.export.modal.come_back_tomorrow).not.toMatch(/[.]$/)
+    }
+  })
+
+  it('pins the watermark preview notice verbatim (EXPERIENCE.md:96)', () => {
+    expect(en.export.modal.preview_notice).toBe(
+      'This is exactly what your CSV will look like — watermark included'
+    )
+    expect(fr.export.modal.preview_notice).toBe(
+      'Voici exactement à quoi ressemblera votre CSV — filigrane inclus'
+    )
+    expect(ar.export.modal.preview_notice).toBe(
+      'هكذا سيبدو ملف CSV تمامًا — بما في ذلك العلامة المائية'
+    )
+  })
+
+  it('pins the watermark strings to the 4.4 backend messages.py values', () => {
+    expect(en.export.watermark).toBe('DZLeads Free — upgrade to remove')
+    expect(fr.export.watermark).toBe(
+      'DZLeads Free — passez à Starter pour retirer le filigrane [PENDING REVIEW]'
+    )
+    expect(ar.export.watermark).toBe(
+      'DZLeads Free — قم بالترقية لإزالة العلامة المائية [PENDING REVIEW]'
+    )
+  })
+
+  it('pins the upgrade-stub title verbatim (EXPERIENCE.md:95)', () => {
+    expect(en.billing.upgrade_stub).toBe('Upgrade to Starter')
+    expect(fr.billing.upgrade_stub).toBe('Passer à Starter')
+    expect(ar.billing.upgrade_stub).toBe('الترقية إلى Starter')
+  })
+
+  it('flags every new fr/ar translation [PENDING REVIEW] except the verbatim keys', () => {
+    const VERBATIM_KEYS = [
+      'preview_notice',
+      'come_back_tomorrow',
+      'header_name',
+      'header_role',
+      'header_company',
+      'header_wilaya',
+      'header_industry',
+      'header_people_count',
+    ] as const
+    for (const messages of [fr, ar] as const) {
+      for (const key of MODAL_KEYS) {
+        if ((VERBATIM_KEYS as readonly string[]).includes(key)) {
+          continue
+        }
+        expect(messages.export.modal[key]).toContain('[PENDING REVIEW]')
+      }
+    }
+  })
+})

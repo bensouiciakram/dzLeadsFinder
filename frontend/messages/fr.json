@@ -133,6 +133,7 @@
       "description": "Vos crédits restent utilisables jusqu'à la fin de la période de facturation. Aucun remboursement.",
       "confirm": "Je comprends, annuler mon abonnement"
     },
+    "upgrade_stub": "Passer à Starter",
     "dzone": {
       "title": "Zone de danger",
       "delete_account": "Supprimer le compte",
@@ -557,5 +558,34 @@
       },
       "trust_title": "Con\u00e7u pour les entreprises alg\u00e9riennes"
     }
+  },
+  "export": {
+    "modal": {
+      "title": "Exporter les r\u00e9sultats \u2014 CSV [PENDING REVIEW]",
+      "title_free": "Exporter les r\u00e9sultats \u2014 CSV (Gratuit) [PENDING REVIEW]",
+      "rows": "Lignes [PENDING REVIEW]",
+      "rows_capped": "Lignes (limite gratuite : les 5 premi\u00e8res selon l'ordre actuel) [PENDING REVIEW]",
+      "cost_breakdown": "Co\u00fbt : {revealed} d\u00e9voil\u00e9s + {unrevealed} non d\u00e9voil\u00e9s = {total} cr\u00e9dits [PENDING REVIEW]",
+      "balance_after": "Solde apr\u00e8s export [PENDING REVIEW]",
+      "include_unrevealed": "Inclure les lignes non d\u00e9voil\u00e9es (des cr\u00e9dits seront d\u00e9bit\u00e9s) [PENDING REVIEW]",
+      "confirm": "Confirmer l'export (\u2212{count} cr\u00e9dits) [PENDING REVIEW]",
+      "preview_notice": "Voici exactement \u00e0 quoi ressemblera votre CSV \u2014 filigrane inclus",
+      "preview_label": "Aper\u00e7u CSV [PENDING REVIEW]",
+      "preview_error": "Impossible de calculer l'aper\u00e7u \u2014 r\u00e9essayez [PENDING REVIEW]",
+      "calculating": "Calcul\u2026 [PENDING REVIEW]",
+      "xlsx_upgrade": "Passez \u00e0 Starter pour utiliser l'export Excel [PENDING REVIEW]",
+      "come_back_tomorrow": "Limite d'export atteinte (5 000 lignes par 24 h) \u2014 revenez demain",
+      "insufficient": "Cr\u00e9dits insuffisants \u2014 rechargez ou passez \u00e0 Starter pour exporter [PENDING REVIEW]",
+      "error_credits": "Cr\u00e9dits insuffisants pour cet export [PENDING REVIEW]",
+      "error_concurrent": "Un autre export est en cours \u2014 patientez et r\u00e9essayez [PENDING REVIEW]",
+      "error_generic": "Impossible de pr\u00e9parer l'export \u2014 r\u00e9essayez [PENDING REVIEW]",
+      "header_name": "Nom",
+      "header_role": "Fonction",
+      "header_company": "Entreprise",
+      "header_wilaya": "Wilaya",
+      "header_industry": "Secteur",
+      "header_people_count": "Effectif"
+    },
+    "watermark": "DZLeads Free \u2014 passez \u00e0 Starter pour retirer le filigrane [PENDING REVIEW]"
   }
 }

@@ -159,6 +159,20 @@ describe('SearchPage', () => {
     expect(screen.getByText('search.results.truncated')).toBeInTheDocument()
   })
 
+  it('renders the Export toolbar outside the results live region with results on screen', async () => {
+    const { call, resolve } = deferredResult({ ...RESULT, results: [{ id: 'p-1', name: 'Karim' }] })
+    hoisted.searchPeople.mockImplementation(call)
+    renderPage(<SearchPage tab="people" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    resolve()
+    await screen.findByText('search.results.count')
+
+    const trigger = screen.getByRole('button', { name: 'common.actions.export' })
+    expect(trigger).toBeInTheDocument()
+    expect(trigger.closest('[data-testid="results-status"]')).toBeNull()
+  })
+
   it('shows the empty-results prompt for a zero-match search', async () => {
     hoisted.searchPeople.mockResolvedValue({ ...RESULT, total: 0 })
     renderPage(<SearchPage tab="people" />)

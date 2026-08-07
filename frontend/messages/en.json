@@ -133,6 +133,7 @@
       "description": "Your credits remain usable until the end of the billing period. No refunds.",
       "confirm": "I understand, cancel my subscription"
     },
+    "upgrade_stub": "Upgrade to Starter",
     "dzone": {
       "title": "Danger Zone",
       "delete_account": "Delete Account",
@@ -557,5 +558,34 @@
       },
       "trust_title": "Built for Algerian businesses"
     }
+  },
+  "export": {
+    "modal": {
+      "title": "Export results — CSV",
+      "title_free": "Export results — CSV (Free)",
+      "rows": "Rows",
+      "rows_capped": "Rows (free cap: first 5 by current sort)",
+      "cost_breakdown": "Cost: {revealed} revealed + {unrevealed} unrevealed = {total} credits",
+      "balance_after": "Balance after export",
+      "include_unrevealed": "Include rows I have not revealed yet (credits apply)",
+      "confirm": "Confirm export (−{count} credits)",
+      "preview_notice": "This is exactly what your CSV will look like — watermark included",
+      "preview_label": "CSV preview",
+      "preview_error": "Couldn't calculate the preview — try again",
+      "calculating": "Calculating…",
+      "xlsx_upgrade": "Upgrade to use Excel export",
+      "come_back_tomorrow": "Export limit reached (5,000 rows per 24 h) — come back tomorrow",
+      "insufficient": "Insufficient credits — top up or upgrade to export",
+      "error_credits": "Not enough credits for this export",
+      "error_concurrent": "Another export is running — wait a moment and try again",
+      "error_generic": "Couldn't prepare this export — try again",
+      "header_name": "Name",
+      "header_role": "Role",
+      "header_company": "Company",
+      "header_wilaya": "Wilaya",
+      "header_industry": "Industry",
+      "header_people_count": "People count"
+    },
+    "watermark": "DZLeads Free — upgrade to remove"
   }
 }

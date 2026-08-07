@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { ChecklistCard } from '@/components/search/ChecklistCard'
 import { CreditsWelcomeBanner } from '@/components/search/CreditsWelcomeBanner'
+import { ExportToolbar } from '@/components/search/ExportToolbar'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
 import { useSession } from '@/components/providers/SessionProvider'
 import {
@@ -29,6 +30,8 @@ import { useSearchResults, type SearchSubmitted } from '@/hooks/useSearchResults
 import {
   buildFiltersPayload,
   filtersPayloadToStaged,
+  SEARCH_MAX_NAVIGABLE_PAGES,
+  SEARCH_PAGE_SIZE,
   type CompanyResultRow,
   type PeopleResultRow,
   type SearchTab,
@@ -40,8 +43,8 @@ import type { ChecklistStep } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import { useChecklist } from '@/hooks/useChecklist'
 
-const PAGE_SIZE = 100
-const MAX_NAVIGABLE_PAGES = 10
+const PAGE_SIZE = SEARCH_PAGE_SIZE
+const MAX_NAVIGABLE_PAGES = SEARCH_MAX_NAVIGABLE_PAGES
 const SKELETON_CARDS = 3
 
 const SORT_FIELDS: readonly SortField[] = [
@@ -89,7 +92,7 @@ export function SearchPage({ tab }: SearchPageProps) {
     savedTargetRef.current = null
   }, [])
 
-  const { query, phase, rateLimitMessage, beginSearch } = useSearchResults({
+  const { query, phase, rateLimitMessage, beginSearch, nonce } = useSearchResults({
     tab,
     submitted,
     onSuccess,
@@ -408,6 +411,14 @@ export function SearchPage({ tab }: SearchPageProps) {
 
               {phase === 'idle' && query.data !== undefined && query.data.total > 0 && (
                 <div className="mt-4">
+                  <ExportToolbar
+                    tab={tab}
+                    submitted={submitted}
+                    nonce={nonce}
+                    total={query.data.total}
+                    isFetching={query.isFetching}
+                    tier={user?.tier === 'starter' ? 'starter' : 'free'}
+                  />
                   {applied !== null && (
                     <ActiveFilterChips filters={applied} onRemove={handleChipRemove} />
                   )}
