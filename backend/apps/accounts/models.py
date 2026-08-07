@@ -59,6 +59,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     deleted_at = models.DateTimeField(null=True, blank=True)
     deletion_scheduled_at = models.DateTimeField(null=True, blank=True)
     checklist_dismissed_at = models.DateTimeField(null=True, blank=True)
+    credits_banner_dismissed_at = models.DateTimeField(null=True, blank=True)
     token_version = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

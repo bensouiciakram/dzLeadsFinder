@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.credits.views import RevealView
+from apps.credits.views import CreditsLedgerView, RevealView
 
 app_name = 'credits'
 
@@ -10,4 +10,5 @@ urlpatterns = [
         RevealView.as_view(),
         name='reveal',
     ),
+    path('ledger/', CreditsLedgerView.as_view(), name='credits-ledger'),
 ]

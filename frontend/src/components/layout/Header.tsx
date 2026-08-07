@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useSession } from '@/components/providers/SessionProvider'
 import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
+import { CreditsPill } from '@/components/layout/CreditsPill'
 
 export function Header() {
   const { isAuthenticated, status, logout } = useSession()
@@ -31,9 +32,7 @@ export function Header() {
             <Link href="/search" className="text-small text-muted-foreground hover:text-foreground">
               {t('search')}
             </Link>
-            <Link href="/credits" className="text-small text-muted-foreground hover:text-foreground">
-              {t('credits')}
-            </Link>
+            <CreditsPill />
             <Link href="/billing" className="text-small text-muted-foreground hover:text-foreground">
               {t('billing')}
             </Link>

@@ -546,14 +546,19 @@ describe('ResultsTable reveal control', () => {
     await waitFor(() => expect(creditProbe.balance).toBe(14))
   })
 
-  it('announces the credit change through the polite toast on success', async () => {
+  it('does NOT toast the credit change on success (the pill owns the announcement)', async () => {
     revealMock.reveal.mockResolvedValue(REVEAL_RESULT)
     peopleTable()
 
     fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
 
-    const toast = await screen.findByRole('status')
-    expect(toast).toHaveTextContent('search.reveal.deducted')
+    // The 4.3 dedupe contract (4-2 review finding P12): the pill owns the
+    // aria-live announcement — the reveal surface must not also toast, or
+    // screen readers hear the change twice.
+    await waitFor(() => expect(creditProbe.balance).toBe(14))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText('search.reveal.deducted')).not.toBeInTheDocument()
   })
 
   it('collapses, rolls the credit back and toasts the failure message on error', async () => {

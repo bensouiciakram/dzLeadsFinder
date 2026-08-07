@@ -110,7 +110,6 @@ describe('reveal surface i18n shapes (×3 locales)', () => {
     'already_revealed',
     'no_credits',
     'failed',
-    'deducted',
     'content',
     'field_email',
     'field_phone',
@@ -128,17 +127,74 @@ describe('reveal surface i18n shapes (×3 locales)', () => {
     }
   })
 
-  it('declares the {balance} interpolation param in deducted in every locale', () => {
+  it('declares no interpolation params in the reveal keys', () => {
     for (const messages of [en, fr, ar] as const) {
-      expect(messages.search.reveal.deducted).toContain('{balance}')
+      for (const key of REVEAL_KEYS) {
+        expect(messages.search.reveal[key]).not.toMatch(/\{\w+\}/)
+      }
+    }
+  })
+})
+
+describe('credits surface i18n shapes (×3 locales)', () => {
+  const TYPE_KEYS = [
+    'type_free_signup',
+    'type_subscription_grant',
+    'type_pack_grant',
+    'type_promotional_grant',
+    'type_reveal_debit',
+    'type_export_row_debit',
+    'type_expiry',
+  ] as const
+  const PLAIN_KEYS = [
+    'no_credits',
+    'low_tooltip',
+    'export',
+    'exporting',
+    'empty',
+    'empty_cta',
+    'no_more_pages',
+    'back_to_page_one',
+    'column_type',
+    'column_amount',
+    'column_date',
+    'column_balance_after',
+    'column_reference',
+    'guest',
+  ] as const
+
+  it('resolves every key the credits surfaces render in all locales', () => {
+    for (const messages of [en, fr, ar] as const) {
+      expect(messages.common.credits.updated).toBeTruthy()
+      expect(messages.common.credits.banner_welcome).toBeTruthy()
+      expect(messages.common.credits.pagination).toBeTruthy()
+      expect(messages.common.credits.remaining).toBeTruthy()
+      for (const key of TYPE_KEYS) {
+        expect(messages.common.credits[key]).toBeTruthy()
+      }
+      for (const key of PLAIN_KEYS) {
+        expect(messages.common.credits[key]).toBeTruthy()
+      }
     }
   })
 
-  it('declares no interpolation params in the other reveal keys', () => {
+  it('declares the interpolation params on the parameterized keys', () => {
     for (const messages of [en, fr, ar] as const) {
-      for (const key of REVEAL_KEYS) {
-        if (key === 'deducted') continue
-        expect(messages.search.reveal[key]).not.toMatch(/\{\w+\}/)
+      expect(messages.common.credits.updated).toContain('{balance}')
+      expect(messages.common.credits.banner_welcome).toContain('{count}')
+      expect(messages.common.credits.pagination).toContain('{current}')
+      expect(messages.common.credits.pagination).toContain('{total}')
+      expect(messages.common.credits.remaining).toContain('{count}')
+    }
+  })
+
+  it('declares no interpolation params in the plain credits keys', () => {
+    for (const messages of [en, fr, ar] as const) {
+      for (const key of PLAIN_KEYS) {
+        expect(messages.common.credits[key]).not.toMatch(/\{\w+\}/)
+      }
+      for (const key of TYPE_KEYS) {
+        expect(messages.common.credits[key]).not.toMatch(/\{\w+\}/)
       }
     }
   })

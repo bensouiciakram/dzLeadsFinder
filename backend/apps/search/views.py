@@ -336,3 +336,29 @@ class ChecklistView(APIView):
         )
         request.user.checklist_dismissed_at = timezone.now()
         return Response(self._state(request))
+
+
+class CreditsBannerView(APIView):
+    """The 15-credit welcome banner dismissal (4.3 — deferred-work 3.7 entry).
+
+    Mirrors the 3.7 checklist dismissal contract verbatim: a nullable
+    timestamp on the user + a strict PUT accepting exactly
+    {'dismissed': True}. The banner's visibility is otherwise derived
+    client-side (tier + live balance) — no backend trigger state.
+    """
+
+    def get(self, request: Request) -> Response:
+        return Response({'dismissed': request.user.credits_banner_dismissed_at is not None})
+
+    def put(self, request: Request) -> Response:
+        data = request.data if isinstance(request.data, dict) else None
+        if data is None or data.keys() != {'dismissed'} or data['dismissed'] is not True:
+            return Response(
+                {'detail': 'Only {"dismissed": true} is accepted.', 'code': 'invalid_payload'},
+                status=400,
+            )
+        get_user_model().objects.filter(pk=request.user.id).update(
+            credits_banner_dismissed_at=timezone.now()
+        )
+        request.user.credits_banner_dismissed_at = timezone.now()
+        return Response({'dismissed': True})

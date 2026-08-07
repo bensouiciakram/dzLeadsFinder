@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { ChecklistCard } from '@/components/search/ChecklistCard'
+import { CreditsWelcomeBanner } from '@/components/search/CreditsWelcomeBanner'
 import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
 import { useSession } from '@/components/providers/SessionProvider'
 import {
@@ -328,6 +329,7 @@ export function SearchPage({ tab }: SearchPageProps) {
         </nav>
 
         <section id="results" data-testid="results" className="mt-6">
+          <CreditsWelcomeBanner />
           <ChecklistCard onStepComplete={handleChecklistStepComplete} />
 
           {submitted === null && (

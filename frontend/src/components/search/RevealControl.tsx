@@ -192,15 +192,6 @@ export function RevealControl({
     }
     reveal
       .mutateAsync({ type: state.recordType, id: state.rowId })
-      .then((result) => {
-        if (result.balances !== undefined && result.balances !== null) {
-          toast(
-            t('search.reveal.deducted', {
-              balance: String(result.balances.display_balance),
-            }),
-          )
-        }
-      })
       .catch(() => {
         toast('search.reveal.failed')
       })

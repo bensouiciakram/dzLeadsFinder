@@ -7,12 +7,15 @@ import { SearchPage } from '@/components/search/SearchPage'
 import { checklistService, type ChecklistState } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import type { SearchResult } from '@/lib/api/search-service'
+import { CreditProvider } from '@/components/providers/CreditProvider'
+import { creditsService } from '@/lib/api/credits-service'
 
 const hoisted = vi.hoisted(() => ({
   searchPeople: vi.fn(),
   searchCompanies: vi.fn(),
   checklistGet: vi.fn(),
   checklistDismiss: vi.fn(),
+  creditsGetBanner: vi.fn(),
 }))
 
 vi.mock('@/lib/api/search-service', async (importOriginal) => {
@@ -33,6 +36,18 @@ vi.mock('@/lib/api/checklist-service', async (importOriginal) => {
     checklistService: {
       get: hoisted.checklistGet,
       dismiss: hoisted.checklistDismiss,
+    },
+  }
+})
+
+vi.mock('@/lib/api/credits-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/credits-service')>()
+  return {
+    ...actual,
+    creditsService: {
+      ledger: vi.fn(),
+      getBanner: hoisted.creditsGetBanner,
+      dismissBanner: vi.fn(),
     },
   }
 })
@@ -67,7 +82,9 @@ function renderPage(element: ReactElement) {
     defaultOptions: { queries: { retry: false } },
   })
   return render(
-    <QueryClientProvider client={queryClient}>{element}</QueryClientProvider>,
+    <QueryClientProvider client={queryClient}>
+      <CreditProvider>{element}</CreditProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -76,8 +93,10 @@ beforeEach(() => {
   hoisted.searchCompanies.mockReset()
   hoisted.checklistGet.mockReset()
   hoisted.checklistDismiss.mockReset()
+  hoisted.creditsGetBanner.mockReset()
   hoisted.checklistGet.mockResolvedValue(FRESH)
   hoisted.searchPeople.mockResolvedValue(RESULT)
+  hoisted.creditsGetBanner.mockResolvedValue({ dismissed: false })
 })
 
 describe('SearchPage checklist card placement', () => {
@@ -95,12 +114,15 @@ describe('SearchPage checklist card placement', () => {
     expect(screen.getByTestId('checklist-card')).toBeInTheDocument()
   })
 
-  it('renders the card as the first child of the results section', async () => {
+  it('renders the 15-credit banner ABOVE the card as the first children of the results section', async () => {
     renderPage(<SearchPage tab="people" />)
     await screen.findByTestId('checklist-card')
+    await screen.findByTestId('credits-banner')
     const results = screen.getByTestId('results')
     const firstChild = results.firstElementChild
-    expect(firstChild?.getAttribute('data-testid')).toBe('checklist-card')
+    const secondChild = firstChild?.nextElementSibling
+    expect(firstChild?.getAttribute('data-testid')).toBe('credits-banner')
+    expect(secondChild?.getAttribute('data-testid')).toBe('checklist-card')
   })
 })
 
