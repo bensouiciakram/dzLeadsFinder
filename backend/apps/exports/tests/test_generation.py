@@ -179,6 +179,86 @@ class TestCsv:
         ]
 
 
+class TestCsvWatermark:
+    def test_watermark_layout_header_footer(self) -> None:
+        """FR-19 file shape: watermark header row → column header row → data
+        rows → watermark footer row (literal content rows, not overlays)."""
+        data = build_export_csv(
+            [PEOPLE_ROW, PEOPLE_ROW], PEOPLE_HEADERS, watermark_text='WATER'
+        ).decode('utf-8-sig')
+        lines = _csv_lines(data)
+        assert lines[0] == 'WATER'
+        assert lines[1] == ','.join(PEOPLE_HEADERS.values())
+        assert len(lines[2]) > 0 and len(lines[3]) > 0
+        assert lines[-1] == 'WATER'
+        assert len(lines) == 5
+
+    def test_watermark_rows_single_cell(self) -> None:
+        """The watermark row is ONE cell (no column padding) — RFC-4180
+        quoting only when the string needs it."""
+        data = build_export_csv(
+            [], PEOPLE_HEADERS, watermark_text='WATER'
+        ).decode('utf-8-sig')
+        lines = _csv_lines(data)
+        assert lines[0] == 'WATER'
+        assert lines[-1] == 'WATER'
+
+    def test_watermark_none_byte_identical(self) -> None:
+        """Legacy paid output unchanged: the default (and explicit None)
+        produce byte-identical files with no watermark."""
+        default = build_export_csv([PEOPLE_ROW], PEOPLE_HEADERS)
+        explicit = build_export_csv([PEOPLE_ROW], PEOPLE_HEADERS, None)
+        assert default == explicit
+        text = default.decode('utf-8-sig')
+        lines = _csv_lines(text)
+        assert len(lines) == 2  # header + data row — no watermark lines
+
+    def test_watermark_string_injected_verbatim(self) -> None:
+        """The builder never localizes and never flags: the passed string
+        appears EXACTLY (em-dash + Arabic) in the output."""
+        arabic = 'DZLeads Free — قم بالترقية لإزالة العلامة المائية'
+        data = build_export_csv(
+            [PEOPLE_ROW], PEOPLE_HEADERS, watermark_text=arabic
+        ).decode('utf-8-sig')
+        lines = _csv_lines(data)
+        assert lines[0] == arabic
+        assert lines[-1] == arabic
+
+    def test_watermark_rows_never_counted(self) -> None:
+        """The watermark adds exactly 2 lines; data-row counts never change
+        (row_count/credits derive over the DATA set only — D5/4.6)."""
+        data = build_export_csv(
+            [PEOPLE_ROW, PEOPLE_ROW, PEOPLE_ROW], PEOPLE_HEADERS, watermark_text='W'
+        ).decode('utf-8-sig')
+        lines = _csv_lines(data)
+        assert len(lines) == 6  # 1 wm header + 1 column header + 3 data + 1 wm footer
+        assert lines.count('W') == 2
+
+    def test_watermark_cell_rfc4180_quoted(self) -> None:
+        """The watermark row is a single cell — RFC-4180 quoting applies when
+        the string needs it (comma / quote), never for plain strings."""
+        tricky = 'DZLeads Free, "upgrade"'
+        data = build_export_csv([], PEOPLE_HEADERS, watermark_text=tricky).decode('utf-8-sig')
+        lines = _csv_lines(data)
+        assert lines[0] == '"DZLeads Free, ""upgrade"""'
+        assert lines[-1] == '"DZLeads Free, ""upgrade"""'
+
+    def test_watermark_cell_sanitized_like_data_cells(self) -> None:
+        """The Excel-safety contract holds for the watermark cell too: C0
+        control chars stripped, formula-trigger prefixes neutralized."""
+        raw = build_export_csv([], PEOPLE_HEADERS, watermark_text='=EVIL\x00\x0b')
+        text = raw.decode('utf-8-sig')
+        lines = _csv_lines(text)
+        assert lines[0] == "'=EVIL"
+        assert '\x00' not in text
+
+    def test_watermark_empty_string_means_no_watermark(self) -> None:
+        """'' behaves like None (no watermark rows) — never blank rows."""
+        empty = build_export_csv([PEOPLE_ROW], PEOPLE_HEADERS, watermark_text='')
+        none_ = build_export_csv([PEOPLE_ROW], PEOPLE_HEADERS, watermark_text=None)
+        assert empty == none_
+
+
 def _xlsx_parts(data: bytes) -> dict[str, bytes]:
     import io
 

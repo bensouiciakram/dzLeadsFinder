@@ -289,13 +289,16 @@ describe('export modal i18n shapes (×3 locales)', () => {
     )
   })
 
-  it('pins the watermark strings to the 4.4 backend messages.py values', () => {
+  it('pins the watermark strings to the backend messages.py values (marker-free)', () => {
     expect(en.export.watermark).toBe('DZLeads Free — upgrade to remove')
+    // 4.6: the [PENDING REVIEW] marker was stripped from the runtime strings
+    // on BOTH sides together (it must never render inside the CSV file or the
+    // preview); the review flag survives out-of-band in the story Change Log.
     expect(fr.export.watermark).toBe(
-      'DZLeads Free — passez à Starter pour retirer le filigrane [PENDING REVIEW]'
+      'DZLeads Free — passez à Starter pour retirer le filigrane'
     )
     expect(ar.export.watermark).toBe(
-      'DZLeads Free — قم بالترقية لإزالة العلامة المائية [PENDING REVIEW]'
+      'DZLeads Free — قم بالترقية لإزالة العلامة المائية'
     )
   })
 

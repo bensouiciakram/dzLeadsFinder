@@ -152,8 +152,16 @@ class TestAuth:
 
 
 class TestTierGate:
-    def test_free_user_rejected(self, export_session: _Session, person: Person) -> None:
-        client, _ = export_session(tier='free')
+    def test_free_user_csv_export_succeeds_with_watermark(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """4.6: the D8 split lands — free+csv is REAL (5-row cap + watermark),
+        no longer the 4.4 paid-only 403."""
+        client, user = export_session(tier='free')
+        grant(user, 15)
         response = _post(
             client,
             {
@@ -162,8 +170,35 @@ class TestTierGate:
                 'include_unrevealed': True,
             },
         )
-        assert response.status_code == 403
-        assert response.json()['code'] == 'starter_only'
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body) == {
+            'id',
+            'format',
+            'row_count',
+            'revealed_count',
+            'unrevealed_count',
+            'credits_cost',
+            'included_unrevealed',
+            'watermark',
+            'created_at',
+            'balances',
+        }
+        assert body['format'] == 'csv'
+        assert body['row_count'] == 1
+        assert body['revealed_count'] + body['unrevealed_count'] == 1
+        assert body['credits_cost'] == 1
+        assert body['watermark'] is True
+        export_row = Export.objects.get(user=user)
+        assert export_row.watermark is True
+        ledger = CreditLedger.objects.get(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        )
+        assert ledger.reference_id == str(export_row.id)
+        user.refresh_from_db()
+        assert user.credits_balance == 14
+        usage = DailyUsage.objects.get(user=user, date=timezone.localdate())
+        assert usage.export_rows == 1
 
     def test_free_user_rejected_xlsx(self, export_session: _Session, person: Person) -> None:
         client, _ = export_session(tier='free')
@@ -178,6 +213,30 @@ class TestTierGate:
         assert response.status_code == 403
         assert response.json()['code'] == 'starter_only'
 
+    def test_free_user_xlsx_rejected_even_with_balance(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """Balance can never bypass the format gate (FR-18 forever)."""
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        response = _post(
+            client,
+            {
+                'record_ids': [str(person.id)],
+                'format': 'xlsx',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 403
+        assert response.json()['code'] == 'starter_only'
+        assert not Export.objects.filter(user=user).exists()
+        assert not CreditLedger.objects.filter(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        ).exists()
+
     def test_starter_only_message_localized(
         self, export_session: _Session, person: Person
     ) -> None:
@@ -186,12 +245,227 @@ class TestTierGate:
             client,
             {
                 'record_ids': [str(person.id)],
-                'format': 'csv',
+                'format': 'xlsx',
                 'include_unrevealed': True,
             },
         )
         assert response.status_code == 403
         assert 'Starter' in response.json()['detail']
+
+    def test_free_user_capped_to_first_five(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """The 5-row cap is SERVER-side: 8 ids in payload order → the first 5
+        are exported (the modal's payload order == current sort order)."""
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        ids = [str(person.id)]
+        for index in range(7):
+            ids.append(
+                str(
+                    Person.objects.create(
+                        name=f'Row {index}', role='Manager', source='seed'
+                    ).id
+                )
+            )
+        response = _post(
+            client,
+            {
+                'record_ids': ids,
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body['row_count'] == 5
+        assert body['unrevealed_count'] == 5
+        assert body['credits_cost'] == 5
+        assert body['watermark'] is True
+        export_row = Export.objects.get(user=user)
+        assert len(export_row.rows_json['rows']) == 5
+        snapshot_names = [row['name'] for row in export_row.rows_json['rows']]
+        # Order preservation is the contract: the snapshot replays the FIRST
+        # 5 of the payload order (== current sort order), not DB order.
+        assert snapshot_names == ['Karim Benali', 'Row 0', 'Row 1', 'Row 2', 'Row 3']
+        user.refresh_from_db()
+        assert user.credits_balance == 10
+        usage = DailyUsage.objects.get(user=user, date=timezone.localdate())
+        assert usage.export_rows == 5
+
+    def test_free_cap_applies_before_unrevealed_filter(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """Cap slices FIRST, then the include_unrevealed filter applies: a free
+        user with nothing revealed + unchecking include_unrevealed → 400 (the
+        existing no-rows rule), nothing written."""
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        ids = [str(person.id)]
+        for index in range(7):
+            ids.append(
+                str(
+                    Person.objects.create(
+                        name=f'Row {index}', role='Manager', source='seed'
+                    ).id
+                )
+            )
+        response = _post(
+            client,
+            {
+                'record_ids': ids,
+                'format': 'csv',
+                'include_unrevealed': False,
+            },
+        )
+        assert response.status_code == 400
+        assert response.json()['code'] == 'invalid_payload'
+        assert not Export.objects.filter(user=user).exists()
+        assert not CreditLedger.objects.filter(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        ).exists()
+        usage = DailyUsage.objects.filter(user=user, date=timezone.localdate()).first()
+        assert usage is None or usage.export_rows == 0
+
+    def test_free_user_watermark_frozen_in_snapshot(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """D3: the watermark STRING freezes into rows_json (which-string, not
+        just the boolean) so the download replays byte-for-byte; watermark
+        rows are NEVER stored in the snapshot's rows."""
+        from apps.exports.messages import WATERMARK_MESSAGES
+
+        client, user = export_session(locale='fr', tier='free')
+        grant(user, 15)
+        response = _post(
+            client,
+            {
+                'record_ids': [str(person.id)],
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 200
+        export_row = Export.objects.get(user=user)
+        assert export_row.rows_json['watermark'] == WATERMARK_MESSAGES['fr']
+        assert len(export_row.rows_json['rows']) == 1
+
+    def test_free_export_at_quota_headroom_rejected_atomically(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        seed_usage: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """D7: the 5,000/24h quota counts free exports too — 429 rolls the
+        debit back."""
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        seed_usage(user, 4998)
+        second = Person.objects.create(name='Second Person', role='Manager', source='seed')
+        third = Person.objects.create(name='Third Person', role='Dev', source='seed')
+        response = _post(
+            client,
+            {
+                'record_ids': [str(person.id), str(second.id), str(third.id)],
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 429
+        body = response.json()
+        assert body['code'] == 'export_limit_exceeded'
+        assert body['limit'] == 5000
+        assert not Export.objects.filter(user=user).exists()
+        assert not CreditLedger.objects.filter(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        ).exists()
+        usage = DailyUsage.objects.get(user=user, date=timezone.localdate())
+        assert usage.export_rows == 4998
+        user.refresh_from_db()
+        assert user.credits_balance == 15
+
+    def test_free_export_fits_quota_headroom(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        seed_usage: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        seed_usage(user, 4998)
+        second = Person.objects.create(name='Second Person', role='Manager', source='seed')
+        response = _post(
+            client,
+            {
+                'record_ids': [str(person.id), str(second.id)],
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body['watermark'] is True
+        assert body['row_count'] == 2
+        assert body['credits_cost'] == 2
+        assert body['balances'] == {
+            'subscription_balance': 13,
+            'pack_balance': 0,
+            'display_balance': 13,
+        }
+        export_row = Export.objects.get(user=user)
+        assert export_row.watermark is True
+        ledger = CreditLedger.objects.get(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        )
+        assert ledger.amount == -2
+        usage = DailyUsage.objects.get(user=user, date=timezone.localdate())
+        assert usage.export_rows == 5000
+        user.refresh_from_db()
+        assert user.credits_balance == 13
+
+    def test_free_insufficient_credits_nothing_written(
+        self, export_session: _Session, grant: Callable[..., Any], person: Person
+    ) -> None:
+        """The AC's 'credits apply': a free user with balance 3 requesting a
+        5-row export → 402, atomic rollback."""
+        client, user = export_session(tier='free')
+        grant(user, 3)
+        ids = [str(person.id)]
+        for index in range(4):
+            ids.append(
+                str(
+                    Person.objects.create(
+                        name=f'Row {index}', role='Manager', source='seed'
+                    ).id
+                )
+            )
+        response = _post(
+            client,
+            {
+                'record_ids': ids,
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 402
+        assert response.json()['code'] == 'insufficient_credits'
+        assert not Export.objects.filter(user=user).exists()
+        assert not CreditLedger.objects.filter(
+            user=user, event_type=CreditEventType.EXPORT_ROW_DEBIT
+        ).exists()
+        usage = DailyUsage.objects.filter(user=user, date=timezone.localdate()).first()
+        assert usage is None or usage.export_rows == 0
 
 
 class TestStrictPayload:
@@ -551,6 +825,7 @@ class TestCreateExport:
         assert export_row.included_unrevealed is True
         assert export_row.watermark is False
         assert export_row.locale == 'en'
+        assert export_row.rows_json['watermark'] is None
         assert len(export_row.rows_json['rows']) == 3
         user.refresh_from_db()
         assert user.credits_balance == 12
@@ -848,3 +1123,49 @@ class TestDownload:
     def test_download_anonymous_401(self, api_client: Client) -> None:
         response = api_client.get(f'/api/export/{uuid.uuid4()}/download/')
         assert response.status_code == 401
+
+    def test_free_export_download_watermark_contract(
+        self,
+        export_session: _Session,
+        grant: Callable[..., Any],
+        person: Person,
+    ) -> None:
+        """The free file replays byte-for-byte with the literal watermark
+        header + footer rows around the 5 data rows (D3/FR-19)."""
+        from apps.exports.messages import WATERMARK_MESSAGES
+
+        client, user = export_session(tier='free')
+        grant(user, 15)
+        ids = [str(person.id)]
+        for index in range(4):
+            ids.append(
+                str(
+                    Person.objects.create(
+                        name=f'Row {index}', role='Manager', source='seed'
+                    ).id
+                )
+            )
+        response = _post(
+            client,
+            {
+                'record_ids': ids,
+                'format': 'csv',
+                'include_unrevealed': True,
+            },
+        )
+        assert response.status_code == 200
+        export_id = response.json()['id']
+        first = client.get(f'/api/export/{export_id}/download/')
+        second = client.get(f'/api/export/{export_id}/download/')
+        assert first.status_code == 200
+        assert first['Content-Type'].startswith('text/csv')
+        content = b''.join(first.streaming_content)
+        assert b''.join(second.streaming_content) == content
+        assert content.startswith(b'\xef\xbb\xbf')
+        lines = content.decode('utf-8-sig').rstrip('\r\n').split('\r\n')
+        watermark = WATERMARK_MESSAGES['en']
+        assert lines[0] == watermark
+        assert lines[1].startswith('Name,Role')
+        assert len(lines) == 8  # wm header + column header + 5 data + wm footer
+        assert lines[-1] == watermark
+        assert all(len(line) > 0 for line in lines[2:7])

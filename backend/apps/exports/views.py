@@ -51,7 +51,7 @@ def _locale(user: object) -> str:
 
 
 class ExportView(APIView):
-    """POST /api/export/ — create an export job (FR-17/18/20)."""
+    """POST /api/export/ — create an export job (FR-17/18/19/20)."""
 
     def post(self, request: Request) -> Response:
         user = request.user
@@ -64,13 +64,20 @@ class ExportView(APIView):
             return Response(
                 {'detail': str(exc), 'code': 'invalid_payload'}, status=400
             )
-        if getattr(user, 'tier', 'free') != 'starter':
+        # The 4.4 D8 split lands here (4.6): CSV is REAL for the free tier
+        # (5-row cap + watermark — enforced inside create_export via the
+        # watermark flag); xlsx stays starter-only FOREVER (FR-18) — the 403
+        # starter_only remains ONLY for free+xlsx.
+        if getattr(user, 'tier', 'free') != 'starter' and request.data.get('format') == 'xlsx':
             return Response(
                 {'detail': STARTER_ONLY_MESSAGES[locale], 'code': 'starter_only'},
                 status=403,
             )
+        watermark = getattr(user, 'tier', 'free') == 'free'
         try:
-            export_row, revealed_count = create_export(user, request.data)
+            export_row, revealed_count = create_export(
+                user, request.data, watermark=watermark
+            )
         except InvalidExportPayloadError as exc:
             return Response(
                 {'detail': str(exc), 'code': 'invalid_payload'}, status=400
@@ -165,7 +172,13 @@ class ExportDownloadView(APIView):
             ).get(record_type, {})
         rows = export_row.rows_json.get('rows', [])
         if export_row.format == 'csv':
-            content = build_export_csv(rows, headers)
+            # The watermark replays from the FROZEN snapshot string (D3 —
+            # which-string, byte-for-byte): paid exports carry None (absent)
+            # and never gain watermark rows; free exports always replay the
+            # string they were charged for, even if the copy later edits.
+            content = build_export_csv(
+                rows, headers, watermark_text=export_row.rows_json.get('watermark')
+            )
             content_type = 'text/csv; charset=utf-8'
         else:
             content = build_export_xlsx(rows, headers)

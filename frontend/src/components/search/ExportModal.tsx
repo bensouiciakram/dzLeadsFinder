@@ -97,7 +97,6 @@ export function ExportModal({
   const cost = includeUnrevealed ? (preview?.totalRows ?? 0) : (preview?.revealedCount ?? 0)
   const insufficient = balance !== null && balance < cost
   const confirmLocked =
-    freeTier ||
     insufficient ||
     balance === null ||
     preview === null ||
@@ -121,10 +120,6 @@ export function ExportModal({
   }, [regionError])
 
   const handleConfirm = () => {
-    if (freeTier) {
-      toast('billing.upgrade_stub')
-      return
-    }
     if (insufficient) {
       toast('common.credits.no_credits')
       return
@@ -162,7 +157,14 @@ export function ExportModal({
             t('export.modal.header_wilaya'),
             t('export.modal.header_people_count'),
           ]
-    const body = preview.rows.slice(0, 2).map((row) => {
+    // Free tier: the preview IS the file — show exactly the rows that will
+    // export (the include_unrevealed filter applies to the preview too, so
+    // the preview never claims rows the file won't contain). Starter keeps
+    // the 2-row sample + ellipsis (its file is the full set).
+    const body = (freeTier
+      ? preview.rows.filter((row) => includeUnrevealed || row.revealed)
+      : preview.rows.slice(0, 2)
+    ).map((row) => {
       const wilaya = wilayaLabel(row.wilaya_name, row.wilaya_code)
       const cells =
         tab === 'people'
@@ -171,7 +173,7 @@ export function ExportModal({
       return { key: row.id, text: cells.join(',') }
     })
     return { header: header.join(','), body }
-  }, [preview, tab, t])
+  }, [preview, tab, t, freeTier, includeUnrevealed])
 
   const regionClassName =
     'rounded-md border border-border bg-muted/50 p-4 text-small text-muted-strong focus:outline-none'
@@ -286,7 +288,7 @@ export function ExportModal({
                     {line.text}
                   </p>
                 ))}
-                {(preview?.totalRows ?? 0) > 2 && <p>…</p>}
+                {(preview?.totalRows ?? 0) > 2 && !freeTier && <p>…</p>}
                 {freeTier && <p className="font-semibold text-danger">{t('export.watermark')}</p>}
               </div>
             </div>
@@ -325,7 +327,7 @@ export function ExportModal({
                   {t('export.modal.xlsx_upgrade')}
                 </p>
               )}
-              {insufficient && !freeTier && balance !== null && (
+              {insufficient && balance !== null && (
                 <p id="export-insufficient-note" className="text-caption text-muted-foreground">
                   {t('export.modal.insufficient')}
                 </p>
@@ -343,13 +345,12 @@ export function ExportModal({
                 aria-busy={isPending || undefined}
                 aria-disabled={confirmLocked || undefined}
                 aria-describedby={
-                  insufficient && !freeTier && balance !== null
+                  insufficient && balance !== null
                     ? 'export-insufficient-note'
                     : undefined
                 }
                 onClick={handleConfirm}
                 className={`min-h-11 w-full min-w-[10rem] rounded-md px-4 text-small font-semibold md:min-h-10 ${
-                  freeTier ||
                   insufficient ||
                   balance === null ||
                   preview === null ||

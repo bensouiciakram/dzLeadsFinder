@@ -34,19 +34,36 @@ _CONTROL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 _FORMULA_TRIGGER_RE = re.compile(r'^[=+\-@]')
 
 
-def build_export_csv(rows: list[dict[str, Any]], headers: dict[str, str]) -> bytes:
+def build_export_csv(
+    rows: list[dict[str, Any]],
+    headers: dict[str, str],
+    watermark_text: str | None = None,
+) -> bytes:
     """Serialize export rows to CSV bytes: UTF-8 BOM, CRLF, RFC-4180.
 
     `headers` maps the column keys (in stable order) to their localized
     labels. Missing values serialize as blank cells — the CSV columns are
     always stable (FR-2). Cells are sanitized: C0 control characters are
     stripped and formula-trigger prefixes are neutralized (Excel safety).
+
+    `watermark_text` (FR-19): when given, the file gains a literal watermark
+    HEADER row and a literal watermark FOOTER row (single-cell content rows —
+    never overlays) around the column header + data rows. The string is
+    INJECTED (the labels-injected precedent) — this builder never localizes.
+    `None` produces the legacy paid output byte-for-byte.
     """
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator='\r\n')
+    if watermark_text:
+        # The watermark cell runs through the same sanitizer as data cells:
+        # C0 control chars stripped + formula-trigger prefixes neutralized
+        # (the Excel-safety contract holds for EVERY row, not just data).
+        writer.writerow([_cell(watermark_text)])
     writer.writerow(list(headers.values()))
     for row in rows:
         writer.writerow([_cell(row.get(key)) for key in headers])
+    if watermark_text:
+        writer.writerow([_cell(watermark_text)])
     return ('\ufeff' + buffer.getvalue()).encode('utf-8')
 
 

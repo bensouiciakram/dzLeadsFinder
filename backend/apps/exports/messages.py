@@ -120,9 +120,12 @@ EXPORT_RECORD_NOT_FOUND_MESSAGES: dict[str, str] = {
 }
 
 # FR-19 watermark copy — the STRINGS ship in 4.4 (approved PRD copy); row
-# generation lands in 4.6. [PENDING REVIEW] for fr/ar.
+# generation lands in 4.6. NOTE: the fr/ar values are CLEANED — the literal
+# [PENDING REVIEW] marker must NEVER appear in a runtime string (it would
+# render inside the actual CSV file for fr/ar users); the review flag for
+# these translations survives out-of-band in the story Change Log (4.6).
 WATERMARK_MESSAGES: dict[str, str] = {
-    'ar': 'DZLeads Free — قم بالترقية لإزالة العلامة المائية [PENDING REVIEW]',
-    'fr': 'DZLeads Free — passez à Starter pour retirer le filigrane [PENDING REVIEW]',
+    'ar': 'DZLeads Free — قم بالترقية لإزالة العلامة المائية',
+    'fr': 'DZLeads Free — passez à Starter pour retirer le filigrane',
     'en': 'DZLeads Free — upgrade to remove',
 }

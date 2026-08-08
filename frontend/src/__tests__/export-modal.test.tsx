@@ -91,9 +91,76 @@ const PREVIEW: ExportPreview = {
 
 const FREE_PREVIEW: ExportPreview = {
   ids: ['p-1', 'p-2', 'p-3', 'p-4', 'p-5'],
-  rows: PREVIEW.rows,
+  rows: [
+    {
+      id: 'p-1',
+      name: 'Karim Benali',
+      role: 'CEO',
+      company_name: 'ACME Algérie',
+      industry: null,
+      wilaya_name: 'Oran',
+      wilaya_code: 31,
+      people_count: 0,
+      revealed: false,
+    },
+    {
+      id: 'p-2',
+      name: 'Youcef K.',
+      role: null,
+      company_name: null,
+      industry: null,
+      wilaya_name: null,
+      wilaya_code: null,
+      people_count: 0,
+      revealed: false,
+    },
+    {
+      id: 'p-3',
+      name: 'Amina B.',
+      role: 'Owner',
+      company_name: 'Studio Ziban',
+      industry: null,
+      wilaya_name: 'Blida',
+      wilaya_code: 9,
+      people_count: 0,
+      revealed: false,
+    },
+    {
+      id: 'p-4',
+      name: 'Sofiane M.',
+      role: 'Manager',
+      company_name: null,
+      industry: null,
+      wilaya_name: null,
+      wilaya_code: null,
+      people_count: 0,
+      revealed: false,
+    },
+    {
+      id: 'p-5',
+      name: 'Lina H.',
+      role: null,
+      company_name: 'SARL Horizon',
+      industry: null,
+      wilaya_name: 'Alger',
+      wilaya_code: 16,
+      people_count: 0,
+      revealed: false,
+    },
+  ],
   revealedCount: 0,
   unrevealedCount: 5,
+  totalRows: 5,
+}
+
+const MIXED_FREE_PREVIEW: ExportPreview = {
+  ids: ['p-1', 'p-2', 'p-3', 'p-4', 'p-5'],
+  rows: FREE_PREVIEW.rows.map((row, index) => ({
+    ...row,
+    revealed: index < 2,
+  })),
+  revealedCount: 2,
+  unrevealedCount: 3,
   totalRows: 5,
 }
 
@@ -245,18 +312,25 @@ describe('ExportModal — starter anatomy (ACs)', () => {
   })
 })
 
-describe('ExportModal — free tier states (4.4 D8: no POST until 4.6)', () => {
+describe('ExportModal — free tier (4.6: the confirm is a REAL export)', () => {
   beforeEach(() => {
     stubPreview(FREE_PREVIEW)
   })
 
-  it('states the 5-row cap and shows the watermark rows as literal content', () => {
+  it('states the 5-row cap and shows the watermark rows as literal content around all 5 data rows', () => {
     renderModal(freshClient(), { tier: 'free' })
     expect(screen.getByText('export.modal.title_free')).toBeInTheDocument()
     expect(screen.getByText('export.modal.rows_capped')).toBeInTheDocument()
     const previewBox = screen.getByLabelText('export.modal.preview_label')
     const watermark = within(previewBox).getAllByText('export.watermark')
     expect(watermark).toHaveLength(2)
+    expect(within(previewBox).getByText(/Karim Benali/)).toBeInTheDocument()
+    expect(within(previewBox).getByText(/Youcef K/)).toBeInTheDocument()
+    expect(within(previewBox).getByText(/Amina B/)).toBeInTheDocument()
+    expect(within(previewBox).getByText(/Sofiane M/)).toBeInTheDocument()
+    expect(within(previewBox).getByText(/Lina H/)).toBeInTheDocument()
+    // The free preview IS the file — no fabricated ellipsis (never-surprise).
+    expect(within(previewBox).queryByText('…')).not.toBeInTheDocument()
   })
 
   it('disables the xlsx button visibly (aria-disabled, focusable) with the upgrade caption', () => {
@@ -267,17 +341,94 @@ describe('ExportModal — free tier states (4.4 D8: no POST until 4.6)', () => {
   })
 
   it('routes the xlsx click to the upgrade stub toast, never a mutation', () => {
+    const create = vi.fn()
+    stubExport(undefined, false, create)
     renderModal(freshClient(), { tier: 'free' })
     fireEvent.click(screen.getByRole('button', { name: /Excel/ }))
     expect(toastMock).toHaveBeenCalledWith('billing.upgrade_stub')
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('confirms a REAL free export: POSTs the first-5 ids as csv and closes + navigates on success', () => {
+    const create = vi.fn()
+    stubExport(undefined, false, create)
+    const { onOpenChange } = renderModal(freshClient(), { tier: 'free' })
+    fireEvent.click(screen.getByText('export.modal.confirm'))
+    expect(create).toHaveBeenCalledWith({
+      record_ids: ['p-1', 'p-2', 'p-3', 'p-4', 'p-5'],
+      format: 'csv',
+      include_unrevealed: true,
+    })
+    expect(toastMock).not.toHaveBeenCalled()
+    const hookArgs = vi.mocked(useExport).mock.calls[0][0]
+    hookArgs.onSuccess?.({
+      ...RESULT,
+      row_count: 5,
+      credits_cost: 5,
+      unrevealed_count: 5,
+      watermark: true,
+      balances: { subscription_balance: 10, pack_balance: 0, display_balance: 10 },
+    })
+    expect(navigator.assign).toHaveBeenCalledWith(`/api/export/${RESULT.id}/download/`)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('shows the free-tier pending state with aria-busy while exporting', () => {
+    stubExport(undefined, true)
+    renderModal(freshClient(), { tier: 'free' })
+    const confirm = screen.getByRole('button', { name: 'common.credits.exporting' })
+    expect(confirm).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('renders the free-tier client 0-credit guard: aria-disabled confirm + the insufficient caption', () => {
+    renderModal(freshClient(), { tier: 'free', balance: 3 })
+    const confirm = screen.getByText('export.modal.confirm')
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(confirm).toHaveAttribute('aria-describedby', 'export-insufficient-note')
+    expect(screen.getByText('export.modal.insufficient')).toBeInTheDocument()
+    fireEvent.click(confirm)
+    expect(toastMock).toHaveBeenCalledWith('common.credits.no_credits')
     expect(exportService.create).not.toHaveBeenCalled()
   })
 
-  it('routes the free-tier confirm to the upgrade stub toast and NEVER posts', () => {
+  it('replaces the form with the credits error state on a server 402 for free', () => {
+    stubExport('credits')
     renderModal(freshClient(), { tier: 'free' })
+    expect(screen.getByText('export.modal.error_credits')).toBeInTheDocument()
+    expect(screen.queryByText('export.modal.confirm')).not.toBeInTheDocument()
+  })
+
+  it('filters the free preview to the included rows when include_unrevealed is off', () => {
+    stubPreview(MIXED_FREE_PREVIEW)
+    const create = vi.fn()
+    stubExport(undefined, false, create)
+    renderModal(freshClient(), { tier: 'free' })
+    fireEvent.click(screen.getByRole('checkbox'))
+    const previewBox = screen.getByLabelText('export.modal.preview_label')
+    // The preview shows ONLY the 2 revealed rows — never claims rows the file
+    // will not contain (the preview-IS-the-file contract in every state).
+    expect(within(previewBox).getByText(/Karim Benali/)).toBeInTheDocument()
+    expect(within(previewBox).getByText(/Youcef K/)).toBeInTheDocument()
+    expect(within(previewBox).queryByText(/Amina B/)).not.toBeInTheDocument()
+    expect(within(previewBox).queryByText(/Lina H/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('export.modal.confirm'))
-    expect(toastMock).toHaveBeenCalledWith('billing.upgrade_stub')
-    expect(exportService.create).not.toHaveBeenCalled()
+    expect(create).toHaveBeenCalledWith({
+      record_ids: ['p-1', 'p-2'],
+      format: 'csv',
+      include_unrevealed: false,
+    })
+  })
+
+  it('locks the free confirm when include_unrevealed is off and nothing is revealed', () => {
+    stubPreview(FREE_PREVIEW)
+    const create = vi.fn()
+    stubExport(undefined, false, create)
+    renderModal(freshClient(), { tier: 'free' })
+    fireEvent.click(screen.getByRole('checkbox'))
+    const confirm = screen.getByText('export.modal.confirm')
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(confirm)
+    expect(create).not.toHaveBeenCalled()
   })
 })
 
