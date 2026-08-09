@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of story-5.2 (2026-08-09)
+
+- **Chargily webhook envelope conformance unverified** — docs.chargily.com was unreachable from the dev environment at pin time (5.2 D11); the executable pin tests are self-consistent, not docs-conformant. PRE-PROD GATE: verify the X-Signature scheme (header name, digest encoding, raw-body semantics) and the checkout API payload shape against the live Chargily docs before enabling webhooks in production; the adapter is isolated in `backend/apps/billing/chargily.py` for a single-file correction. [backend/apps/billing/chargily.py]
+- **Shaped-metadata `checkout_id` semantics** — the webhook's shaped metadata `checkout_id` stores `data.id` (the same value normalized into `chargily_event_id`); the REAL Chargily checkout id (returned by create-checkout) is the 5.6 polling key. The 5.6 status-polling lookup must not rely on the metadata `checkout_id` field until the payload semantics are pinned at the docs gate. [backend/apps/billing/webhooks.py]
+- **Replay-after-purge re-grant window** — the 90-day retention purge (5.1 D2) deletes the AD-5 guard row (`payment_transactions`); a replayed webhook event id becomes insertable again → double grant. Needs a tombstone/retention design (5.3+/ops). [backend/apps/billing/webhooks.py, backend/tasks/maintenance_tasks.py]
+
 ## Deferred from: code review of story 5.1 (2026-08-09)
 
 - **Tier split-brain (`User.tier` vs `Subscription.tier`)**: entitlement reads `User.tier` (`search/quota.py`), the new `subscriptions.tier` is unlinked — an ACTIVE starter subscription can coexist with `user.tier='free'` and vice versa. Deferred to 5.3 (grant flow owns the `user.tier='starter'` write) / 5.7 (cancel sync); cross-table invariants need triggers, not constraints. [backend/apps/billing/models.py]
