@@ -68,6 +68,13 @@ export function useExport({
   const create = useCallback(
     (payload: ExportPayload) => {
       if (inFlightRef.current) return
+      // Offline fail-fast (deferred-work manual-testing fix): the POST would
+      // hang until the 20s timeout (or indefinitely) — surface the generic
+      // network state immediately instead of stranding the modal spinner.
+      if (navigator.onLine === false) {
+        setError('generic')
+        return
+      }
       inFlightRef.current = true
       setError(undefined)
       mutation.mutate(payload)

@@ -9,7 +9,16 @@ import csv
 import zipfile
 from xml.etree import ElementTree
 
-from apps.exports.export_service import build_export_csv, build_export_xlsx
+import pytest
+
+from apps.exports.export_service import (
+    EXPORT_FORMATS,
+    XLSX_MIME,
+    build_export_csv,
+    build_export_file,
+    build_export_xlsx,
+    export_mime,
+)
 from apps.exports.messages import (
     EXPORT_COMPANY_COLUMNS,
     EXPORT_CSV_HEADERS,
@@ -149,6 +158,29 @@ class TestCsv:
         assert values[3].startswith("'@")
         assert values[4] == 'ok@mail.dz'
         assert values[5] == '0550 00 00 00'
+
+    def test_formula_trigger_with_leading_whitespace_neutralized(self) -> None:
+        """OWASP also lists whitespace/tab/CR-prefixed triggers (`" =cmd"`) —
+        Excel may evaluate them after trimming, so the guard checks the
+        lstrip'ed value (the deferred-work 4.4 review item)."""
+        row = {
+            'name': ' =cmd',
+            'role': '\t=EVIL()',
+            'company': '\r+2+3',
+            'wilaya': '   @cmd',
+            'email': ' plain',
+            'phone': '  0550 00 00 00',
+            'address': '2+2=4 (no leading trigger)',
+        }
+        data = build_export_csv([row], PEOPLE_HEADERS).decode('utf-8-sig')
+        values = next(csv.reader([_csv_lines(data)[1]]))
+        assert values[0] == "' =cmd"
+        assert values[1] == "'\t=EVIL()"
+        assert values[2] == "'\r+2+3"
+        assert values[3] == "'   @cmd"
+        assert values[4] == ' plain'
+        assert values[5] == '  0550 00 00 00'
+        assert values[6] == '2+2=4 (no leading trigger)'
 
     def test_control_characters_stripped_from_csv(self) -> None:
         row = dict(PEOPLE_ROW)
@@ -340,3 +372,64 @@ class TestXlsx:
         assert 'Ctrlchar' in sheet
         assert '\x00' not in sheet
         _parse_xml(_xlsx_parts(data)['xl/worksheets/sheet1.xml'])
+
+    def test_whitespace_preserved_in_inline_strings(self) -> None:
+        """Multi-line addresses / padded values carry xml:space="preserve" so
+        Excel/LibreOffice never collapse them on open (the deferred-work 4.4
+        review item — data fidelity)."""
+        row = dict(PEOPLE_ROW)
+        row['address'] = 'Line one\nLine two'
+        row['name'] = '  Padded name  '
+        data = build_export_xlsx([row], PEOPLE_HEADERS)
+        sheet = _xlsx_parts(data)['xl/worksheets/sheet1.xml'].decode('utf-8')
+        assert '<t xml:space="preserve">Line one\nLine two</t>' in sheet
+        assert '<t xml:space="preserve">  Padded name  </t>' in sheet
+        _parse_xml(_xlsx_parts(data)['xl/worksheets/sheet1.xml'])
+
+    def test_plain_text_has_no_preserve_attribute(self) -> None:
+        row = dict(PEOPLE_ROW)
+        data = build_export_xlsx([row], PEOPLE_HEADERS)
+        sheet = _xlsx_parts(data)['xl/worksheets/sheet1.xml'].decode('utf-8')
+        assert 'xml:space="preserve"' not in sheet
+
+
+class TestFormatRegistry:
+    def test_registry_spec_table(self) -> None:
+        assert set(EXPORT_FORMATS) == {'csv', 'xlsx'}
+        assert EXPORT_FORMATS['csv']['mime'] == 'text/csv; charset=utf-8'
+        assert EXPORT_FORMATS['xlsx']['mime'] == XLSX_MIME
+        assert EXPORT_FORMATS['csv']['supports_watermark'] is True
+        assert EXPORT_FORMATS['xlsx']['supports_watermark'] is False
+
+    def test_csv_dispatch_matches_builder_with_watermark(self) -> None:
+        direct = build_export_csv(
+            [PEOPLE_ROW], PEOPLE_HEADERS, watermark_text='WATER'
+        )
+        via_registry = build_export_file(
+            'csv', [PEOPLE_ROW], PEOPLE_HEADERS, watermark_text='WATER'
+        )
+        assert direct == via_registry
+
+    def test_xlsx_dispatch_matches_builder(self) -> None:
+        direct = build_export_xlsx([COMPANY_ROW], COMPANY_HEADERS)
+        via_registry = build_export_file('xlsx', [COMPANY_ROW], COMPANY_HEADERS)
+        assert direct == via_registry
+
+    def test_xlsx_ignores_watermark_text(self) -> None:
+        """The watermark is a CSV-only concept — the xlsx builder never
+        receives it (an inconsistent watermarked-xlsx state is impossible)."""
+        with_wm = build_export_file('xlsx', [COMPANY_ROW], COMPANY_HEADERS, watermark_text='W')
+        without = build_export_file('xlsx', [COMPANY_ROW], COMPANY_HEADERS)
+        assert with_wm == without
+
+    def test_unknown_format_raises(self) -> None:
+        with pytest.raises(ValueError):
+            build_export_file('pdf', [PEOPLE_ROW], PEOPLE_HEADERS)
+
+    def test_export_mime_lookup(self) -> None:
+        assert export_mime('csv') == 'text/csv; charset=utf-8'
+        assert export_mime('xlsx') == XLSX_MIME
+
+    def test_export_mime_unknown_raises(self) -> None:
+        with pytest.raises(ValueError):
+            export_mime('pdf')

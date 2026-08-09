@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from apps.credits.messages import INSUFFICIENT_CREDITS_MESSAGES
 from apps.credits.services import InsufficientCreditsError, user_balances
-from apps.exports.export_service import build_export_csv, build_export_xlsx
+from apps.exports.export_service import build_export_file, export_mime
 from apps.exports.messages import (
     CONCURRENT_EXPORT_MESSAGES,
     EXPORT_CSV_HEADERS,
@@ -38,24 +38,13 @@ from apps.exports.services import (
     create_export,
 )
 
-_LOCALES = frozenset({'ar', 'fr', 'en'})
-
-_XLSX_MIME = (
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-)
-
-
-def _locale(user: object) -> str:
-    locale = getattr(user, 'locale', 'en')
-    return locale if locale in _LOCALES else 'en'
-
 
 class ExportView(APIView):
     """POST /api/export/ — create an export job (FR-17/18/19/20)."""
 
     def post(self, request: Request) -> Response:
         user = request.user
-        locale = _locale(user)
+        locale = user.effective_locale
         # Payload validation runs BEFORE the tier gate so a malformed body is
         # always a 400 — never an ambiguous 403 that leaks entitlement state.
         try:
@@ -151,7 +140,7 @@ class ExportDownloadView(APIView):
 
     def get(self, request: Request, export_id: str) -> Response:
         export_row = self._owned_export(request, export_id)
-        locale = _locale(request.user)
+        locale = request.user.effective_locale
         if export_row is None:
             return Response(
                 {
@@ -171,21 +160,19 @@ class ExportDownloadView(APIView):
                 export_row.locale, EXPORT_CSV_HEADERS['en']
             ).get(record_type, {})
         rows = export_row.rows_json.get('rows', [])
-        if export_row.format == 'csv':
-            # The watermark replays from the FROZEN snapshot string (D3 —
-            # which-string, byte-for-byte): paid exports carry None (absent)
-            # and never gain watermark rows; free exports always replay the
-            # string they were charged for, even if the copy later edits.
-            content = build_export_csv(
-                rows, headers, watermark_text=export_row.rows_json.get('watermark')
-            )
-            content_type = 'text/csv; charset=utf-8'
-        else:
-            content = build_export_xlsx(rows, headers)
-            content_type = _XLSX_MIME
+        # The watermark replays from the FROZEN snapshot string (D3 —
+        # which-string, byte-for-byte): paid exports carry None (absent) and
+        # never gain watermark rows; free exports always replay the string
+        # they were charged for, even if the copy later edits.
+        content = build_export_file(
+            export_row.format,
+            rows,
+            headers,
+            watermark_text=export_row.rows_json.get('watermark'),
+        )
         return FileResponse(
             io.BytesIO(content),
-            content_type=content_type,
+            content_type=export_mime(export_row.format),
             as_attachment=True,
             filename=f'dzleads-export-{export_row.id}.{export_row.format}',
         )

@@ -16,7 +16,7 @@ import io
 import re
 import xml.sax.saxutils
 import zipfile
-from typing import Any
+from typing import Any, cast
 
 _XLSX_NAMESPACE = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
 _REL_NAMESPACE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -30,8 +30,11 @@ _CONTROL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
 # CSV formula-injection guard (OWASP): cells beginning with a formula
 # trigger character are evaluated by Excel on open — scraped web data is an
-# untrusted injection surface. Neutralize by prefixing a single quote.
-_FORMULA_TRIGGER_RE = re.compile(r'^[=+\-@]')
+# untrusted injection surface. Neutralize by prefixing a single quote. The
+# trigger may be PRECEDED by whitespace (OWASP also lists tab/CR-prefixed
+# and leading-space variants such as `" =cmd"` — Excel may still evaluate
+# them), so the check runs on the lstrip'ed value.
+_FORMULA_TRIGGER_CHARS = '=+-@'
 
 
 def build_export_csv(
@@ -69,7 +72,7 @@ def build_export_csv(
 
 def _sanitize_text(value: str) -> str:
     value = _CONTROL_RE.sub('', value)
-    if _FORMULA_TRIGGER_RE.match(value):
+    if value.lstrip().startswith(tuple(_FORMULA_TRIGGER_CHARS)):
         return "'" + value
     return value
 
@@ -116,7 +119,7 @@ def build_export_xlsx(rows: list[dict[str, Any]], headers: dict[str, str]) -> by
             else:
                 text = _xml_escape(_cell(value))
                 cells.append(
-                    f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>'
+                    f'<c r="{ref}" t="inlineStr"><is>{_inline_t(text)}</is></c>'
                 )
         sheet_rows.append('<row>' + ''.join(cells) + '</row>')
         row_number += 1
@@ -195,3 +198,64 @@ def _header_row(headers: dict[str, str]) -> str:
         for index, label in enumerate(headers.values())
     ]
     return '<row>' + ''.join(cells) + '</row>'
+
+
+def _inline_t(text: str) -> str:
+    """An inline-string <t> element.
+
+    `xml:space="preserve"` is emitted when the text carries leading/trailing
+    whitespace or newlines (multi-line addresses / padded values): without it
+    Excel and LibreOffice collapse the whitespace on open (the deferred-work
+    4.4 review item — data fidelity).
+    """
+    if text != text.strip() or '\n' in text or '\r' in text:
+        return f'<t xml:space="preserve">{text}</t>'
+    return f'<t>{text}</t>'
+
+
+# Export format registry (the deferred-work 4.4 review item): ONE spec table
+# for the builder + MIME + watermark support. The POST pre-flight and the
+# download regeneration collapse to a single lookup — a new format touches
+# this table only. Defined after the builders (the table references them).
+XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+EXPORT_FORMATS: dict[str, dict[str, Any]] = {
+    'csv': {
+        'builder': build_export_csv,
+        'mime': 'text/csv; charset=utf-8',
+        'supports_watermark': True,
+    },
+    'xlsx': {
+        'builder': build_export_xlsx,
+        'mime': XLSX_MIME,
+        'supports_watermark': False,
+    },
+}
+
+
+def build_export_file(
+    format_: str,
+    rows: list[dict[str, Any]],
+    headers: dict[str, str],
+    watermark_text: str | None = None,
+) -> bytes:
+    """Dispatch to the format's builder from the registry (single call site).
+
+    `watermark_text` is a CSV-only concept (FR-19): it is passed through only
+    for formats that declare `supports_watermark` — the xlsx builder is
+    watermark-unaware and must never receive it.
+    """
+    spec = EXPORT_FORMATS.get(format_)
+    if spec is None:
+        raise ValueError(f'Unknown export format: {format_}')
+    if spec['supports_watermark']:
+        return cast(bytes, spec['builder'](rows, headers, watermark_text=watermark_text))
+    return cast(bytes, spec['builder'](rows, headers))
+
+
+def export_mime(format_: str) -> str:
+    """The Content-Type for a format (the download response)."""
+    spec = EXPORT_FORMATS.get(format_)
+    if spec is None:
+        raise ValueError(f'Unknown export format: {format_}')
+    return cast(str, spec['mime'])

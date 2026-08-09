@@ -576,6 +576,23 @@ describe('ResultsTable reveal control', () => {
     await waitFor(() => expect(creditProbe.balance).toBe(15))
   })
 
+  it('fail-fasts while offline: immediate failure toast, no POST, no debit', async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+
+    const toast = await screen.findByRole('status')
+    expect(toast).toHaveTextContent('search.reveal.failed')
+    expect(revealMock.reveal).not.toHaveBeenCalled()
+    expect(document.getElementById('reveal-content-1')).toBeNull()
+    const button = screen.getAllByTestId('reveal-slot')[0]
+    expect(button).not.toHaveAttribute('aria-busy')
+    await waitFor(() => expect(creditProbe.balance).toBe(15))
+
+    delete (navigator as { onLine?: boolean }).onLine
+  })
+
   it('renders the already-revealed badge with auto-visible fields on the free path', async () => {
     revealMock.reveal.mockResolvedValue(REVEAL_RESULT)
     renderTable(

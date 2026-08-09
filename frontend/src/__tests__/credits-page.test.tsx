@@ -146,6 +146,9 @@ describe('CreditsPage ledger states', () => {
     })
     renderPage()
     const table = await screen.findByTestId('ledger-table')
+    // The fixed-grid layout (deferred-work manual-testing fix): explicit
+    // table-fixed so columns never run together.
+    expect(table).toHaveClass('table-fixed')
     const headers = table.querySelectorAll('thead th')
     expect(Array.from(headers).map((th) => th.textContent)).toEqual([
       'common.credits.column_type',

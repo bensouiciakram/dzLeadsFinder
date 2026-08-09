@@ -37,18 +37,12 @@ from apps.credits.services import (
     user_balances,
 )
 
-_LOCALES = frozenset({'ar', 'fr', 'en'})
 _RECORD_TYPES = frozenset({'people', 'company'})
 # 50m rows in a 90-day window is far beyond any real account; the cap keeps
 # the OFFSET arithmetic inside PostgreSQL's signed-64-bit range (a page past
 # it would raise OperationalError → 500 instead of the 400 contract).
 _MAX_LEDGER_PAGE = 1_000_000
 _PAGE_RE = re.compile(r'^[0-9]+$')
-
-
-def _locale(user: object) -> str:
-    locale = getattr(user, 'locale', 'en')
-    return locale if locale in _LOCALES else 'en'
 
 
 def _parse_page(raw: str | None) -> int:
@@ -123,12 +117,12 @@ class RevealView(APIView):
         try:
             contact = reveal_contact(request.user, record_type, record_id)
         except InsufficientCreditsError:
-            message = INSUFFICIENT_CREDITS_MESSAGES[_locale(request.user)]
+            message = INSUFFICIENT_CREDITS_MESSAGES[request.user.effective_locale]
             return Response(
                 {'detail': message, 'code': 'insufficient_credits'}, status=402
             )
         except RevealRecordNotFoundError:
-            message = RECORD_NOT_FOUND_MESSAGES[_locale(request.user)]
+            message = RECORD_NOT_FOUND_MESSAGES[request.user.effective_locale]
             return Response(
                 {'detail': message, 'code': 'record_not_found'}, status=404
             )
@@ -137,7 +131,7 @@ class RevealView(APIView):
             # or a PG serialization abort). The atomic block has rolled back
             # — nothing was written here. Retryable: the winner's window row
             # makes the retry hit the free path.
-            message = CONCURRENT_REVEAL_MESSAGES[_locale(request.user)]
+            message = CONCURRENT_REVEAL_MESSAGES[request.user.effective_locale]
             return Response({'detail': message, 'code': 'concurrent_reveal'}, status=409)
         balances = user_balances(request.user)
         return Response({'contact': contact, 'balances': balances})

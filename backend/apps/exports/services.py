@@ -19,13 +19,13 @@ from django.utils import timezone
 
 from apps.credits.models import Reveal
 from apps.credits.services import debit_export_rows
-from apps.exports.export_service import build_export_csv, build_export_xlsx
+from apps.exports.export_service import EXPORT_FORMATS, build_export_file
 from apps.exports.messages import EXPORT_CSV_HEADERS, WATERMARK_MESSAGES
 from apps.exports.models import Export
 from apps.exports.quota import EXPORT_DAILY_ROW_LIMIT
 from apps.search.models import Company, DailyUsage, Person
 
-_FORMATS = frozenset({'csv', 'xlsx'})
+_FORMATS = frozenset(EXPORT_FORMATS)
 _MAX_IDS = EXPORT_DAILY_ROW_LIMIT
 _MAX_ID_LENGTH = 200
 _REVEALED_WINDOW_DAYS = 30
@@ -223,7 +223,7 @@ def create_export(user: Any, payload: Any, watermark: bool = False) -> tuple[Exp
     )
     row_count = len(included_ids)
 
-    locale = user.locale if user.locale in EXPORT_CSV_HEADERS else 'en'
+    locale = user.effective_locale
     headers = EXPORT_CSV_HEADERS[locale][record_type]
     if record_type == 'people':
         rows = [
@@ -241,12 +241,11 @@ def create_export(user: Any, payload: Any, watermark: bool = False) -> tuple[Exp
             }
             for record_id in included_ids
         ]
-    bytes_ = (
-        build_export_csv(
-            rows, headers, watermark_text=WATERMARK_MESSAGES[locale] if watermark else None
-        )
-        if format_ == 'csv'
-        else build_export_xlsx(rows, headers)
+    bytes_ = build_export_file(
+        format_,
+        rows,
+        headers,
+        watermark_text=WATERMARK_MESSAGES[locale] if watermark else None,
     )
     del bytes_  # generated pre-transaction: any failure here returns with ZERO debit
 

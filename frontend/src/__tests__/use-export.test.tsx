@@ -200,4 +200,19 @@ describe('useExport', () => {
     await waitFor(() => expect(result.current.error).toBeUndefined())
     expect(vi.mocked(exportService.create)).toHaveBeenCalledTimes(2)
   })
+
+  it('fail-fasts while offline: generic error, no POST, no pending spinner', async () => {
+    const client = freshClient()
+    const { result } = renderHook(() => useExport({}), { wrapper: wrapperFor(client) })
+
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })
+    try {
+      result.current.create(PAYLOAD)
+      await waitFor(() => expect(result.current.error).toBe('generic'))
+      expect(result.current.isPending).toBe(false)
+      expect(vi.mocked(exportService.create)).not.toHaveBeenCalled()
+    } finally {
+      delete (navigator as { onLine?: boolean }).onLine
+    }
+  })
 })

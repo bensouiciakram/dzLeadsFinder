@@ -1,6 +1,7 @@
 """Search API endpoint views for People and Company search."""
 
 from datetime import timedelta
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -29,8 +30,6 @@ from apps.search.fts import company_keyword_q, people_keyword_q
 from apps.search.models import Company, Person, SavedSearch
 from apps.search.serializers import SavedSearchSerializer
 
-_LOCALES = frozenset({'ar', 'fr', 'en'})
-
 _PEOPLE_SORT: dict[str, str] = {
     'name': 'name',
     'role': 'role',
@@ -53,11 +52,6 @@ _SIZE_BAND_ORDER = Case(
 )
 
 
-def _locale(user: object) -> str:
-    locale = getattr(user, 'locale', 'en')
-    return locale if locale in _LOCALES else 'en'
-
-
 def _revealed_ids(user: object, record_type: str, rows: list[object]) -> set[str]:
     """Record ids with a ≤30d reveal for this user (any row — paid or free)."""
     if not rows:
@@ -73,11 +67,11 @@ def _revealed_ids(user: object, record_type: str, rows: list[object]) -> set[str
     )
 
 
-def _quota_error(user: object) -> Response | None:
+def _quota_error(user: Any) -> Response | None:
     if not quota.daily_limit_reached(user):
         return None
     limit = quota.daily_limit_for(user)
-    message = quota.SEARCH_LIMIT_MESSAGES[_locale(user)].format(limit=limit)
+    message = quota.SEARCH_LIMIT_MESSAGES[user.effective_locale].format(limit=limit)
     return Response(
         {'detail': message, 'code': 'search_limit_exceeded', 'limit': limit}, status=429
     )
@@ -91,13 +85,13 @@ def _order_by(qs: QuerySet, field: str, direction: str, sort_map: dict[str, str]
     return qs.order_by(expression.asc(nulls_last=True), 'id')
 
 
-def _truncated_payload(total: int, page: int, user: object) -> dict[str, object]:
+def _truncated_payload(total: int, page: int, user: Any) -> dict[str, object]:
     truncated = total > quota.MAX_NAVIGABLE_RESULTS
     return {
         'total': total,
         'page': page,
         'truncated': truncated,
-        'refine_prompt': quota.REFINE_PROMPT_MESSAGES[_locale(user)] if truncated else None,
+        'refine_prompt': quota.REFINE_PROMPT_MESSAGES[user.effective_locale] if truncated else None,
     }
 
 
@@ -199,7 +193,7 @@ class PeopleSearchView(APIView):
         offset = (page - 1) * quota.PAGE_SIZE
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
-        locale = _locale(request.user)
+        locale = request.user.effective_locale
         revealed_ids = _revealed_ids(request.user, 'people', rows)
         payload: dict[str, object] = {
             'results': [_people_row(person, locale, revealed_ids) for person in rows],
@@ -235,7 +229,7 @@ class CompanySearchView(APIView):
         offset = (page - 1) * quota.PAGE_SIZE
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
-        locale = _locale(request.user)
+        locale = request.user.effective_locale
         revealed_ids = _revealed_ids(request.user, 'company', rows)
         payload: dict[str, object] = {
             'results': [_company_row(company, locale, revealed_ids) for company in rows],
@@ -262,7 +256,7 @@ class SavedSearchListView(APIView):
             )
             count = SavedSearch.objects.filter(user_id=locked_user.id).count()
             if count >= limit:
-                message = quota.SAVED_SEARCH_LIMIT_MESSAGES[_locale(request.user)].format(
+                message = quota.SAVED_SEARCH_LIMIT_MESSAGES[request.user.effective_locale].format(
                     limit=limit
                 )
                 return Response(

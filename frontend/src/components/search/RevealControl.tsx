@@ -190,6 +190,13 @@ export function RevealControl({
       toast('search.reveal.no_credits')
       return
     }
+    // Offline fail-fast (deferred-work manual-testing fix): the POST would
+    // hang until the 20s timeout (or indefinitely) — surface the failure
+    // surface immediately instead of stranding the spinner.
+    if (navigator.onLine === false) {
+      toast('search.reveal.failed')
+      return
+    }
     reveal
       .mutateAsync({ type: state.recordType, id: state.rowId })
       .catch(() => {

@@ -1,5 +1,6 @@
 import {
   AxiosError,
+  CanceledError,
   type AxiosRequestConfig,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
@@ -23,6 +24,10 @@ afterEach(() => {
 
 function jsonResponse(config: InternalAxiosRequestConfig, status: number, data: unknown): AxiosResponse {
   return { data, status, statusText: 'OK', headers: {}, config }
+}
+
+function clientWithAdapter(adapter: (config: InternalAxiosRequestConfig) => Promise<AxiosResponse> | never) {
+  return new AuthService({ adapter } as AxiosRequestConfig)
 }
 
 function axiosErrorWithResponse(status: number, data: unknown, config?: InternalAxiosRequestConfig) {
@@ -102,11 +107,51 @@ describe('applyAuthRedirect', () => {
   })
 })
 
-describe('HttpClient 401 interceptor', () => {
-  function clientWithAdapter(adapter: (config: InternalAxiosRequestConfig) => Promise<AxiosResponse> | never) {
-    return new AuthService({ adapter } as AxiosRequestConfig)
+describe('HttpClient offline abort', () => {
+  // A signal-aware adapter that never settles on its own — settlement comes
+  // exclusively from the abort path (mimics a real in-flight request).
+  function pendingAdapter(config: InternalAxiosRequestConfig) {
+    return new Promise<AxiosResponse>((_resolve, reject) => {
+      const onAbort = () => reject(new CanceledError('canceled', config))
+      if (config.signal?.aborted) {
+        onAbort()
+        return
+      }
+      config.signal?.addEventListener?.('abort', onAbort)
+    })
   }
 
+  it('aborts in-flight requests when the browser goes offline', async () => {
+    const client = clientWithAdapter(pendingAdapter)
+    const pending = client.me()
+    window.dispatchEvent(new Event('offline'))
+    await expect(pending).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+    window.dispatchEvent(new Event('online'))
+  })
+
+  it('serves requests again after the online event recreates the controller', async () => {
+    const client = clientWithAdapter(async (config) =>
+      jsonResponse(config, 200, { email: 'user@example.com' }),
+    )
+    window.dispatchEvent(new Event('offline'))
+    window.dispatchEvent(new Event('online'))
+    const user = await client.me()
+    expect(user.email).toBe('user@example.com')
+  })
+
+  it('fails fast while offline before the online event lands', async () => {
+    // A request started after the abort (no 'online' event yet) rejects
+    // instantly with CanceledError — the failure window is exactly the
+    // offline window; the 'online' event restores service.
+    const client = clientWithAdapter(async (config) =>
+      jsonResponse(config, 200, { email: 'user@example.com' }),
+    )
+    window.dispatchEvent(new Event('offline'))
+    await expect(client.me()).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+  })
+})
+
+describe('HttpClient 401 interceptor', () => {
   it('refreshes once and replays the original request on token_not_valid', async () => {
     let meCalls = 0
     const refreshCalls = vi.fn()

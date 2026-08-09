@@ -192,22 +192,26 @@ export function CreditsPage() {
 
       {phase === 'success' && rows.length > 0 && (
         <div className="mt-6 overflow-x-auto">
-          <table data-testid="ledger-table" className="w-full border-collapse text-small">
+          {/* table-fixed + explicit widths: auto layout stretches the columns
+              proportionally and the /credits cells carry no horizontal padding,
+              so compressed columns run together ("Balance afterReference" —
+              deferred-work manual-testing finding). */}
+          <table data-testid="ledger-table" className="w-full table-fixed border-collapse text-small">
             <thead>
               <tr className="text-small font-semibold text-muted-foreground">
-                <th scope="col" className="border-b border-border py-3 text-start font-semibold">
+                <th scope="col" className="w-[30%] border-b border-border px-3 py-3 text-start font-semibold">
                   {t('common.credits.column_type')}
                 </th>
-                <th scope="col" className="border-b border-border py-3 text-end font-semibold">
+                <th scope="col" className="w-[12%] border-b border-border px-3 py-3 text-end font-semibold">
                   {t('common.credits.column_amount')}
                 </th>
-                <th scope="col" className="border-b border-border py-3 text-start font-semibold">
+                <th scope="col" className="w-[22%] border-b border-border px-3 py-3 text-start font-semibold">
                   {t('common.credits.column_date')}
                 </th>
-                <th scope="col" className="border-b border-border py-3 text-end font-semibold">
+                <th scope="col" className="w-[14%] border-b border-border px-3 py-3 text-end font-semibold">
                   {t('common.credits.column_balance_after')}
                 </th>
-                <th scope="col" className="border-b border-border py-3 text-start font-semibold">
+                <th scope="col" className="w-[22%] border-b border-border px-3 py-3 text-start font-semibold">
                   {t('common.credits.column_reference')}
                 </th>
               </tr>
@@ -215,17 +219,22 @@ export function CreditsPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-border hover:bg-muted">
-                  <td className="py-3 text-start">
+                  <td className="px-3 py-3 text-start">
                     {csvLabels.types[row.event_type] ?? row.event_type}
                   </td>
-                  <td className="py-3 text-end tabular-nums">
+                  <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums">
                     {row.amount > 0 ? `+${row.amount}` : String(row.amount)}
                   </td>
-                  <td className="py-3 text-start">
+                  <td className="px-3 py-3 text-start">
                     <bdi className="tabular-nums">{formatTimestamp(row.created_at, locale)}</bdi>
                   </td>
-                  <td className="py-3 text-end tabular-nums">{String(row.balance_after)}</td>
-                  <td className="py-3 text-start font-mono text-caption text-muted-foreground">
+                  <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums">
+                    {String(row.balance_after)}
+                  </td>
+                  <td
+                    className="truncate px-3 py-3 text-start font-mono text-caption text-muted-foreground"
+                    title={row.reference_id ?? undefined}
+                  >
                     {row.reference_id ?? '—'}
                   </td>
                 </tr>

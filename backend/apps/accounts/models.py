@@ -83,6 +83,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.pk is not None:
             self.token_version += 1
 
+    @property
+    def effective_locale(self) -> str:
+        """The locale guarded to the canonical set (ar/fr/en) with 'en'
+        fallback — the single source the credits/search/exports views used to
+        duplicate as `_locale()` (deferred-work 4.4 review item)."""
+        locale = str(self.locale)
+        return locale if locale in dict(LOCALE_CHOICES) else 'en'
+
     def __str__(self) -> str:
         return str(self.email)
 

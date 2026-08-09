@@ -3,6 +3,7 @@ import axios, {
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
+  type InternalAxiosRequestConfig,
 } from 'axios'
 
 const REFRESH_URL = '/auth/jwt/refresh/'
@@ -59,8 +60,10 @@ export class HttpClient {
   protected readonly client: AxiosInstance
   private refreshing: Promise<boolean> | null = null
   private redirectFired = false
+  private offlineController: AbortController | null = null
 
   constructor(config?: AxiosRequestConfig) {
+    this.offlineController = new AbortController()
     this.client = axios.create({
       baseURL: '/api',
       withCredentials: true,
@@ -68,6 +71,13 @@ export class HttpClient {
       timeout: 20000,
       ...config,
     })
+    this.client.interceptors.request.use((requestConfig) =>
+      this.attachOfflineSignal(requestConfig),
+    )
+    if (typeof window !== 'undefined') {
+      window.addEventListener('offline', this.abortOffline)
+      window.addEventListener('online', this.resetOffline)
+    }
     this.client.interceptors.response.use(
       (response: AxiosResponse) => response,
       (error: AxiosError) => {
@@ -95,6 +105,40 @@ export class HttpClient {
   private redirect(error: AxiosError): void {
     if (this.redirectFired) return
     this.redirectFired = applyAuthRedirect(redirectTargetForError(error))
+  }
+
+  private readonly abortOffline = (): void => {
+    this.offlineController?.abort()
+  }
+
+  private readonly resetOffline = (): void => {
+    this.offlineController = new AbortController()
+  }
+
+  private attachOfflineSignal(requestConfig: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+    // Combine the offline controller with any caller-provided signal (e.g.
+    // the search queryFn abort) so the browser-offline abort covers every
+    // request of this client. Requests that start while the controller is
+    // already aborted fail fast with CanceledError (axios checks the signal
+    // before the interceptor chain); the 'online' event recreates the
+    // controller, so the failure window is exactly the offline window — a
+    // dropped network never strands the UI on a pending spinner
+    // (deferred-work manual-testing finding).
+    if (!this.offlineController) return requestConfig
+    const offlineSignal = this.offlineController.signal
+    if (requestConfig.signal) {
+      if (typeof AbortSignal.any === 'function') {
+        requestConfig.signal = AbortSignal.any([
+          offlineSignal,
+          requestConfig.signal as AbortSignal,
+        ])
+      }
+      // No AbortSignal.any support: keep the caller's signal (the offline
+      // abort is skipped for that request — the timeout still applies).
+    } else {
+      requestConfig.signal = offlineSignal
+    }
+    return requestConfig
   }
 
   private async refreshSession(): Promise<boolean> {
