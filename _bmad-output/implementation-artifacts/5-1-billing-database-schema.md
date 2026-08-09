@@ -2,7 +2,7 @@
 story_id: 5.1
 epic: 5
 title: Story 5.1 — Billing Database Schema
-Status: review
+Status: done
 frs: [FR-24, FR-25, FR-26, FR-27]
 ads: [AD-3, AD-5]
 baseline_commit: 2a29145
@@ -10,7 +10,7 @@ baseline_commit: 2a29145
 
 # Story 5.1: Billing Database Schema
 
-Status: review
+Status: done
 
 ## Story
 
@@ -63,11 +63,13 @@ CREATE TABLE payment_transactions (
 
 **Given** the billing API endpoints
 **When** I inspect the routes
-**Then** these exist:
-- `GET /api/billing/plan/` — current plan + renewal date
-- `GET /api/billing/packs/` — available add-on packs
-- `POST /api/billing/create-checkout/` — Chargily redirect URL
-- `GET /api/billing/status/{txnId}/` — payment polling
+**Then** these exist — **DEFERRED to 5.2+ (recorded decision, D8 — John PM verdict + Winston endorsement):**
+- `GET /api/billing/plan/` — current plan + renewal date (5.3)
+- `GET /api/billing/packs/` — available add-on packs (5.4)
+- `POST /api/billing/create-checkout/` — Chargily redirect URL (5.2)
+- `GET /api/billing/status/{txnId}/` — payment polling (5.6)
+
+The deferral is recorded in Dev Notes D8 and the Change Log; no dead endpoints ship in 5.1.
 
 ## Tasks / Subtasks
 
@@ -94,15 +96,15 @@ CREATE TABLE payment_transactions (
     - **duplicate create raises**: two `PaymentTransaction.objects.create` with the same `chargily_event_id` → second raises `IntegrityError` (the DB is the guard).
     - **ON CONFLICT DO NOTHING**: `PaymentTransaction.objects.bulk_create([...], ignore_conflicts=True)` with duplicate event ids → exactly ONE row survives, and a pinned `PaymentTransaction.objects.count()` assert (the Winston guard: surprising conflicts surface instead of vanishing silently).
     - **duplicate never double-grants**: with a `credits_granted` column present, the conflict-path insert cannot produce two granted rows (assert row count == 1 and single credits_granted value).
-    - **per-user isolation**: same event id for two different users → both rows persist (the unique constraint is per event id, not per user).
+    - **global uniqueness**: the same event id for two different users → the second insert raises `IntegrityError` (the AC DDL's `chargily_event_id TEXT UNIQUE NOT NULL` is a GLOBAL unique — the AC is the source of truth; the webhook handler treats any duplicate as a replay).
     - **FK behavior**: deleting the user (the `maintenance_tasks.py` hard-delete flow — `filter(user_id=...).delete()` before `user.delete()`) removes subscription + payment rows; CASCADE allows a direct `user.delete()` too.
   - [x] 2.2 GREEN: any model adjustments needed (expected none beyond Task 1 — the unique field carries the guard).
   - [x] 2.3 Run backend gates — green.
 
-- [ ] **Task 3: Read-only admin for `Subscription` + `PaymentTransaction`** (financial-rows audit precedent — 4.1 Task 7)
-  - [ ] 3.1 RED: `backend/apps/billing/tests/test_admin.py` — NEW — `admin.site._registry` lookups: `SubscriptionAdmin` and `PaymentTransactionAdmin` registered; both `readonly_fields` cover every model field (no in-place admin edits — financial rows are append-only); `list_display` includes user/status/tier (subscriptions) and user/chargily_event_id/type/amount_dzd/status (payments).
-  - [ ] 3.2 GREEN: `backend/apps/billing/admin.py` — NEW — read-only admins (`list_display` + `readonly_fields = [all fields]` + `has_add_permission`/`has_change_permission`/`has_delete_permission` → False — append-only audit surface).
-  - [ ] 3.3 Run backend gates — green.
+- [x] **Task 3: Read-only admin for `Subscription` + `PaymentTransaction`** (financial-rows audit precedent — 4.1 Task 7)
+  - [x] 3.1 RED: `backend/apps/billing/tests/test_admin.py` — NEW — `admin.site._registry` lookups: `SubscriptionAdmin` and `PaymentTransactionAdmin` registered; both `readonly_fields` cover every model field (no in-place admin edits — financial rows are append-only); `list_display` includes user/status/tier (subscriptions) and user/chargily_event_id/type/amount_dzd/status (payments).
+  - [x] 3.2 GREEN: `backend/apps/billing/admin.py` — NEW — read-only admins (`list_display` + `readonly_fields = [all fields]` + `has_add_permission`/`has_change_permission`/`has_delete_permission` → False — append-only audit surface).
+  - [x] 3.3 Run backend gates — green.
 
 - [x] **Task 4: PG-backed CI job** (epic-4 retro action item #4 — target "before 5.1")
   - [x] 4.1 NEW: `backend/config/settings/ci_pg.py` — settings module for PG-backed CI: inherits `.test`, `DATABASES['default']` = PostgreSQL via `POSTGRES_*` env vars (defaults matching the CI service container).
@@ -119,8 +121,8 @@ CREATE TABLE payment_transactions (
 - **Source of truth — the planning spec**: `_bmad-output/planning-artifacts/epics/epic-05-billing-subscriptions/story-01-billing-database-schema.md` (all ACs verbatim in this story). FR-24/25/26/27 details in `_bmad-output/planning-artifacts/prds/prd-algerian-b2b-lead-platform-2026-07-18/4-features.md#L228-258`. Epic context in `_bmad-output/planning-artifacts/epics/epic-05-billing-subscriptions/index.md`.
 - **Spine refs**: subscriptions DDL `docs/ARCHITECTURE-SPINE.md#L162-173`; payment_transactions DDL `#L175-188`; webhook idempotency flow `#L616-627`; AD-3 (PG single store, SERIALIZABLE payments/credits) + AD-5 (webhook idempotent on chargily_event_id UNIQUE) `#L865-867`.
 - **Contracts this story honors (verbatim)**:
-  - D1: model labels `apps.billing.Subscription` + `apps.billing.PaymentTransaction` are pinned by `maintenance_tasks.py:17-18` guarded lookups (hard-deleted via `filter(user_id=...).delete()` before user delete) — never rename; both models MUST expose `user_id`.
-  - D2: `user` FK `on_delete=CASCADE` (the maintenance task deletes dependent rows BEFORE `user.delete()`; CASCADE also permits direct deletion — the 4.1 D2 precedent).
+  - D1: model labels `apps.billing.Subscription` + `apps.billing.PaymentTransaction` are pinned by `maintenance_tasks.py` guarded lookups (anonymised via `user_id → NULL` + 90-day purge before user delete — the 5.1 review decision) — never rename; both models MUST expose `user_id`.
+  - D2: `user` FK `on_delete=SET_NULL` (`null=True, blank=True`) — **amended by the 5.1 review decision**: financial rows (DZD amounts, Chargily ids, checkout URLs) are ANONYMISED on account deletion like the CreditLedger (SET_NULL + 90-day purge) instead of hard-deleted, so refund/dispute/reconciliation history survives; the original CASCADE + hard-delete contract was rejected in review. `maintenance_tasks.py` moves billing out of `DEPENDENT_MODELS` into `ANONYMISED_MODELS`.
   - D3: status/type/tier enforced via Django TextChoices + CheckConstraint (runs on BOTH SQLite test DB and PG16 — the spine's `CREATE TYPE` is PG-only; the 4.1 D3 precedent).
   - D4: `tier` field REUSES `TIER_CHOICES` imported from `apps.accounts.models` — never re-creates the user_tier enum.
   - D5: **NO credit_ledger schema change** — verified `credit_event_type` already carries `subscription_grant`/`pack_grant` (`backend/apps/credits/models.py:11-12`, credits 0001; epic-4 retro: "5.1/5.3/5.4 grant flows need NO ledger schema change — 5.1 is thinner than planned").
@@ -132,6 +134,7 @@ CREATE TABLE payment_transactions (
   - D11: PG-backed CI job lands in 5.1 (epic-4 retro action item #4 target: "before 5.1").
   - D12: `payment_transactions` carries `Index(fields=['user', '-created_at'], name='payments_user_created_idx')` — Winston consultation item 6 (the 5.5 payment-history surface: `filter(user=...).order_by('-created_at')`; the 4.1 `credit_ledger_user_created_idx` precedent; name shortened for Django's 30-char limit). `subscriptions` needs nothing beyond the auto FK index.
   - D13: PG CI job scope — a full-suite run on real PG16 lands 648/700 passing; the 51 SERIALIZABLE-service tests (test_reveal, test_export_debit, test_reveal_api, test_export_api) fail with `ActiveSqlTransaction: SET TRANSACTION ISOLATION LEVEL must be called before any query` — the DOCUMENTED deferred-work.md composition contract (pytest-django wraps every `django_db` test in a transaction, so the vendor-guarded first-statement guard can never run under pytest; 4.1 proved SERIALIZABLE via the E2E two-process race, not pytest). `TestSqliteKeywordBehavior::test_operator_words_are_treated_as_literals` is explicitly SQLite-behavior. The CI PG job therefore runs the billing + concurrency scope (205 tests locally on PG16: billing ON-CONFLICT/unique/CHECK proofs + accounts select_for_update paths + daily-usage upsert race + quota TOCTOU). Webhook-concurrency tests land with the 5.2/5.3 webhook view — the 5.3 story should extend this job or use the E2E-race pattern.
+  - D14: **Review-hardening additions (2026-08-09, migration 0002)** — (a) retention anonymisation (D2 amendment); (b) `subscriptions_active_unique` partial unique (one ACTIVE per user — enforces the FR-24 precondition, prevents double-billing); (c) `subscriptions_chargily_id_uniq` partial unique on non-null Chargily subscription id (replayed creation webhooks cannot duplicate rows); (d) `payments_amount_range_check` (0..2147483647 — PG int4 parity), `payments_credits_nonneg_check`; (e) `subscriptions_period_order_check` (end â‰¥ start), `subscriptions_cancel_state_check` (cancelled_at â‡’ cancelled); (f) `subscriptions_user_created_idx` composite index; (g) `makemigrations --check` step in CI; (h) admin `list_select_related`; (i) CI `timeout-minutes`. Credits/status and reconciled_at couplings deliberately NOT constrained (deferred to 5.3 — the webhook write order is not yet pinned).
 - **Persona consultation record (2026-08-09, parallel subagents)**:
   - Winston (architect): OK on TextChoices+CheckConstraint (SQLite-runnable), Python-side uuid4 (gen_random_uuid needs pgcrypto on PG16 / no SQLite equivalent), CASCADE FK (redundant-but-harmless defense in depth; financial auditability lives in credit_ledger), JSONField (jsonb on PG); guard on `ignore_conflicts` — pin a rowcount assert so surprising conflicts surface; CHANGE: composite index (D12); endorsed endpoint deferral; note: tier `DEFAULT 'starter'` is intentional (subscription = inherently paid), distinct from `User.tier`'s 'free' default — do not harmonize.
   - John (PM): **DECISION — defer all 4 endpoints to 5.2+; do not wire stubs in 5.1**. FR-24..27 impose NO schema obligations beyond the AC DDL: no rollover needs no object (grant computation in the ledger); free-tier pack purchases need only `user_id` (schema MUST NOT add a subscription-enforcing constraint); `cancelled_at` suffices for no-refund-of-current-cycle; unique `chargily_event_id` is the sufficient DB guard, but the transaction-row insert must be the FIRST write in the reconciliation transaction (app responsibility, 5.3).
@@ -163,13 +166,18 @@ opencode-go/deepseek-v4-flash
 - `backend/apps/billing/models.py` (NEW)
 - `backend/apps/billing/admin.py` (NEW)
 - `backend/apps/billing/migrations/0001_initial.py` (NEW)
+- `backend/apps/billing/migrations/0002_alter_paymenttransaction_user_and_more.py` (NEW — review patches)
+- `backend/apps/billing/migrations/__init__.py` (NEW)
 - `backend/apps/billing/tests/__init__.py` (NEW)
 - `backend/apps/billing/tests/test_models.py` (NEW)
 - `backend/apps/billing/tests/test_idempotency.py` (NEW)
 - `backend/apps/billing/tests/test_admin.py` (NEW)
 - `backend/config/settings/ci_pg.py` (NEW)
-- `.github/workflows/ci.yml` (MODIFIED — postgres service + PG-scoped pytest run)
+- `backend/tasks/maintenance_tasks.py` (MODIFIED — review patch: billing rows anonymised instead of hard-deleted)
+- `backend/tests/test_maintenance_tasks.py` (MODIFIED — review patch: billing anonymisation + purge tests)
+- `.github/workflows/ci.yml` (MODIFIED — postgres service + PG-scoped pytest run + makemigrations --check + timeout-minutes)
 - `_bmad-output/implementation-artifacts/5-1-billing-database-schema.md` (NEW — this story record)
+- `_bmad-output/implementation-artifacts/retrospectives/epic-4-retro-2026-08-09.md` (NEW — epic-4 retrospective, same commit)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED — 5-1 → review; pre-existing retro updates preserved)
 
 ### Change Log
@@ -177,3 +185,31 @@ opencode-go/deepseek-v4-flash
 - 2026-08-09: Story created (ready-for-dev) from the epic 5.1 planning spec; sprint-status 5-1 → ready-for-dev, epic-5 → in-progress (UTF-16 LE preserved).
 - 2026-08-09: Persona consultations (parallel subagents — Winston/John/Sally) completed; recorded decision: **the 4 billing API endpoints are DEFERRED to 5.2+** (John PM verdict + Winston endorsement; no dead endpoints in 5.1); Winston CHANGE adopted — `payments_user_created_idx` composite index (D12); Sally confirmed no schema obligation gaps (handoff notes for 5.5-5.7 recorded in Dev Notes).
 - 2026-08-09: Implemented (TDD) — Task 1 models+migration (index renamed `payments_user_created_idx` for the Django 30-char limit), Task 2 idempotency semantics (8 tests), Task 3 read-only admins (8 tests), Task 4 PG CI job (ci_pg settings + postgres service; full-suite PG proof → scoped billing+concurrency run, D13), Task 5 real-PG16 E2E (10/10 checks incl. ON CONFLICT single-row + UniqueViolation). 700 backend gates green / real-PG scoped 205 green / FE gates excluded (backend-only). Status → review (sprint-status 5-1 → review).
+- 2026-08-09: Code review (full mode — Blind Hunter 16 + Edge Case Hunter 9 + Acceptance Auditor 5; ACs 1/2/4/5/6/7 SATISFIED, AC 3 VIOLATED-as-written with deferral recorded). Triage: 1 decision + 16 patches + 8 defers + 7 dismissed. All 16 patches applied (migration 0002): retention anonymisation (decision — billing FKs → SET_NULL, maintenance_tasks ANONYMISED_MODELS + purge, D1/D2 amended), `subscriptions_active_unique` (one ACTIVE per user — FR-24 precondition), `subscriptions_chargily_id_uniq` (non-null unique), `payments_amount_range_check` (0..2^31-1, PG int4 parity), `payments_credits_nonneg_check`, `subscriptions_period_order_check`, `subscriptions_cancel_state_check`, `subscriptions_user_created_idx`, `makemigrations --check` in CI, admin `list_select_related`, CI `timeout-minutes`, BOM fix, IntegrityError pins, AC-endpoint amendment (F1), 2.1-bullet global-unique fix (F2), Task-3 checkboxes + File List. 8 defers recorded in deferred-work.md (tier sync → 5.3, status index → 5.3, SERIALIZABLE PG scope → 5.3, concurrent-PG test → 5.3, metadata retention → 5.2, case normalization → 5.3, bulk_create divergence → 5.3, credits/status coupling → 5.3). Gates re-run green: 710 pytest / ruff 0 / mypy strict 0 / check clean / makemigrations --check clean; PG16 review E2E 10/10 (0002 constraints + indexes + ORM SET_NULL anonymisation); real-PG CI scope 213/213. Status → done (sprint-status 5-1 → done, epic-5 stays in-progress).
+
+### Review Findings
+
+- [x] [Review][Decision] Financial-row retention policy — RESOLVED 2026-08-09: anonymise like the ledger (SET_NULL + 90-day purge; D1/D2 amended, maintenance_tasks ANONYMISED_MODELS, migration 0002) on account deletion — `PaymentTransaction`/`Subscription` are hard-deleted by `maintenance_tasks.py` (`DEPENDENT_MODELS`, user CASCADE) while `CreditLedger` is anonymised (SET_NULL + 90-day purge). The DZD amounts / Chargily ids / checkout URLs needed for refunds, disputes and reconciliation are permanently lost, contradicting the ledger's audit posture. Options: (a) keep hard-delete (current contract — account deletion = privacy-first purge), (b) anonymise billing rows like the ledger (SET_NULL + retention), (c) anonymise but retain amounts with user_id stripped. [backend/apps/billing/models.py, backend/tasks/maintenance_tasks.py]
+- [x] [Review][Patch] Partial unique constraint: one ACTIVE subscription per user — `UniqueConstraint(fields=['user'], condition=Q(status='active'))` (the `Reveal` partial-unique precedent) — enforces the FR-24 "no active subscription" precondition at the DB and prevents double-billing. [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] Partial unique constraint on non-null `chargily_subscription_id` — replayed/re-emitted subscription webhooks can no longer materialize duplicate `Subscription` rows for one Chargily subscription (the `chargily_event_id` guard only covers payment events). [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] Range checks on financial columns — `CheckConstraint(amount_dzd__gte=0, amount_dzd__lte=2147483647)` + `credits_granted__gte=0` (negative revenue; PG int4 overflow untestable on SQLite without the upper bound). [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] Subscription period-order check — `current_period_end >= current_period_start` (inverted periods corrupt renewal/expiry math). [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] Cancellation-state check — `cancelled_at` set â‡’ `status='cancelled'` (one-way; audit/refund logic reads a consistent state). [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] `makemigrations --check --dry-run` missing from CI — model/migration drift (e.g. a `TIER_CHOICES` change) ships green today; add the step to the ci.yml backend job (the 4.1 `test_migrations`-style drift guard, CI-level). [.github/workflows/ci.yml]
+- [x] [Review][Patch] `subscriptions` composite index `(user_id, created_at DESC)` — symmetric with `payments_user_created_idx` (D12); `Meta.ordering=['-created_at']` forces per-user sorts on PG. [backend/apps/billing/models.py, migration 0002]
+- [x] [Review][Patch] UTF-8 BOM-only payload in `backend/apps/billing/tests/__init__.py` — byte-level hygiene; rewrite as an empty file. [backend/apps/billing/tests/__init__.py]
+- [x] [Review][Patch] Two NOT-NULL tests use `pytest.raises(Exception)` — pin `IntegrityError` (any TypeError/ValidationError would satisfy them; the DB-level NOT NULL contract is untested). [backend/apps/billing/tests/test_models.py]
+- [x] [Review][Patch] Admin changelists lack `list_select_related('user')` — N+1 user lookups on every admin page. [backend/apps/billing/admin.py]
+- [x] [Review][Patch] CI PG step lacks `timeout-minutes` — a hung PG run costs the 360-min default. [.github/workflows/ci.yml]
+- [x] [Review][Patch] Story record AC section still lists the 4 billing endpoints as "**Then** these exist" — the recorded deferral (D8) mandated amending the AC text per John's caveat ("or 5.1 can never be honestly Done"); amend the AC clause to "deferred to 5.2+ (recorded decision)". [story record AC section]
+- [x] [Review][Patch] Subtask 2.1 bullet contradicts the implemented global UNIQUE — "per-user isolation: same event id for two different users → both rows persist" vs the AC DDL global `chargily_event_id UNIQUE` (the shipped test asserts the IntegrityError); fix the bullet to match the AC. [story record Tasks/Subtasks]
+- [x] [Review][Patch] Task 3 checkboxes left unchecked despite the implemented admin + 8 tests (inverse of a false claim). [story record Tasks/Subtasks]
+- [x] [Review][Patch] File List omits `backend/apps/billing/migrations/__init__.py` and `retrospectives/epic-4-retro-2026-08-09.md` (both in the commit). [story record File List]
+- [x] [Review][Defer] Tier split-brain (`User.tier` vs `Subscription.tier`) — entitlement reads `User.tier` (quota.py) while the new table carries its own tier; no propagation guard. Deferred: the 5.3 grant flow owns the `user.tier='starter'` write and 5.7 the cancel sync; cross-table invariants need triggers, not constraints. [backend/apps/billing/models.py] — deferred to 5.3
+- [x] [Review][Defer] No index on `payment_transactions.status` — the pending-reconciliation sweep (spine Celery flow) will full-scan an append-only table; add the index when the 5.3 webhook reconciliation query lands. [backend/apps/billing/models.py] — deferred to 5.3
+- [x] [Review][Defer] PG CI job excludes the SERIALIZABLE service suites (credits/exports) — the documented SET-first composition contract (D13): pytest-django's atomic wrapper makes them unrunable on PG; the 4.1 E2E-race is their proof vehicle; 5.3 webhook-concurrency tests should extend the job. [.github/workflows/ci.yml] — deferred to 5.3
+- [x] [Review][Defer] No true concurrent-transaction PG test in CI — the ON CONFLICT/unique proofs exist (E2E 10/10 + billing tests on PG); the concurrent double-webhook race is a 5.3 deliverable (E2E-race pattern). [.github/workflows/ci.yml] — deferred to 5.3
+- [x] [Review][Defer] `chargily_metadata` persists raw webhook payloads unbounded (PII scope creep, no size cap/retention) — payload shaping + redaction + retention is a 5.2 webhook-design decision (spike action item). [backend/apps/billing/models.py] — deferred to 5.2
+- [x] [Review][Defer] Event-id case normalization — a replay differing only in letter case bypasses the UNIQUE guard; the 5.3 webhook handler must normalize (`strip().lower()`) on write. [backend/apps/billing/models.py] — deferred to 5.3
+- [x] [Review][Defer] `bulk_create(ignore_conflicts=True)` diverges by backend on non-unique violations (SQLite `INSERT OR IGNORE` silently drops, PG raises) and returned-pk detection differs — the 5.3 webhook handler must validate rows and re-query existence instead of trusting returned pks. [backend/apps/billing/tests/test_idempotency.py] — deferred to 5.3
+- [x] [Review][Defer] Credits/status coupling (`credits_granted` set while `pending`/`failed`/`refunded`) — DB check deferred until the 5.3 webhook write order (INSERT pending → grant → succeeded) is pinned; adding it now risks fighting the flow. [backend/apps/billing/models.py] — deferred to 5.3

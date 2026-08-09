@@ -14,6 +14,13 @@ DEPENDENT_MODELS: List[Tuple[str, str]] = [
     ('exports', 'Export'),
     ('search', 'Search'),
     ('search', 'SavedSearch'),
+]
+
+# Financial rows are anonymised (user_id -> NULL) instead of deleted so the
+# DZD amounts / provider ids needed for refunds, disputes and revenue
+# reconciliation survive account deletion (the 5.1 review decision).
+ANONYMISED_MODELS: List[Tuple[str, str]] = [
+    ('credits', 'CreditLedger'),
     ('billing', 'Subscription'),
     ('billing', 'PaymentTransaction'),
 ]
@@ -40,7 +47,7 @@ def hard_delete_expired() -> None:
     for user in expired.iterator():
         try:
             with transaction.atomic():
-                _anonymise_ledger(user.pk, apps)
+                _anonymise_financial_rows(user.pk, apps)
                 _delete_dependent_rows(user.pk, apps)
                 user.delete()
         except Exception:
@@ -48,7 +55,7 @@ def hard_delete_expired() -> None:
                 'hard_delete_expired: failed to hard-delete user %s', user.pk,
             )
             continue
-    _purge_anonymised_ledger(apps, now)
+    _purge_anonymised_rows(apps, now)
 
 
 def _delete_dependent_rows(user_id: Any, apps: Any) -> None:
@@ -62,22 +69,24 @@ def _delete_dependent_rows(user_id: Any, apps: Any) -> None:
         model.objects.filter(user_id=user_id).delete()
 
 
-def _anonymise_ledger(user_id: Any, apps: Any) -> None:
-    try:
-        ledger = apps.get_model('credits', 'CreditLedger')
-    except LookupError:
-        return
-    if ledger is None:
-        return
-    ledger.objects.filter(user_id=user_id).update(user_id=None)
+def _anonymise_financial_rows(user_id: Any, apps: Any) -> None:
+    for app_label, model_name in ANONYMISED_MODELS:
+        try:
+            model = apps.get_model(app_label, model_name)
+        except LookupError:
+            continue
+        if model is None:
+            continue
+        model.objects.filter(user_id=user_id).update(user_id=None)
 
 
-def _purge_anonymised_ledger(apps: Any, now: Any) -> None:
-    try:
-        ledger = apps.get_model('credits', 'CreditLedger')
-    except LookupError:
-        return
-    if ledger is None:
-        return
+def _purge_anonymised_rows(apps: Any, now: Any) -> None:
     purge_before = now - timedelta(days=LEDGER_RETENTION_DAYS)
-    ledger.objects.filter(user_id__isnull=True, created_at__lt=purge_before).delete()
+    for app_label, model_name in ANONYMISED_MODELS:
+        try:
+            model = apps.get_model(app_label, model_name)
+        except LookupError:
+            continue
+        if model is None:
+            continue
+        model.objects.filter(user_id__isnull=True, created_at__lt=purge_before).delete()

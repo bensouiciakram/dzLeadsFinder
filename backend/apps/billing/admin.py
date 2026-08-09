@@ -19,6 +19,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
     )
     list_filter = ('status', 'tier')
     search_fields = ('user__email', 'chargily_subscription_id')
+    list_select_related = ('user',)
     readonly_fields = [field.name for field in Subscription._meta.fields]
 
     def has_add_permission(self, request: object) -> bool:
@@ -45,6 +46,7 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
     )
     list_filter = ('type', 'status')
     search_fields = ('user__email', 'chargily_event_id')
+    list_select_related = ('user',)
     readonly_fields = [field.name for field in PaymentTransaction._meta.fields]
 
     def has_add_permission(self, request: object) -> bool:

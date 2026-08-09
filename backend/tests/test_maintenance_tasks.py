@@ -64,3 +64,45 @@ class TestHardDeleteExpired:
     def test_leaves_active_users_untouched(self, create_user: Any) -> None:
         hard_delete_expired()
         assert User.objects.filter(pk=create_user.pk).exists()
+
+    def test_anonymises_billing_rows_instead_of_deleting_them(self, create_user: Any) -> None:
+        from apps.billing.models import PaymentTransaction, Subscription
+
+        _expire(create_user)
+        txn = PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='maintenance-evt-1',
+            type='subscription_creation',
+            amount_dzd=1500,
+        )
+        sub = Subscription.objects.create(
+            user=create_user,
+            current_period_start='2026-08-01T00:00:00Z',
+            current_period_end='2026-09-01T00:00:00Z',
+        )
+        hard_delete_expired()
+        assert not User.objects.filter(pk=create_user.pk).exists()
+        assert PaymentTransaction.objects.filter(pk=txn.pk).exists()
+        assert Subscription.objects.filter(pk=sub.pk).exists()
+        txn.refresh_from_db()
+        sub.refresh_from_db()
+        assert txn.user_id is None
+        assert sub.user_id is None
+
+    def test_purges_anonymised_billing_rows_after_retention(self, create_user: Any) -> None:
+        from datetime import timedelta
+
+        from apps.billing.models import PaymentTransaction
+
+        _expire(create_user)
+        txn = PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='maintenance-evt-2',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        PaymentTransaction.objects.filter(pk=txn.pk).update(
+            created_at=timezone.now() - timedelta(days=91),
+        )
+        hard_delete_expired()
+        assert not PaymentTransaction.objects.filter(pk=txn.pk).exists()

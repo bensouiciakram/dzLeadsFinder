@@ -4,7 +4,7 @@
 import pytest
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, connection, models
+from django.db import DataError, IntegrityError, connection, models, transaction
 
 from apps.accounts.models import TIER_CHOICES
 from apps.billing.models import PaymentTransaction, Subscription
@@ -60,12 +60,13 @@ class TestSubscriptionsSchema:
         assert isinstance(field, models.UUIDField)
         assert field.primary_key
 
-    def test_user_field_references_auth_user_and_cascades(self) -> None:
+    def test_user_field_references_auth_user_and_anonymises_on_delete(self) -> None:
         field = Subscription._meta.get_field('user')
         assert isinstance(field, models.ForeignKey)
         assert field.remote_field.model is User
-        assert field.remote_field.on_delete is models.CASCADE
-        assert not field.null
+        assert field.remote_field.on_delete is models.SET_NULL
+        assert field.null
+        assert field.blank
 
     def test_tier_reuses_accounts_tier_choices(self) -> None:
         field = Subscription._meta.get_field('tier')
@@ -111,12 +112,110 @@ class TestSubscriptionsSchema:
         user = User.objects.create_user(email='period@example.com', password='SecurePass123!')
         assert Subscription._meta.get_field('current_period_start').null is False
         assert Subscription._meta.get_field('current_period_end').null is False
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             Subscription.objects.create(user=user)
 
     def test_optional_fields_are_nullable(self) -> None:
         assert Subscription._meta.get_field('chargily_subscription_id').null
         assert Subscription._meta.get_field('cancelled_at').null
+
+    def test_period_order_check_requires_end_after_start(self) -> None:
+        user = User.objects.create_user(email='periodo@example.com', password='SecurePass123!')
+        with pytest.raises(IntegrityError):
+            Subscription.objects.create(
+                user=user,
+                current_period_start='2026-09-01T00:00:00Z',
+                current_period_end='2026-08-01T00:00:00Z',
+            )
+
+    def test_cancel_state_check_requires_cancelled_status_for_cancelled_at(self) -> None:
+        user = User.objects.create_user(email='cancel@example.com', password='SecurePass123!')
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                Subscription.objects.create(
+                    user=user,
+                    status='active',
+                    cancelled_at='2026-08-05T00:00:00Z',
+                    current_period_start='2026-08-01T00:00:00Z',
+                    current_period_end='2026-09-01T00:00:00Z',
+                )
+        row = Subscription.objects.create(
+            user=user,
+            status='cancelled',
+            cancelled_at='2026-08-05T00:00:00Z',
+            current_period_start='2026-08-01T00:00:00Z',
+            current_period_end='2026-09-01T00:00:00Z',
+        )
+        assert row.status == 'cancelled'
+
+    def test_only_one_active_subscription_per_user(self) -> None:
+        user = User.objects.create_user(email='active@example.com', password='SecurePass123!')
+        Subscription.objects.create(
+            user=user,
+            current_period_start='2026-08-01T00:00:00Z',
+            current_period_end='2026-09-01T00:00:00Z',
+        )
+        with pytest.raises(IntegrityError):
+            Subscription.objects.create(
+                user=user,
+                current_period_start='2026-09-01T00:00:00Z',
+                current_period_end='2026-10-01T00:00:00Z',
+            )
+
+    def test_non_active_subscriptions_allowed_alongside_active(self) -> None:
+        user = User.objects.create_user(email='multi@example.com', password='SecurePass123!')
+        Subscription.objects.create(
+            user=user,
+            current_period_start='2026-08-01T00:00:00Z',
+            current_period_end='2026-09-01T00:00:00Z',
+        )
+        Subscription.objects.create(
+            user=user,
+            status='cancelled',
+            cancelled_at='2026-08-05T00:00:00Z',
+            current_period_start='2026-07-01T00:00:00Z',
+            current_period_end='2026-08-01T00:00:00Z',
+        )
+        Subscription.objects.create(
+            user=user,
+            status='expired',
+            current_period_start='2026-06-01T00:00:00Z',
+            current_period_end='2026-07-01T00:00:00Z',
+        )
+        assert Subscription.objects.filter(user=user).count() == 3
+
+    def test_chargily_subscription_id_unique_when_non_null(self) -> None:
+        user = User.objects.create_user(email='cid@example.com', password='SecurePass123!')
+        Subscription.objects.create(
+            user=user,
+            status='expired',
+            chargily_subscription_id='sub_abc123',
+            current_period_start='2026-06-01T00:00:00Z',
+            current_period_end='2026-07-01T00:00:00Z',
+        )
+        with pytest.raises(IntegrityError):
+            Subscription.objects.create(
+                user=user,
+                chargily_subscription_id='sub_abc123',
+                current_period_start='2026-08-01T00:00:00Z',
+                current_period_end='2026-09-01T00:00:00Z',
+            )
+
+    def test_null_chargily_subscription_ids_do_not_conflict(self) -> None:
+        user = User.objects.create_user(email='cidnull@example.com', password='SecurePass123!')
+        Subscription.objects.create(
+            user=user,
+            status='expired',
+            current_period_start='2026-06-01T00:00:00Z',
+            current_period_end='2026-07-01T00:00:00Z',
+        )
+        Subscription.objects.create(
+            user=user,
+            status='expired',
+            current_period_start='2026-07-01T00:00:00Z',
+            current_period_end='2026-08-01T00:00:00Z',
+        )
+        assert Subscription.objects.filter(user=user).count() == 2
 
 
 class TestPaymentTransactionsSchema:
@@ -141,12 +240,13 @@ class TestPaymentTransactionsSchema:
         assert isinstance(field, models.UUIDField)
         assert field.primary_key
 
-    def test_user_field_references_auth_user_and_cascades(self) -> None:
+    def test_user_field_references_auth_user_and_anonymises_on_delete(self) -> None:
         field = PaymentTransaction._meta.get_field('user')
         assert isinstance(field, models.ForeignKey)
         assert field.remote_field.model is User
-        assert field.remote_field.on_delete is models.CASCADE
-        assert not field.null
+        assert field.remote_field.on_delete is models.SET_NULL
+        assert field.null
+        assert field.blank
 
     def test_chargily_event_id_is_unique_not_null(self) -> None:
         field = PaymentTransaction._meta.get_field('chargily_event_id')
@@ -198,11 +298,47 @@ class TestPaymentTransactionsSchema:
         assert isinstance(field, models.IntegerField)
         assert not field.null
         user = User.objects.create_user(email='amt@example.com', password='SecurePass123!')
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             PaymentTransaction.objects.create(
                 user=user,
                 chargily_event_id='evt-no-amount',
                 type='subscription_creation',
+            )
+
+    def test_amount_range_check_rejects_negative_and_overflow(self) -> None:
+        user = User.objects.create_user(email='amtr@example.com', password='SecurePass123!')
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                PaymentTransaction.objects.create(
+                    user=user,
+                    chargily_event_id='evt-neg',
+                    type='subscription_creation',
+                    amount_dzd=-1,
+                )
+        with pytest.raises((IntegrityError, DataError)):
+            with transaction.atomic():
+                PaymentTransaction.objects.create(
+                    user=user,
+                    chargily_event_id='evt-overflow',
+                    type='subscription_creation',
+                    amount_dzd=2147483648,
+                )
+        PaymentTransaction.objects.create(
+            user=user,
+            chargily_event_id='evt-bound',
+            type='subscription_creation',
+            amount_dzd=2147483647,
+        )
+
+    def test_credits_granted_rejects_negative(self) -> None:
+        user = User.objects.create_user(email='cgr@example.com', password='SecurePass123!')
+        with pytest.raises(IntegrityError):
+            PaymentTransaction.objects.create(
+                user=user,
+                chargily_event_id='evt-cgneg',
+                type='subscription_creation',
+                amount_dzd=1500,
+                credits_granted=-5,
             )
 
     def test_optional_fields_are_nullable(self) -> None:

@@ -129,10 +129,10 @@ class TestOnConflictDoNothing:
 
 
 class TestForeignKeyBehavior:
-    def test_user_delete_cascades_subscription_and_transactions(self) -> None:
-        user = User.objects.create_user(email='cascade@example.com', password='SecurePass123!')
-        _txn(user, 'evt-webhook-9')
-        Subscription.objects.create(
+    def test_user_delete_anonymises_billing_rows(self) -> None:
+        user = User.objects.create_user(email='anon@example.com', password='SecurePass123!')
+        txn = _txn(user, 'evt-webhook-9')
+        sub = Subscription.objects.create(
             user=user,
             current_period_start='2026-08-01T00:00:00Z',
             current_period_end='2026-09-01T00:00:00Z',
@@ -140,5 +140,9 @@ class TestForeignKeyBehavior:
         assert PaymentTransaction.objects.count() == 1
         assert Subscription.objects.count() == 1
         user.delete()
-        assert PaymentTransaction.objects.count() == 0
-        assert Subscription.objects.count() == 0
+        assert PaymentTransaction.objects.count() == 1
+        assert Subscription.objects.count() == 1
+        txn.refresh_from_db()
+        sub.refresh_from_db()
+        assert txn.user_id is None
+        assert sub.user_id is None

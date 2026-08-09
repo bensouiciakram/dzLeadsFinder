@@ -51,6 +51,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ruff check .
       - run: mypy .
+      - run: python manage.py makemigrations --check --dry-run
       - run: pytest
       - name: Test (PostgreSQL 16)
         env:
@@ -60,6 +61,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_HOST: localhost
           POSTGRES_PORT: '5432'
+        timeout-minutes: 20
         run: >-
           pytest
           apps/billing
