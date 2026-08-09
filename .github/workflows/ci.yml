@@ -29,6 +29,20 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: dzleads_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,3 +52,17 @@ jobs:
       - run: ruff check .
       - run: mypy .
       - run: pytest
+      - name: Test (PostgreSQL 16)
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.ci_pg
+          POSTGRES_DB: dzleads_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: '5432'
+        run: >-
+          pytest
+          apps/billing
+          apps/accounts
+          apps/search/tests/test_daily_usage.py
+          apps/search/tests/test_quota.py
