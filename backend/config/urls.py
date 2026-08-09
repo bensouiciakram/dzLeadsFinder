@@ -27,5 +27,7 @@ urlpatterns = [
     path('api/reveal/', include(('apps.credits.urls', 'credits'), namespace='credits-reveal')),
     path('api/credits/', include(('apps.credits.urls', 'credits'), namespace='credits')),
     path('api/export/', include(('apps.exports.urls', 'exports'), namespace='exports')),
+    path('api/billing/', include(('apps.billing.urls', 'billing'), namespace='billing')),
+    path('api/webhooks/', include('apps.billing.webhooks_urls')),
     path('admin/', admin.site.urls),
 ]

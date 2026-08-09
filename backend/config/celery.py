@@ -9,6 +9,7 @@ app = Celery('dzleads')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+import apps.billing.webhooks  # noqa: E402,F401 — explicit import so Celery registers tasks (5.2 D18: autodiscover only scans <app>.tasks)
 import tasks.email_tasks  # noqa: E402,F401 — explicit import so Celery registers tasks
 import tasks.maintenance_tasks  # noqa: E402,F401 — explicit import so Celery registers tasks
 

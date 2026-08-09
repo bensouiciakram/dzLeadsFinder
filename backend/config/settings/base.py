@@ -115,6 +115,16 @@ CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', 'false').l
 
 FRONTEND_PUBLIC_URL = os.environ.get('FRONTEND_PUBLIC_URL', 'http://localhost:3000')
 
+CHARGILY_API_KEY = os.environ.get('CHARGILY_API_KEY', '')
+CHARGILY_WEBHOOK_SECRET = os.environ.get('CHARGILY_WEBHOOK_SECRET', '')
+CHARGILY_MODE = os.environ.get('CHARGILY_MODE', 'test')
+CHARGILY_SUCCESS_URL = os.environ.get(
+    'CHARGILY_SUCCESS_URL', f'{FRONTEND_PUBLIC_URL.rstrip("/")}/billing?status=success'
+)
+CHARGILY_FAILURE_URL = os.environ.get(
+    'CHARGILY_FAILURE_URL', f'{FRONTEND_PUBLIC_URL.rstrip("/")}/billing?status=failure'
+)
+
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
