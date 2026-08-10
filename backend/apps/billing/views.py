@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 
 from apps.billing.chargily import ChargilyError, create_checkout_details
 from apps.billing.pricing import (
+    PACK_DESCRIPTIONS,
+    PACK_PRICES,
     SUBSCRIPTION_DESCRIPTION,
     SUBSCRIPTION_PRICE_DZD,
 )
@@ -72,7 +74,13 @@ class CreateCheckoutView(APIView):
     5.3 (D5/D4): the server price table + FR-24 precondition land here —
     subscription checkouts must match the server price (400 on mismatch,
     client amount never forwarded) and the user must not hold an ACTIVE
-    subscription (409). Pack amounts stay unowned (5.4).
+    subscription (409).
+
+    5.4 (D13): the pack branch enforces the PACK_PRICES table the same way —
+    400 ``pack_price_mismatch`` on off-table amounts, the server amount +
+    pack description ship (client values never trusted). NO active-sub 409
+    for packs (FR-24 exclusivity is subscription-only; FR-25 permits packs
+    for free users and alongside subscriptions).
     """
 
     def post(self, request: Request) -> Response:
@@ -115,8 +123,7 @@ class CreateCheckoutView(APIView):
                     status=409,
                 )
             # The client amount is validated but never forwarded — the server
-            # constant ships (5.3 D5). Pack amounts stay client-supplied until
-            # 5.4 owns the pack price table.
+            # constant ships (5.3 D5).
             plan_data = {
                 'user_id': str(request.user.pk),
                 'type': checkout_type,
@@ -124,10 +131,19 @@ class CreateCheckoutView(APIView):
                 'description': SUBSCRIPTION_DESCRIPTION,
             }
         else:
+            if amount not in PACK_PRICES:
+                return Response(
+                    {
+                        'detail': 'pack amount must match a server pack price',
+                        'code': 'pack_price_mismatch',
+                    },
+                    status=400,
+                )
             plan_data = {
                 'user_id': str(request.user.pk),
                 'type': checkout_type,
                 'amount': amount,
+                'description': PACK_DESCRIPTIONS[amount],
             }
 
         try:

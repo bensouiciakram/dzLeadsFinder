@@ -6,7 +6,11 @@ from django.utils import timezone
 
 from apps.billing.chargily import ChargilyError, CheckoutDetails
 from apps.billing.models import PaymentTransaction, Subscription
-from apps.billing.pricing import SUBSCRIPTION_DESCRIPTION, SUBSCRIPTION_PRICE_DZD
+from apps.billing.pricing import (
+    PACK_DESCRIPTIONS,
+    SUBSCRIPTION_DESCRIPTION,
+    SUBSCRIPTION_PRICE_DZD,
+)
 
 User = get_user_model()
 
@@ -83,6 +87,7 @@ class TestCreateCheckoutView:
         assert response.status_code == 200
         assert captured['plan_data']['type'] == 'pack'
         assert captured['plan_data']['amount'] == 500
+        assert captured['plan_data']['description'] == PACK_DESCRIPTIONS[500]
 
     def test_rejects_unknown_type(self, monkeypatch: Any, logged_in_client: Any) -> None:
         _mock_client(monkeypatch)
@@ -276,10 +281,26 @@ class TestServerPriceEnforcement:
         )
         assert response.status_code == 200
 
-    def test_pack_amount_passthrough_unchanged(
+    def test_pack_rejects_off_table_amount(
         self, monkeypatch: Any, logged_in_client: Any
     ) -> None:
-        """Pack prices are 5.4's deliverable — no enforcement here (5.3 D5)."""
+        """The pack amount must match the server table (5.4 D13 — client
+        amounts are never trusted)."""
+        _mock_client(monkeypatch)
+        for bad in (499, 501, 749, 1501, 2500):
+            response = logged_in_client.post(
+                '/api/billing/create-checkout/',
+                {'type': 'pack', 'amount': bad},
+                content_type='application/json',
+            )
+            assert response.status_code == 400, f'pack amount {bad} accepted'
+            assert response.data['code'] == 'pack_price_mismatch'
+
+    def test_pack_amount_overridden_to_server_price(
+        self, monkeypatch: Any, logged_in_client: Any
+    ) -> None:
+        """The 5.3 rule extends to packs: the server table's amount + the pack
+        description ship, never the client-supplied values (5.4 D13)."""
         captured: dict[str, Any] = {}
 
         def spy(plan_data: Any) -> CheckoutDetails:
@@ -289,10 +310,38 @@ class TestServerPriceEnforcement:
         monkeypatch.setattr('apps.billing.views.create_checkout_details', spy)
         response = logged_in_client.post(
             '/api/billing/create-checkout/',
+            {'type': 'pack', 'amount': 1500},
+            content_type='application/json',
+        )
+        assert response.status_code == 200
+        assert captured['plan_data']['amount'] == 1500
+        assert captured['plan_data']['description'] == PACK_DESCRIPTIONS[1500]
+
+    def test_pack_allowed_for_free_user(
+        self, monkeypatch: Any, logged_in_client: Any, create_user: Any
+    ) -> None:
+        """FR-25 — free-tier users can buy packs: no active-subscription
+        precondition applies to the pack type (5.4 D13)."""
+        _mock_client(monkeypatch)
+        assert create_user.tier == 'free'
+        assert Subscription.objects.filter(user=create_user).count() == 0
+        response = logged_in_client.post(
+            '/api/billing/create-checkout/',
             {'type': 'pack', 'amount': 500},
             content_type='application/json',
         )
         assert response.status_code == 200
-        assert captured['plan_data']['type'] == 'pack'
-        assert captured['plan_data']['amount'] == 500
-        assert 'description' not in captured['plan_data']
+
+    def test_pack_allowed_with_active_subscription(
+        self, monkeypatch: Any, logged_in_client: Any, create_user: Any
+    ) -> None:
+        """Packs coexist with an active subscription (FR-25 — no 409; the
+        FR-24 exclusivity guard is subscription-only)."""
+        _mock_client(monkeypatch)
+        _active_subscription(create_user)
+        response = logged_in_client.post(
+            '/api/billing/create-checkout/',
+            {'type': 'pack', 'amount': 1500},
+            content_type='application/json',
+        )
+        assert response.status_code == 200

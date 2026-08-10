@@ -16,6 +16,41 @@ SUBSCRIPTION_PRICE_DZD: int = 1500
 SUBSCRIPTION_CREDITS: int = 200
 SUBSCRIPTION_DESCRIPTION: str = 'DZLeads Starter — 200 credits/mo'
 
+# One-time add-on packs (5.4 Task 1 — FR-25): price DZD -> credits. Packs
+# never expire and never auto-renew. The Chargily payload description carries
+# the "never expires" qualifier — load-bearing trust copy on the payment page
+# (Sally R4; Winston Q1). The FE (5.5 PackCards) consumes THIS table — the
+# client never computes prices or unit rates itself (D12).
+PACK_PRICES: dict[int, int] = {500: 75, 1500: 250}
+PACK_DESCRIPTIONS: dict[int, str] = {
+    500: 'DZLeads Pack — 75 credits, never expires',
+    1500: 'DZLeads Pack — 250 credits, never expires',
+}
+
+
+def _pack_unit_price(price_dzd: int, credits: int) -> str:
+    """Per-credit unit price as a one-decimal string (6.7 / 6.0 DZD).
+
+    Rounding is explicit (``round(price / credits, 1)``) so the 5.5 cards
+    never divide themselves (division drift + the AD-8 numeral hazard).
+    ``credits <= 0`` cannot happen with the table constants — the guard
+    keeps a mis-imported call from crashing the 5.5 render (Edge Hunter E1).
+    """
+    if credits <= 0:
+        return ''
+    return str(round(price_dzd / credits, 1))
+
+
+# The 5.5-consumable contract fields (review RP7 — the amended AC clause 1
+# requires a never-expiry flag and pre-computed unit prices; the flag is a
+# single table-level constant for V1 — every pack never expires). Defined
+# after the helper so the comprehension runs against a defined function.
+PACK_NEVER_EXPIRES: bool = True
+PACK_UNIT_PRICES: dict[int, str] = {
+    price: _pack_unit_price(price, credits)
+    for price, credits in PACK_PRICES.items()
+}
+
 _DateLike = Union[date, datetime]
 
 

@@ -26,6 +26,10 @@ app.conf.beat_schedule = {
         'task': 'apps.billing.tasks.reconcile_pending_payments',
         'schedule': crontab(minute=0),
     },
+    'resend-missing-receipts-hourly': {
+        'task': 'apps.billing.tasks.resend_missing_receipts',
+        'schedule': crontab(minute=10),
+    },
     'expire-failed-renewals-daily': {
         'task': 'apps.billing.tasks.expire_failed_renewals',
         'schedule': crontab(hour=4, minute=0),

@@ -114,6 +114,10 @@ class PaymentTransaction(models.Model):
     chargily_metadata = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     reconciled_at = models.DateTimeField(null=True, blank=True)
+    # The receipt-delivery dedupe key (5.4 D20): set AFTER a successful send
+    # by the receipt tasks; the resend_missing_receipts sweep rescues
+    # succeeded rows that never got a receipt (broker-down-at-commit etc.).
+    receipt_sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'payment_transactions'

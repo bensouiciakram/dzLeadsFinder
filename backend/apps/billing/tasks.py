@@ -53,8 +53,9 @@ def grant_credits(event_id: str) -> None:
 
     Write order (5.1 deferred-work "credits/status coupling", pinned here):
     INSERT pending (webhook) → grant → succeeded, all in the task's
-    transaction. ``pack_purchase`` rows are skipped (5.4 owns pack grants)
-    and stay pending.
+    transaction. ``pack_purchase`` rows are granted by the 5.4 pack branch
+    (D19) — amount validated against the server PACK_PRICES table, tier
+    never touched (D4).
     """
     from django.contrib.auth import get_user_model
     from django.db import transaction
@@ -99,17 +100,36 @@ def grant_credits(event_id: str) -> None:
             _settle_ungrantable(row, now, 'user deleted mid-flight (P5)')
             return
         if row.type == 'pack_purchase':
-            logger.info(
-                'grant_credits: event_id=%s type=pack_purchase — '
-                'pack grants land in 5.4 (row stays pending)',
-                event_id,
-            )
-            return
+            granted = _grant_pack(user, row, now)
+            if granted is None:
+                return
+        elif row.type in ('subscription_creation', 'subscription_renewal'):
+            # Review P2 (5.4): the subscription branch validates the stored
+            # amount at grant time — a tampered/glitched webhook (provider
+            # strips metadata.type, a wrong-amount event, the documented 5.2
+            # D11 envelope risk) must not fabricate 200 credits + starter
+            # tier from a mismatched charge. Mirrors the pack branch (D19):
+            # settle failed + alarm, never grant-from-an-unrecognized-amount.
+            from apps.billing.pricing import SUBSCRIPTION_PRICE_DZD
 
-        if row.type == 'subscription_creation':
-            granted = _grant_creation(user, row, now)
-        elif row.type == 'subscription_renewal':
-            granted = _grant_renewal(user, row, now)
+            if row.amount_dzd != SUBSCRIPTION_PRICE_DZD:
+                logger.error(
+                    'grant_credits: %s event %s has off-table amount %s — '
+                    'settled as failed (never grant-from-table, 5.4 RP2)',
+                    row.type,
+                    row.chargily_event_id,
+                    row.amount_dzd,
+                )
+                _settle_ungrantable(
+                    row,
+                    now,
+                    f'{row.type} amount {row.amount_dzd} != {SUBSCRIPTION_PRICE_DZD}',
+                )
+                return
+            if row.type == 'subscription_creation':
+                granted = _grant_creation(user, row, now)
+            else:
+                granted = _grant_renewal(user, row, now)
         else:
             logger.error(
                 'grant_credits: event_id=%s unknown type=%r — settled as failed',
@@ -124,27 +144,35 @@ def grant_credits(event_id: str) -> None:
         row.reconciled_at = now
         row.save(update_fields=['status', 'credits_granted', 'reconciled_at'])
 
-        def _enqueue_receipt(txn_id: str) -> None:
-            from tasks.email_tasks import send_payment_receipt
+        receipt_task = (
+            'send_pack_receipt' if row.type == 'pack_purchase' else 'send_payment_receipt'
+        )
 
+        def _enqueue_receipt(txn_id: str, task_name: str) -> None:
+            from tasks import email_tasks
+
+            task = getattr(email_tasks, task_name)
             try:
-                send_payment_receipt.delay(txn_id)
+                task.delay(txn_id)
             except Exception:
                 # Broker down AT COMMIT TIME: the callback raised after the
                 # txn committed — the task's autoretry re-run early-returns on
                 # the status check, so the receipt can never be re-fired by
-                # this path. Log loudly (review P7); a receipt-resend sweep
-                # for succeeded-no-receipt rows is a 5.4+ deliverable.
+                # this path. Log loudly (review P7); the receipt-resend sweep
+                # (5.4 D20) rescues succeeded-no-receipt rows.
                 logger.error(
-                    'grant_credits: receipt enqueue FAILED for txn %s — '
-                    'the receipt will not be retried automatically',
+                    'grant_credits: receipt enqueue FAILED for txn %s '
+                    '(task %s) — the receipt will not be retried automatically',
                     txn_id,
+                    task_name,
                 )
 
         # on_commit ONLY (5.3 D13): an inline delay() after commit would be
         # lost on the task's autoretry re-run — the status check early-returns
         # and the receipt would never fire.
-        transaction.on_commit(lambda: _enqueue_receipt(str(row.id)))
+        transaction.on_commit(
+            lambda: _enqueue_receipt(str(row.id), receipt_task)
+        )
 
 
 def _settle_ungrantable(row: Any, now: Any, reason: str) -> None:
@@ -227,6 +255,57 @@ def _update_user_cache(user: Any, final_ledger_total: int) -> None:
     user.credits_balance = final_ledger_total
     user.tier = 'starter'
     user.save(update_fields=['credits_balance', 'tier'])
+
+
+def _update_user_cache_credits_only(user: Any, final_ledger_total: int) -> None:
+    """The pack-grant cache variant (5.4 D4): credits only, tier untouched.
+
+    FR-25 free users buy packs — the subscription grant's tier write would
+    corrupt their tier. Same AD-4 semantics as ``_update_user_cache``: the
+    value is the in-transaction ledger total, never a delta.
+    """
+    user.credits_balance = final_ledger_total
+    user.save(update_fields=['credits_balance'])
+
+
+def _grant_pack(user: Any, row: Any, now: Any) -> int | None:
+    """Pack grant (5.4 D19 — Winston Q3): one-time credits, never expire.
+
+    The amount is validated against the server PACK_PRICES table — an
+    off-table amount is a corrupted/glitched charge: settle failed + ERROR
+    alarm, NEVER grant-from-table (granting would fabricate a product and
+    break ledger<->payment auditability). The pack pool is independent of
+    the subscription pool (AD-7 — no expiry entries, never expires);
+    balance_after chains from in-transaction ledger SUMs (AD-4).
+    Returns the granted credits, or None when the row was settled.
+    """
+    from apps.billing.pricing import PACK_PRICES
+    from apps.credits.models import CreditEventType, CreditLedger, CreditPool
+
+    credits = PACK_PRICES.get(row.amount_dzd)
+    if credits is None:
+        logger.error(
+            'grant_credits: pack event %s has off-table amount %s — '
+            'settled as failed (never grant-from-table, 5.4 D19)',
+            row.chargily_event_id,
+            row.amount_dzd,
+        )
+        _settle_ungrantable(
+            row, now, f'pack amount {row.amount_dzd} not in PACK_PRICES'
+        )
+        return None
+    total, _subscription = _ledger_totals(user.id)
+    CreditLedger.objects.create(
+        user_id=user.id,
+        event_type=CreditEventType.PACK_GRANT,
+        amount=credits,
+        balance_after=total + credits,
+        pool=CreditPool.PACK,
+        reference_id=str(row.id),
+        description=f'Pack purchase — {credits} credits (one-time)',
+    )
+    _update_user_cache_credits_only(user, total + credits)
+    return credits
 
 
 def _latest_subscription(user: Any) -> Any:
@@ -377,13 +456,14 @@ def reconcile_pending_payments() -> None:
     from apps.billing.models import PaymentTransaction
 
     cutoff = timezone.now() - timedelta(minutes=30)
-    # Pack rows are EXCLUDED (review P6): 5.3's grant task can't grant them
-    # (5.4 owns pack semantics), so re-enqueueing them hourly is unbounded
-    # churn (Edge Hunter E5). They wait in 'pending' for 5.4.
+    # Pack rows re-included (5.4 D22): the 5.3 P6 exclusion existed only
+    # because 5.3's grant task skipped pack rows (unbounded churn); the 5.4
+    # grant task grants them, so the sweep re-enqueues them like any other
+    # stale pending row.
     stale = PaymentTransaction.objects.filter(
         status='pending',
         created_at__lt=cutoff,
-        type__in=('subscription_creation', 'subscription_renewal'),
+        type__in=('subscription_creation', 'subscription_renewal', 'pack_purchase'),
     )
     for row in stale.iterator():
         if row.user_id is None:
@@ -392,6 +472,62 @@ def reconcile_pending_payments() -> None:
             )
             continue
         grant_credits.delay(row.chargily_event_id)
+
+
+@shared_task(  # type: ignore[misc]
+    autoretry_for=(Exception,),
+    retry_kwargs={'max_retries': 3},
+    retry_backoff=True,
+)
+def resend_missing_receipts() -> None:
+    """Rescue succeeded-no-receipt rows (5.4 D20 — deferred-work 5.3 D3).
+
+    A receipt can be lost today in two ways: the on_commit enqueue fails at
+    commit time (broker down — 5.3 P7, the status-check early-return means
+    the grant's retry never re-fires it) or the receipt task exhausts its
+    AD-14 retries. Both leave ``receipt_sent_at`` NULL on a succeeded row —
+    this hourly sweep re-enqueues them, dispatched by type (subscription
+    rows → send_payment_receipt, pack rows → send_pack_receipt).
+
+    Review hardening (5.4 RP5/RP6): rows whose credits_granted is NULL are
+    excluded (a receipt claiming 0 credits is worse than none — such rows
+    are legacy/manual only); a per-row exception is caught and logged so one
+    bad enqueue cannot abort the whole sweep (the task-level autoretry
+    covers a total broker outage; the receipt tasks' marker re-check makes
+    re-enqueues idempotent). Terminal states: unreceiptable rows are marked
+    by the receipt tasks themselves (RP4 — the sweep stops re-enqueueing
+    them); permanently-failing sends stay in the sweep but are ERROR-logged
+    every cycle (ops-visible, recoverable).
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.billing.models import PaymentTransaction
+
+    cutoff = timezone.now() - timedelta(minutes=30)
+    missing = PaymentTransaction.objects.filter(
+        status='succeeded',
+        receipt_sent_at__isnull=True,
+        credits_granted__isnull=False,
+        created_at__lt=cutoff,
+    )
+    for row in missing.iterator():
+        from tasks import email_tasks
+
+        task = (
+            email_tasks.send_pack_receipt
+            if row.type == 'pack_purchase'
+            else email_tasks.send_payment_receipt
+        )
+        try:
+            task.delay(str(row.id))
+        except Exception:
+            logger.error(
+                'resend_missing_receipts: enqueue FAILED for txn %s — '
+                'continuing with the next row',
+                row.id,
+            )
 
 
 @shared_task  # type: ignore[misc]

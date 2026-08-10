@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { render } from '@react-email/render'
 import { SignupConfirm } from '../../../../../emails/components/SignupConfirm'
 import { PaymentReceipt } from '../../../../../emails/components/PaymentReceipt'
-import { PackReceipt } from '../../../../../emails/components/PackReceipt'
 import { LowCredit } from '../../../../../emails/components/LowCredit'
 import { PasswordReset } from '../../../../../emails/components/PasswordReset'
 
 const TEMPLATES = {
   signup_confirm: SignupConfirm,
   payment_receipt: PaymentReceipt,
-  pack_receipt: PackReceipt,
   low_credit: LowCredit,
   password_reset: PasswordReset,
 } as const

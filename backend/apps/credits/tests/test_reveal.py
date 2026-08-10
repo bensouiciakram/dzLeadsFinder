@@ -105,6 +105,32 @@ class TestPaidDebit:
         reveal_contact(user, 'people', str(person.id))
         assert CreditLedger.objects.get(user=user, event_type='reveal_debit').pool == 'subscription'
 
+    def test_ac_pin_subscription_drawn_before_pack_and_pack_untouched(
+        self, user_with: Any, person: Person
+    ) -> None:
+        """5.4 Task 7 — the AC drawdown clause pinned verbatim (AD-7): with
+        BOTH pools funded, the reveal draws the subscription pool first and
+        the pack pool balance is untouched; the display balance stays the
+        combined total (the 5.5 cards / 4.3 pill contract)."""
+        user = user_with(3, event='subscription_grant', pool='subscription')
+        user_with(5, pool='pack', event='pack_grant')
+        reveal_contact(user, 'people', str(person.id))
+
+        debit = CreditLedger.objects.get(user=user, event_type='reveal_debit')
+        assert debit.pool == 'subscription'
+        assert debit.amount == -1
+        pack_total = CreditLedger.objects.filter(user=user, pool='pack').aggregate(
+            total=Sum('amount')
+        )['total']
+        assert pack_total == 5
+        from apps.credits.services import user_balances
+
+        assert user_balances(user) == {
+            'subscription_balance': 2,
+            'pack_balance': 5,
+            'display_balance': 7,
+        }
+
     def test_drawdown_pack_when_subscription_empty(self, user_with: Any, person: Person) -> None:
         user = user_with(5, pool='pack', event='pack_grant')
         reveal_contact(user, 'people', str(person.id))

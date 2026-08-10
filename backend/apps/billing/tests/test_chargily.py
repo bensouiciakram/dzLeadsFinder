@@ -116,7 +116,41 @@ class TestCreateCheckout:
         body = captured['kwargs']['json']
         assert body['description'] == 'DZLeads Starter — 200 credits/mo'
 
-    def test_pack_checkout_carries_no_description(self, monkeypatch: Any) -> None:
+    def test_pack_checkout_echoes_description_when_provided(self, monkeypatch: Any) -> None:
+        """5.4: pack plan_data now carries the server description (D13) — the
+        conditional echo must forward it to the Chargily payload (5.3
+        precedent — the checkout renders the payload description)."""
+        captured: Dict[str, Any] = {}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> Dict[str, str]:
+                return {
+                    'id': 'checkout_pack2',
+                    'checkout_url': 'https://pay.chargily.com/checkout/pack2',
+                }
+
+        def fake_post(url: str, **kwargs: Any) -> FakeResponse:
+            captured['kwargs'] = kwargs
+            return FakeResponse()
+
+        monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
+        create_checkout(
+            {
+                'user_id': 7,
+                'type': 'pack',
+                'amount': 500,
+                'description': 'DZLeads Pack — 75 credits, never expires',
+            }
+        )
+        body = captured['kwargs']['json']
+        assert body['description'] == 'DZLeads Pack — 75 credits, never expires'
+
+    def test_pack_checkout_omits_description_when_absent(self, monkeypatch: Any) -> None:
+        """The echo stays conditional — a plan_data without a description
+        (5.2-era callers) must not inject one."""
         captured: Dict[str, Any] = {}
 
         class FakeResponse:

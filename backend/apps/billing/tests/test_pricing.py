@@ -1,13 +1,20 @@
-"""Server-side pricing table + calendar-month helper (5.3 Task 1)."""
+"""Server-side pricing table + calendar-month helper (5.3 Task 1, 5.4 Task 1)."""
 
 from datetime import date, datetime
 
+import pytest
+
 from apps.billing import pricing
 from apps.billing.pricing import (
+    PACK_DESCRIPTIONS,
+    PACK_NEVER_EXPIRES,
+    PACK_PRICES,
+    PACK_UNIT_PRICES,
     SUBSCRIPTION_CREDITS,
     SUBSCRIPTION_DESCRIPTION,
     SUBSCRIPTION_PRICE_DZD,
     _add_month,
+    _pack_unit_price,
 )
 
 
@@ -61,3 +68,53 @@ class TestAddMonth:
     def test_accepts_date_objects(self) -> None:
         result = _add_month(date(2026, 8, 10))
         assert result == date(2026, 9, 10)
+
+
+class TestPackPricing:
+    def test_pack_prices_map_exact_amounts(self) -> None:
+        assert PACK_PRICES == {500: 75, 1500: 250}
+
+    def test_pack_75_credits_description_exact_copy(self) -> None:
+        assert PACK_DESCRIPTIONS[500] == 'DZLeads Pack — 75 credits, never expires'
+
+    def test_pack_250_credits_description_exact_copy(self) -> None:
+        assert PACK_DESCRIPTIONS[1500] == 'DZLeads Pack — 250 credits, never expires'
+
+    def test_every_pack_price_has_a_description(self) -> None:
+        assert set(PACK_DESCRIPTIONS) == set(PACK_PRICES)
+
+    def test_unit_price_500_dzd_pack(self) -> None:
+        assert _pack_unit_price(500, 75) == '6.7'
+
+    def test_unit_price_1500_dzd_pack(self) -> None:
+        assert _pack_unit_price(1500, 250) == '6.0'
+
+    @pytest.mark.parametrize('price,credits', [(500, 75), (1500, 250)])
+    def test_unit_price_is_one_decimal_string(self, price: int, credits: int) -> None:
+        value = _pack_unit_price(price, credits)
+        assert isinstance(value, str)
+        assert value.replace('.', '', 1).isdigit()
+
+    def test_unit_price_table_matches_helper(self) -> None:
+        assert PACK_UNIT_PRICES == {
+            price: _pack_unit_price(price, credits)
+            for price, credits in PACK_PRICES.items()
+        }
+        assert PACK_UNIT_PRICES[500] == '6.7'
+        assert PACK_UNIT_PRICES[1500] == '6.0'
+
+    def test_never_expires_flag_is_exposed(self) -> None:
+        """Review RP7 — the amended AC clause 1: the 5.5-consumable contract
+        carries the never-expiry flag explicitly."""
+        assert PACK_NEVER_EXPIRES is True
+
+    def test_unit_price_helper_guards_non_positive_credits(self) -> None:
+        assert _pack_unit_price(500, 0) == ''
+        assert _pack_unit_price(500, -1) == ''
+
+    def test_module_has_no_django_imports(self) -> None:
+        import inspect
+
+        source = inspect.getsource(pricing)
+        assert 'django' not in source
+        assert 'apps.' not in source

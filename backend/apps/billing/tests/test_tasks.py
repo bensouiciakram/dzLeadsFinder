@@ -15,6 +15,7 @@ from apps.billing.tasks import (
     expire_failed_renewals,
     grant_credits,
     reconcile_pending_payments,
+    resend_missing_receipts,
 )
 from apps.credits.models import CreditEventType, CreditLedger
 
@@ -89,23 +90,237 @@ def test_missing_row_is_safe() -> None:
     assert CreditLedger.objects.count() == 0
 
 
-def test_pack_purchase_row_skipped_until_54(
-    create_user: Any, caplog: Any
-) -> None:
-    """Pack grants are 5.4's deliverable — the row stays pending (5.3 D16)."""
-    row = PaymentTransaction.objects.create(
-        user=create_user,
-        chargily_event_id='evt_pack_1',
-        type='pack_purchase',
-        amount_dzd=500,
-    )
-    with caplog.at_level('INFO'):
-        grant_credits('evt_pack_1')
-    row.refresh_from_db()
-    assert row.status == 'pending'
-    assert row.credits_granted is None
-    assert CreditLedger.objects.count() == 0
-    assert 'evt_pack_1' in caplog.text
+class TestGrantFlowPack:
+    def test_pack_grant_75_credits_into_pack_pool(
+        self, create_user: Any
+    ) -> None:
+        """FR-25: a 500 DZD pack grants 75 credits into the 'pack' pool,
+        chained from in-transaction ledger SUMs (AD-4) — the tier is
+        untouched (a free user stays free, 5.4 D4)."""
+        row = PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_75',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_75')
+
+        entries = list(
+            CreditLedger.objects.filter(user=create_user).order_by('created_at')
+        )
+        assert len(entries) == 1
+        assert entries[0].event_type == 'pack_grant'
+        assert entries[0].amount == 75
+        assert entries[0].pool == 'pack'
+        assert entries[0].balance_after == 75
+        assert entries[0].reference_id == str(row.id)
+
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 75
+        assert create_user.tier == 'free'
+
+        row.refresh_from_db()
+        assert row.status == 'succeeded'
+        assert row.credits_granted == 75
+        assert row.reconciled_at is not None
+
+    def test_pack_grant_250_credits(self, create_user: Any) -> None:
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_250',
+            type='pack_purchase',
+            amount_dzd=1500,
+        )
+        grant_credits('evt_pack_250')
+        entry = CreditLedger.objects.get(user=create_user)
+        assert entry.amount == 250
+        assert entry.pool == 'pack'
+        row = PaymentTransaction.objects.get(chargily_event_id='evt_pack_250')
+        assert row.status == 'succeeded'
+        assert row.credits_granted == 250
+
+    def test_pack_grant_leaves_subscription_pool_untouched(
+        self, create_user: Any
+    ) -> None:
+        """The pack grant never touches the subscription pool (AD-7 — the
+        pools are independent; drawdown order is the debit path's job)."""
+        _grant(create_user, 200)
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_mix',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_mix')
+        pack_total = (
+            CreditLedger.objects.filter(user=create_user, pool='pack').aggregate(
+                total=Sum('amount')
+            )['total']
+        )
+        assert pack_total == 75
+        sub_total = (
+            CreditLedger.objects.filter(
+                user=create_user, pool='subscription'
+            ).aggregate(total=Sum('amount'))['total']
+        )
+        assert sub_total == 200
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 275
+
+    def test_pack_grant_does_not_downgrade_starter_tier(
+        self, create_user: Any
+    ) -> None:
+        create_user.tier = 'starter'
+        create_user.save(update_fields=['tier'])
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_starter',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_starter')
+        create_user.refresh_from_db()
+        assert create_user.tier == 'starter'
+
+    def test_pack_receipt_enqueued_on_commit(
+        self, create_user: Any, monkeypatch: Any
+    ) -> None:
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_rcpt',
+            type='pack_purchase',
+            amount_dzd=1500,
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_pack_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        with CaptureOnCommit() as capture:
+            grant_credits('evt_pack_rcpt')
+        assert len(capture.callbacks) == 1
+        capture.execute()
+        assert len(calls) == 1
+        row = PaymentTransaction.objects.get(chargily_event_id='evt_pack_rcpt')
+        assert calls[0] == str(row.id)
+
+    def test_off_table_amount_settles_failed_never_grants(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        """D19 (Winston Q3): a pack amount the server table does not
+        recognize is a corrupted/glitched charge — settle failed + alarm,
+        NEVER grant (granting would fabricate a product and break
+        ledger<->payment auditability)."""
+        row = PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_bogus',
+            type='pack_purchase',
+            amount_dzd=499,
+        )
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_pack_bogus')
+        row.refresh_from_db()
+        assert row.status == 'failed'
+        assert row.reconciled_at is not None
+        assert CreditLedger.objects.count() == 0
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 0
+        assert 'evt_pack_bogus' in caplog.text
+
+    def test_pack_replay_is_noop(self, create_user: Any) -> None:
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_idem',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_idem')
+        grant_credits('evt_pack_idem')
+        assert CreditLedger.objects.filter(user=create_user).count() == 1
+
+    def test_anonymised_pack_row_settled_failed(self, caplog: Any) -> None:
+        row = PaymentTransaction.objects.create(
+            user=None,
+            chargily_event_id='evt_pack_ghost',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_pack_ghost')
+        row.refresh_from_db()
+        assert row.status == 'failed'
+        assert CreditLedger.objects.count() == 0
+
+    def test_off_table_subscription_amount_settles_failed(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        """Review RP2: the subscription branch validates the stored amount at
+        grant time (mirrors D19) — a tampered/glitched event must not
+        fabricate 200 credits + starter tier from a mismatched charge."""
+        row = _txn(create_user, 'evt_sub_bogus', amount=500)
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_sub_bogus')
+        row.refresh_from_db()
+        assert row.status == 'failed'
+        assert row.reconciled_at is not None
+        assert CreditLedger.objects.count() == 0
+        assert Subscription.objects.filter(user=create_user).count() == 0
+        create_user.refresh_from_db()
+        assert create_user.tier == 'free'
+
+    def test_off_table_renewal_amount_settles_failed(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        row = _txn(create_user, 'evt_renew_bogus', txn_type='subscription_renewal', amount=999)
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_renew_bogus')
+        row.refresh_from_db()
+        assert row.status == 'failed'
+        assert CreditLedger.objects.count() == 0
+
+    def test_multi_pack_purchases_accumulate_and_chain(
+        self, create_user: Any
+    ) -> None:
+        """Blind Hunter B10: two DISTINCT pack purchases each grant and the
+        balance_after chains across them (75 -> 150)."""
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_a',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_a')
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_b',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_b')
+        entries = list(
+            CreditLedger.objects.filter(user=create_user, event_type='pack_grant')
+            .order_by('created_at', 'pk')
+        )
+        assert [e.amount for e in entries] == [75, 75]
+        assert entries[0].balance_after == 75
+        assert entries[1].balance_after == 150
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 150
+
+    def test_pack_grant_self_heals_stale_cache(self, create_user: Any) -> None:
+        """Blind Hunter B10: the credits-only cache update recomputes from
+        the ledger — a stale cache column must not poison it (AD-4)."""
+        create_user.credits_balance = 999
+        create_user.save(update_fields=['credits_balance'])
+        PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_pack_cache',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        grant_credits('evt_pack_cache')
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 75
 
 
 def _txn(
@@ -512,11 +727,12 @@ class TestReconcileSweep:
         assert row.reconciled_at is not None
         assert 'evt_sweep_ghost' in caplog.text
 
-    def test_pack_rows_excluded_from_sweep(
+    def test_pack_rows_are_re_enqueued_by_sweep(
         self, create_user: Any, monkeypatch: Any
     ) -> None:
-        """Review P6 (Edge Hunter E5): 5.3's task can't grant packs (5.4
-        owns them) — the sweep must not churn them hourly."""
+        """5.4 D22: the 5.3 P6 exclusion dies — the 5.4 grant task CAN grant
+        packs, so the sweep re-enqueues stale pack rows (they no longer
+        churn: the grant task terminates them)."""
         row = PaymentTransaction.objects.create(
             user=create_user,
             chargily_event_id='evt_sweep_pack',
@@ -532,9 +748,185 @@ class TestReconcileSweep:
             SimpleNamespace(delay=lambda event_id: calls.append(event_id)),
         )
         reconcile_pending_payments()
+        assert calls == ['evt_sweep_pack']
+
+
+class TestResendMissingReceipts:
+    RESEND_FULL_NAME = 'apps.billing.tasks.resend_missing_receipts'
+
+    def test_task_name_is_pinned_contract(self) -> None:
+        assert resend_missing_receipts.name == self.RESEND_FULL_NAME
+
+    def test_registered_in_celery_registry(self) -> None:
+        assert config.celery.app.tasks.get(self.RESEND_FULL_NAME) is not None
+
+    def test_beat_entry_registered(self) -> None:
+        schedule = config.celery.app.conf.beat_schedule
+        assert schedule['resend-missing-receipts-hourly']['task'] == (
+            self.RESEND_FULL_NAME
+        )
+
+    def test_task_retry_policy_covers_broker_outage(self) -> None:
+        """RP6: the sweep itself retries (a total broker outage aborts the
+        run mid-iteration; the receipt tasks' marker re-check makes the
+        retry idempotent)."""
+        assert resend_missing_receipts.max_retries == 3
+        assert resend_missing_receipts.autoretry_for == (Exception,)
+
+    def test_reenqueues_succeeded_row_without_marker(
+        self, create_user: Any, monkeypatch: Any
+    ) -> None:
+        """5.4 D20: a succeeded row whose receipt never fired (broker-down at
+        commit — 5.3 P7) is rescued by the sweep."""
+        row = _txn(create_user, 'evt_rcpt_miss')
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            status='succeeded',
+            credits_granted=200,
+            created_at=timezone.now() - timedelta(hours=1),
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        resend_missing_receipts()
+        assert calls == [str(row.id)]
+
+    def test_reenqueues_pack_row_to_pack_task(
+        self, create_user: Any, monkeypatch: Any
+    ) -> None:
+        row = PaymentTransaction.objects.create(
+            user=create_user,
+            chargily_event_id='evt_rcpt_pack_miss',
+            type='pack_purchase',
+            amount_dzd=500,
+        )
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            status='succeeded',
+            credits_granted=75,
+            created_at=timezone.now() - timedelta(hours=1),
+        )
+        pack_calls: list[Any] = []
+        sub_calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_pack_receipt',
+            SimpleNamespace(delay=lambda txn_id: pack_calls.append(txn_id)),
+        )
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: sub_calls.append(txn_id)),
+        )
+        resend_missing_receipts()
+        assert pack_calls == [str(row.id)]
+        assert sub_calls == []
+
+    def test_marked_row_untouched(self, create_user: Any, monkeypatch: Any) -> None:
+        row = _txn(create_user, 'evt_rcpt_sent')
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            status='succeeded',
+            credits_granted=200,
+            receipt_sent_at=timezone.now() - timedelta(minutes=5),
+            created_at=timezone.now() - timedelta(hours=1),
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        resend_missing_receipts()
+        assert calls == []
+
+    def test_fresh_succeeded_row_untouched(self, create_user: Any, monkeypatch: Any) -> None:
+        """The in-flight window: a receipt task still running (or enqueued
+        seconds ago) must not be double-enqueued."""
+        row = _txn(create_user, 'evt_rcpt_fresh')
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            status='succeeded',
+            credits_granted=200,
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        resend_missing_receipts()
+        assert calls == []
+
+    def test_pending_rows_untouched(self, create_user: Any, monkeypatch: Any) -> None:
+        row = _txn(create_user, 'evt_rcpt_pending')
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            created_at=timezone.now() - timedelta(hours=2)
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        resend_missing_receipts()
         assert calls == []
         row.refresh_from_db()
         assert row.status == 'pending'
+
+    def test_row_without_credits_granted_untouched(
+        self, create_user: Any, monkeypatch: Any
+    ) -> None:
+        """Edge Hunter E7: a succeeded row with NULL credits_granted (legacy
+        or manual) must not be re-enqueued — its receipt would claim 0
+        credits."""
+        row = _txn(create_user, 'evt_rcpt_nocredits')
+        PaymentTransaction.objects.filter(pk=row.pk).update(
+            status='succeeded',
+            credits_granted=None,
+            created_at=timezone.now() - timedelta(hours=2),
+        )
+        calls: list[Any] = []
+        monkeypatch.setattr(
+            'tasks.email_tasks.send_payment_receipt',
+            SimpleNamespace(delay=lambda txn_id: calls.append(txn_id)),
+        )
+        resend_missing_receipts()
+        assert calls == []
+
+    def test_continues_after_per_row_enqueue_failure(
+        self, create_user: Any, monkeypatch: Any, caplog: Any
+    ) -> None:
+        """RP6: one failing enqueue must not abort the whole sweep — the
+        remaining rows are still dispatched and the failure is logged."""
+        row1 = _txn(create_user, 'evt_rcpt_fail1')
+        PaymentTransaction.objects.filter(pk=row1.pk).update(
+            status='succeeded',
+            credits_granted=200,
+            created_at=timezone.now() - timedelta(hours=2),
+        )
+        row2 = _txn(create_user, 'evt_rcpt_fail2')
+        PaymentTransaction.objects.filter(pk=row2.pk).update(
+            status='succeeded',
+            credits_granted=200,
+            created_at=timezone.now() - timedelta(hours=2),
+        )
+        calls: list[Any] = []
+
+        class Flaky:
+            def __init__(self, fail_first: int) -> None:
+                self.fail_first = fail_first
+
+            def delay(self, txn_id: Any) -> None:
+                if self.fail_first > 0:
+                    self.fail_first -= 1
+                    raise RuntimeError('broker down')
+                calls.append(txn_id)
+
+        monkeypatch.setattr('tasks.email_tasks.send_payment_receipt', Flaky(1))
+        with caplog.at_level('ERROR'):
+            resend_missing_receipts()
+        # Exactly one row fails (the Flaky first call) and the OTHER row is
+        # still dispatched — the sweep continues past a per-row failure.
+        # (Iteration order is newest-first — the Meta ordering — so the
+        # assertion is order-agnostic.)
+        assert len(calls) == 1
+        failed_id = str(row1.id) if str(row1.id) in caplog.text else str(row2.id)
+        succeeded_id = str(row2.id) if failed_id == str(row1.id) else str(row1.id)
+        assert calls == [succeeded_id]
 
 
 class TestExpireFailedRenewals:

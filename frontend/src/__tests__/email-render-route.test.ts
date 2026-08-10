@@ -62,12 +62,39 @@ describe('POST /api/emails/render', () => {
     expect(body.html).toContain('Paiement reçu')
   })
 
-  it('returns 200 for pack_receipt template', async () => {
+  it('renders the pack variant of the receipt (5.4)', async () => {
     const response = await POST(mockRequest({
-      template: 'pack_receipt',
-      context: { packCredits: 75, amount: 500 },
+      template: 'payment_receipt',
+      locale: 'en',
+      context: { amount: 500, creditsGranted: 75, date: '2025-01-01', isPack: true },
     }))
     expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('Your one-time pack of 75 credits has been added')
+    expect(body.html).toContain('never expire')
+  })
+
+  it('renders the localized arabic pack variant with bidi isolation (5.4)', async () => {
+    const response = await POST(mockRequest({
+      template: 'payment_receipt',
+      locale: 'ar',
+      context: { amount: 500, creditsGranted: 75, date: '2025-01-01', isPack: true },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('<bdi>75</bdi>')
+    expect(body.html).toContain('dir="rtl"')
+  })
+
+  it('renders 0 credits instead of NaN when creditsGranted is absent (E11)', async () => {
+    const response = await POST(mockRequest({
+      template: 'payment_receipt',
+      locale: 'en',
+      context: { amount: 500, date: '2025-01-01', isPack: true },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).not.toContain('NaN')
   })
 
   it('returns 200 for low_credit template', async () => {
