@@ -5,12 +5,12 @@ import pytest
 
 import config.celery
 from apps.billing.models import PaymentTransaction
-from apps.billing.webhooks import grant_credits
+from apps.billing.tasks import grant_credits
 from apps.credits.models import CreditLedger
 
 pytestmark = pytest.mark.django_db
 
-TASK_FULL_NAME = 'apps.billing.webhooks.grant_credits'
+TASK_FULL_NAME = 'apps.billing.tasks.grant_credits'
 
 
 def test_task_name_is_pinned_contract() -> None:
@@ -33,12 +33,22 @@ def test_task_retry_policy_matches_ad14() -> None:
     assert grant_credits.autoretry_for == (Exception,)
 
 
-def test_config_celery_explicitly_imports_webhooks_task_module() -> None:
-    """Explicit import is MANDATORY — autodiscover_tasks scans only <app>.tasks
-    (5.2 D18); a rename/removal breaks worker task registration loudly.
+def test_config_celery_explicitly_imports_billing_tasks() -> None:
+    """Explicit import is MANDATORY — autodiscover_tasks() no-ops in this
+    project (config/__init__ imports celery during django.setup, pre-registry;
+    the email_tasks/maintenance_tasks precedent — 5.2 D18 amended). A rename
+    or removal breaks worker task registration loudly.
     """
     source = Path(config.celery.__file__).read_text(encoding='utf-8')
-    assert 'import apps.billing.webhooks' in source
+    assert 'import apps.billing.tasks' in source
+
+
+def test_webhooks_module_holds_no_task_definitions() -> None:
+    """The webhook view module must not regain the task (5.2 RC-1 regression guard)."""
+    webhooks_source = (
+        Path(__file__).resolve().parent.parent / 'webhooks.py'
+    ).read_text(encoding='utf-8')
+    assert 'shared_task' not in webhooks_source
 
 
 def test_missing_row_is_safe() -> None:

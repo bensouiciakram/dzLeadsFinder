@@ -1,9 +1,10 @@
-"""Chargily webhook handler + Celery tasks (spine layout L532).
+"""Chargily webhook handler (spine layout L532).
 
-Module-level imports are limited to stdlib + ``django.http`` +
-``django.views.decorators.csrf`` + ``celery`` — ``config/celery.py`` imports
-this module before the app registry is ready (the ``tasks/email_tasks.py``
-precedent, 5.2 D9). All Django model/settings reads are deferred to runtime.
+5.2 RC-1 (2026-08-09): the Celery task moved to ``apps/billing/tasks.py``
+(autodiscovered — no explicit celery.py registration needed); this module
+holds only the HTTP view. It is imported via urls.py (app registry ready);
+Django model/settings reads are still deferred to runtime for consistency
+with the task module.
 """
 
 import json
@@ -11,11 +12,11 @@ import logging
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from celery import shared_task
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.billing.chargily import verify_webhook_signature
+from apps.billing.tasks import grant_credits
 
 logger = logging.getLogger(__name__)
 
@@ -253,36 +254,3 @@ def chargily_webhook(request: HttpRequest) -> JsonResponse:
 
     grant_credits.delay(event_id)
     return JsonResponse({'status': 'ok'})
-
-
-@shared_task(  # type: ignore[misc]
-    autoretry_for=(Exception,),
-    retry_kwargs={'max_retries': 3},
-    retry_backoff=True,
-)
-def grant_credits(event_id: str) -> None:
-    """Reconcile a paid Chargily event — bridge in 5.2 (5.2 D7/D15).
-
-    The real grant logic (credit_ledger insert, subscription create/renew,
-    receipt email) lands in 5.3. The bridge re-queries the transaction row,
-    so the task is idempotent and safe on missing rows. Retry policy per
-    AD-14: 3 retries with exponential backoff (payment reconciliation).
-    """
-    from apps.billing.models import PaymentTransaction
-
-    try:
-        row = PaymentTransaction.objects.get(chargily_event_id=event_id)
-    except PaymentTransaction.DoesNotExist:
-        logger.warning('grant_credits: no transaction row for event_id=%s', event_id)
-        return
-    if row.user_id is None:
-        logger.warning(
-            'grant_credits: transaction %s has no user (anonymised) — grant skipped',
-            event_id,
-        )
-        return
-    logger.info(
-        'grant_credits: event_id=%s recorded (type=%s) — grant logic lands in 5.3',
-        event_id,
-        row.type,
-    )
