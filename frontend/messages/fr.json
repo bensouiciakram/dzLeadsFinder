@@ -95,32 +95,49 @@
   },
   "billing": {
     "title": "Facturation et forfaits",
+    "meta_title": "Facturation et forfaits — dzLeadsFinder",
+    "meta_description": "Gérez votre forfait dzLeadsFinder, vos packs de crédits, votre historique de paiements et votre abonnement.",
     "current_plan": "Forfait actuel",
-    "free_plan": "Gratuit",
-    "free_description": "15 crédits gratuits pour commencer",
-    "starter_plan": "Starter",
-    "starter_description": "200 crédits par mois — renouvellement à 1 500 DZD/mois",
+    "currency": "DZD",
     "renewal_date": "Renouvellement le {date}",
     "failed_renewal": "Paiement échoué. Mettez à jour votre moyen de paiement.",
+    "upgrade_stub": "Passer à Starter",
+    "plan": {
+      "free_tier": "Forfait gratuit",
+      "starter_title": "Starter — 1,500 DZD/mois — renouvellement le {date}",
+      "cancelled_title": "Annulé — accès jusqu'au {date}",
+      "failed_title": "Paiement échoué — accès jusqu'au {date}",
+      "expired_title": "Abonnement terminé",
+      "credits_cycle": "Crédits restants ce cycle",
+      "credits": "Crédits",
+      "upgrade": "Passer à Starter",
+      "reactivate": "Réactiver",
+      "retry_payment": "Réessayer le paiement",
+      "resubscribe": "Se réabonner"
+    },
     "packs": {
       "title": "Packs de crédits supplémentaires",
-      "pack1_name": "Pack Starter",
-      "pack1_price": "500 DZD",
-      "pack1_credits": "75 crédits",
-      "pack2_name": "Pack Pro",
-      "pack2_price": "1 500 DZD",
-      "pack2_credits": "250 crédits",
-      "best_value": "Meilleur rapport qualité-prix",
-      "never_expire": "Les crédits n'expirent jamais",
-      "buy": "Acheter maintenant"
+      "unit_price": "{price} DZD/crédit",
+      "never_expires": "N'expire jamais",
+      "best_value": "Meilleur rapport qualité/prix",
+      "processing": "Redirection…"
     },
     "history": {
       "title": "Historique des paiements",
       "empty": "Aucun paiement pour le moment",
       "date": "Date",
       "amount": "Montant",
+      "type": "Type",
       "status": "Statut",
-      "credits": "Crédits"
+      "status_pending": "En attente",
+      "status_paid": "Payé",
+      "status_failed": "Échoué",
+      "status_refunded": "Remboursé",
+      "type_subscription_creation": "Abonnement",
+      "type_subscription_renewal": "Renouvellement mensuel",
+      "type_pack_purchase": "Achat de pack de crédits",
+      "failed_note": "Paiement échoué. Contactez {support} si vous avez été débité.",
+      "support_link": "le support"
     },
     "status": {
       "pending": "Traitement du paiement...",
@@ -128,17 +145,16 @@
       "failed": "Paiement échoué",
       "timeout": "Paiement reçu — les crédits seront crédités sous peu"
     },
-    "cancel": {
-      "title": "Annuler l'abonnement",
-      "description": "Vos crédits restent utilisables jusqu'à la fin de la période de facturation. Aucun remboursement.",
-      "confirm": "Je comprends, annuler mon abonnement"
-    },
-    "upgrade_stub": "Passer à Starter",
     "dzone": {
       "title": "Zone de danger",
-      "delete_account": "Supprimer le compte",
-      "delete_description": "Supprimez définitivement votre compte et toutes les données. Cette action est irréversible.",
-      "delete_confirm": "Je comprends, supprimer mon compte"
+      "description": "Annulez votre abonnement. L'accès se poursuit jusqu'à la fin du cycle en cours — aucun remboursement pour le cycle en cours.",
+      "cancel_button": "Annuler l'abonnement",
+      "dialog_title": "Annuler votre abonnement ?",
+      "dialog_body": "Vous garderez l'accès jusqu'au {date}. Aucun remboursement pour le cycle en cours.",
+      "keep": "Garder mon abonnement",
+      "confirm": "Annuler l'abonnement",
+      "confirming": "Annulation…",
+      "error": "Impossible d'annuler votre abonnement. Veuillez réessayer."
     }
   },
   "common": {

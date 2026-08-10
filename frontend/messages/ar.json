@@ -95,32 +95,49 @@
   },
   "billing": {
     "title": "الفواتير والباقات",
+    "meta_title": "الفواتير والباقات — dzLeadsFinder",
+    "meta_description": "أدر باقة dzLeadsFinder وحزم الرصيد الإضافية وسجل مدفوعاتك واشتراكك.",
     "current_plan": "الباقة الحالية",
-    "free_plan": "مجاني",
-    "free_description": "15 نقطة مجانية للبدء",
-    "starter_plan": "مبتدئ",
-    "starter_description": "200 نقطة شهرياً — تجديد بـ 1,500 د.ج/شهرياً",
+    "currency": "د.ج",
     "renewal_date": "التجديد في {date}",
     "failed_renewal": "فشل الدفع. يرجى تحديث وسيلة الدفع الخاصة بك.",
+    "upgrade_stub": "الترقية إلى Starter",
+    "plan": {
+      "free_tier": "الباقة المجانية",
+      "starter_title": "Starter — 1,500 د.ج/شهريًا — التجديد في {date}",
+      "cancelled_title": "ملغاة — الوصول حتى {date}",
+      "failed_title": "فشل الدفع — الوصول حتى {date}",
+      "expired_title": "انتهى الاشتراك",
+      "credits_cycle": "النقاط المتبقية في هذه الدورة",
+      "credits": "النقاط",
+      "upgrade": "الترقية إلى Starter",
+      "reactivate": "إعادة التفعيل",
+      "retry_payment": "إعادة محاولة الدفع",
+      "resubscribe": "إعادة الاشتراك"
+    },
     "packs": {
       "title": "حزم رصيد إضافية",
-      "pack1_name": "حزمة مبتدئ",
-      "pack1_price": "500 د.ج",
-      "pack1_credits": "75 نقطة",
-      "pack2_name": "حزمة محترف",
-      "pack2_price": "1,500 د.ج",
-      "pack2_credits": "250 نقطة",
+      "unit_price": "{price} د.ج/ائتمان",
+      "never_expires": "لا تنتهي صلاحيتها أبدًا",
       "best_value": "أفضل قيمة",
-      "never_expire": "النقاط لا تنتهي أبداً",
-      "buy": "اشتر الآن"
+      "processing": "جارٍ التحويل…"
     },
     "history": {
       "title": "سجل المدفوعات",
       "empty": "لا توجد مدفوعات بعد",
       "date": "التاريخ",
       "amount": "المبلغ",
+      "type": "النوع",
       "status": "الحالة",
-      "credits": "النقاط"
+      "status_pending": "قيد الانتظار",
+      "status_paid": "مدفوع",
+      "status_failed": "فشل",
+      "status_refunded": "مسترد",
+      "type_subscription_creation": "اشتراك",
+      "type_subscription_renewal": "تجديد شهري",
+      "type_pack_purchase": "شراء حزمة رصيد",
+      "failed_note": "فشل الدفع. تواصل مع {support} إذا تم خصم المبلغ.",
+      "support_link": "الدعم"
     },
     "status": {
       "pending": "جارٍ معالجة الدفع...",
@@ -128,17 +145,16 @@
       "failed": "فشل الدفع",
       "timeout": "تم استلام الدفع — سيتم إضافة النقاط قريباً"
     },
-    "cancel": {
-      "title": "إلغاء الاشتراك",
-      "description": "تظل نقاطك قابلة للاستخدام حتى نهاية فترة الفوترة. لا يوجد استرداد.",
-      "confirm": "أنا أفهم، إلغاء اشتراكي"
-    },
-    "upgrade_stub": "الترقية إلى Starter",
     "dzone": {
       "title": "منطقة الخطر",
-      "delete_account": "حذف الحساب",
-      "delete_description": "حذف حسابك وجميع البيانات بشكل دائم. هذا الإجراء لا يمكن التراجع عنه.",
-      "delete_confirm": "أنا أفهم، حذف حسابي"
+      "description": "ألغِ اشتراكك. يستمر الوصول حتى نهاية الدورة الحالية — لا استرداد للدورة الحالية.",
+      "cancel_button": "إلغاء الاشتراك",
+      "dialog_title": "إلغاء اشتراكك؟",
+      "dialog_body": "ستحتفظ بالوصول حتى {date}. لا يوجد استرداد للدورة الحالية.",
+      "keep": "الاحتفاظ باشتراكي",
+      "confirm": "تأكيد الإلغاء",
+      "confirming": "جارٍ الإلغاء…",
+      "error": "تعذّر إلغاء اشتراكك. يرجى المحاولة مرة أخرى."
     }
   },
   "common": {

@@ -375,10 +375,22 @@ def _grant_creation(user: Any, row: Any, now: Any) -> int:
         # Re-activate the SAME row (failed_renewal/cancelled/expired — FR-24
         # blocks only ACTIVE). cancelled_at ⇒ cancelled is one-way, so the
         # re-activation clears it (subscriptions_cancel_state_check).
+        #
+        # 5.5 anchor amendment (Winston Q5 / John V3 — the AC's literal
+        # Reactivate reading "resumes subscription from next billing date"):
+        # a CANCELLED row re-anchors at max(current_period_end, now) — the
+        # paid cycle runs to its end, and the new cycle chains at that
+        # boundary (the renewal anchor-preservation pattern, no gap/no
+        # overlap). failed_renewal/expired keep the 5.3 now-anchor (a
+        # broken cycle restarts; expired degenerates to now via max()).
+        if latest.status == 'cancelled':
+            anchor = max(latest.current_period_end, now)
+        else:
+            anchor = now
         latest.status = 'active'
         latest.cancelled_at = None
-        latest.current_period_start = now
-        latest.current_period_end = _add_month(now)
+        latest.current_period_start = anchor
+        latest.current_period_end = _add_month(anchor)
         latest.save(
             update_fields=[
                 'status', 'cancelled_at', 'current_period_start', 'current_period_end',
@@ -420,7 +432,25 @@ def _grant_renewal(user: Any, row: Any, now: Any) -> int:
             current_period_start=now,
             current_period_end=_add_month(now),
         )
-        _persist_chargily_subscription_id(created, row)
+        # Review P4 (5.5): a CANCELLED row that still holds the Chargily
+        # subscription id (in-app cancel while Chargily keeps billing — the
+        # 5.5 cancel flow's own interplay) would collide with
+        # subscriptions_chargily_id_uniq when the orphan persists the same
+        # id — the grant would retry-loop with the money stuck pending.
+        # Persist only when no other row owns the id; the grant is
+        # idempotent via the txn row regardless.
+        metadata = row.chargily_metadata
+        subscription_id = (
+            metadata.get('subscription_id') if isinstance(metadata, dict) else None
+        )
+        if (
+            isinstance(subscription_id, str)
+            and subscription_id.strip()
+            and not Subscription.objects.filter(
+                chargily_subscription_id=subscription_id
+            ).exists()
+        ):
+            _persist_chargily_subscription_id(created, row)
         return _grant_cycle(user, str(row.id), now, reset_pool=True)
 
     # Anchor preservation (5.3 D7): extend from max(previous end, now) — a

@@ -328,12 +328,14 @@ def _txn(
     event_id: str,
     txn_type: str = 'subscription_creation',
     amount: int = 1500,
+    metadata: Any = None,
 ) -> Any:
     return PaymentTransaction.objects.create(
         user=user,
         chargily_event_id=event_id,
         type=txn_type,
         amount_dzd=amount,
+        chargily_metadata=metadata,
     )
 
 
@@ -536,6 +538,155 @@ class TestGrantFlowCreation:
         existing.refresh_from_db()
         assert existing.status == 'active'
         assert existing.cancelled_at is None
+
+    def test_reactivation_before_period_end_anchors_at_period_end(
+        self, create_user: Any
+    ) -> None:
+        """Winston Q5 / John V3 — the AC's literal reading: Reactivate
+        "resumes subscription from next billing date". A cancelled row
+        re-activated BEFORE its (paid) period ends chains the new cycle at
+        the old current_period_end — the billing date is preserved and the
+        access promise is contiguous (no gap, no overlap)."""
+        now = timezone.now()
+        period_end = now + timedelta(days=9)
+        existing = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=3),
+            current_period_start=now - timedelta(days=21),
+            current_period_end=period_end,
+        )
+        _txn(create_user, 'evt_create_anchor')
+
+        grant_credits('evt_create_anchor')
+
+        existing.refresh_from_db()
+        assert existing.status == 'active'
+        assert abs((existing.current_period_start - period_end).total_seconds()) < 5
+        assert (
+            abs((existing.current_period_end - _add_month(period_end)).total_seconds())
+            < 5
+        )
+
+    def test_reactivation_after_period_end_anchors_now(
+        self, create_user: Any
+    ) -> None:
+        """The cancelled period already ended (access elapsed) — max() falls
+        through to now: a fresh cycle from the payment."""
+        now = timezone.now()
+        existing = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=40),
+            current_period_start=now - timedelta(days=70),
+            current_period_end=now - timedelta(days=10),
+        )
+        _txn(create_user, 'evt_create_anchor_late')
+
+        grant_credits('evt_create_anchor_late')
+
+        existing.refresh_from_db()
+        assert existing.status == 'active'
+        assert abs((existing.current_period_start - now).total_seconds()) < 5
+        assert (
+            abs((existing.current_period_end - _add_month(now)).total_seconds()) < 5
+        )
+
+    def test_failed_renewal_reactivation_stays_now_anchored(
+        self, create_user: Any
+    ) -> None:
+        """Winston Q5 / John V3 — the deliberate asymmetry: failed_renewal
+        re-pay stays now-anchored as shipped in 5.3 (a broken cycle
+        restarts); only the cancelled branch preserves the billing date.
+        Pins the 5.3 behavior against future 'fixes'."""
+        now = timezone.now()
+        existing = Subscription.objects.create(
+            user=create_user,
+            status='failed_renewal',
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now + timedelta(days=5),
+        )
+        _grant(create_user, 200)
+        _txn(create_user, 'evt_create_fr_anchor')
+
+        grant_credits('evt_create_fr_anchor')
+
+        existing.refresh_from_db()
+        assert existing.status == 'active'
+        assert abs((existing.current_period_start - now).total_seconds()) < 5
+        assert abs((existing.current_period_end - _add_month(now)).total_seconds()) < 5
+
+    def test_renewal_after_cancel_reactivates_orphan_row(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        """Winston Q6 pin — the "no auto-renewal" AC means OUR system never
+        renews without a paid event; a PAID subscription_renewal webhook
+        arriving after cancellation is a new paid cycle and is honored
+        (paid-event-never-skipped — the orphan path creates an ACTIVE row
+        + grant + ERROR alarm). Settling would convert collected money into
+        an unpaid outcome needing an ops refund."""
+        now = timezone.now()
+        cancelled = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=3),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now + timedelta(days=5),
+        )
+        _txn(create_user, 'evt_renew_after_cancel', txn_type='subscription_renewal')
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_renew_after_cancel')
+
+        assert 'orphan renewal' in caplog.text
+        cancelled.refresh_from_db()
+        assert cancelled.status == 'cancelled'
+        assert cancelled.cancelled_at is not None
+        created = Subscription.objects.get(
+            user=create_user, status='active', cancelled_at__isnull=True
+        )
+        assert created.pk != cancelled.pk
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 200
+
+    def test_orphan_renewal_skips_colliding_chargily_id(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        """Review P4 — a cancelled row that still holds the Chargily
+        subscription id (in-app cancel while Chargily keeps billing) would
+        collide with subscriptions_chargily_id_uniq when the orphan
+        persists the same id: the grant would retry-loop with the money
+        stuck pending. The orphan persists the id only when no other row
+        owns it — the grant still lands."""
+        now = timezone.now()
+        cancelled = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=3),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now + timedelta(days=5),
+            chargily_subscription_id='sub-abc-123',
+        )
+        _txn(
+            create_user,
+            'evt_renew_collide',
+            txn_type='subscription_renewal',
+            metadata={'subscription_id': 'sub-abc-123'},
+        )
+        with caplog.at_level('ERROR'):
+            grant_credits('evt_renew_collide')
+
+        assert 'orphan renewal' in caplog.text
+        created = Subscription.objects.get(
+            user=create_user, status='active', cancelled_at__isnull=True
+        )
+        assert created.pk != cancelled.pk
+        # The id stays owned by the cancelled row — no unique violation,
+        # the grant landed.
+        cancelled.refresh_from_db()
+        assert cancelled.chargily_subscription_id == 'sub-abc-123'
+        assert created.chargily_subscription_id is None
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 200
 
 
 class TestGrantFlowRenewal:

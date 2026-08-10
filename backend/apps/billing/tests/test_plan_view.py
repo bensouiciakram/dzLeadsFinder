@@ -41,16 +41,32 @@ class TestPlanView:
         create_user.save(update_fields=['tier'])
         response = logged_in_client.get('/api/billing/plan/')
         assert response.status_code == 200
-        assert response.data == {
-            'tier': 'starter',
-            'status': 'active',
-            'renews_on': timezone.localdate(sub.current_period_end).isoformat(),
+        assert response.data['tier'] == 'starter'
+        assert response.data['status'] == 'active'
+        assert response.data['renews_on'] == timezone.localdate(
+            sub.current_period_end
+        ).isoformat()
+        assert response.data['balances'] == {
+            'subscription_balance': 0,
+            'pack_balance': 0,
+            'display_balance': 0,
         }
 
     def test_free_user_stable_shape(self, logged_in_client: Any) -> None:
         response = logged_in_client.get('/api/billing/plan/')
         assert response.status_code == 200
-        assert response.data == {'tier': 'free', 'status': None, 'renews_on': None}
+        assert response.data == {
+            'tier': 'free',
+            'status': None,
+            'renews_on': None,
+            # The 5.5 additive balances key (Winston Q4) — a fresh user has
+            # an empty ledger.
+            'balances': {
+                'subscription_balance': 0,
+                'pack_balance': 0,
+                'display_balance': 0,
+            },
+        }
 
     def test_failed_renewal_keeps_renews_on(
         self, logged_in_client: Any, create_user: Any
@@ -114,3 +130,76 @@ class TestPlanView:
         assert response.status_code == 200
         assert response.data['status'] == 'cancelled'
         assert response.data['tier'] == 'starter'
+
+
+class TestPlanViewBalances:
+    """The 5.5 additive `balances` key (Winston Q4 — the Plan Card's
+    "credits left this cycle" comes from the subscription pool).
+
+    The 5.3 contract {tier, status, renews_on} is preserved — additive key
+    only, so the 5.7 chip/banner consumers are untouched.
+    """
+
+    def _seed_balances(self, user: Any) -> None:
+        from apps.credits.models import CreditEventType, CreditLedger, CreditPool
+
+        CreditLedger.objects.create(
+            user=user,
+            event_type=CreditEventType.SUBSCRIPTION_GRANT,
+            amount=200,
+            balance_after=200,
+            pool=CreditPool.SUBSCRIPTION,
+        )
+        CreditLedger.objects.create(
+            user=user,
+            event_type=CreditEventType.PACK_GRANT,
+            amount=75,
+            balance_after=275,
+            pool=CreditPool.PACK,
+        )
+
+    def test_free_user_balances_all_zero(
+        self, logged_in_client: Any, create_user: Any
+    ) -> None:
+        response = logged_in_client.get('/api/billing/plan/')
+        assert response.data['balances'] == {
+            'subscription_balance': 0,
+            'pack_balance': 0,
+            'display_balance': 0,
+        }
+
+    def test_starter_plan_includes_cycle_balances(
+        self, logged_in_client: Any, create_user: Any
+    ) -> None:
+        from datetime import timedelta
+
+        sub = Subscription.objects.create(
+            user=create_user,
+            status='active',
+            current_period_start=timezone.now() - timedelta(days=10),
+            current_period_end=timezone.now() + timedelta(days=20),
+        )
+        self._seed_balances(create_user)
+        response = logged_in_client.get('/api/billing/plan/')
+        assert response.data['tier'] == 'free'
+        assert response.data['status'] == 'active'
+        assert response.data['renews_on'] == timezone.localdate(
+            sub.current_period_end
+        ).isoformat()
+        assert response.data['balances'] == {
+            'subscription_balance': 200,
+            'pack_balance': 75,
+            'display_balance': 275,
+        }
+
+    def test_plan_shape_unchanged_without_balances(
+        self, logged_in_client: Any, create_user: Any
+    ) -> None:
+        """The 5.3 key set is preserved — only the additive key is new."""
+        response = logged_in_client.get('/api/billing/plan/')
+        assert set(response.data.keys()) == {
+            'tier',
+            'status',
+            'renews_on',
+            'balances',
+        }

@@ -95,32 +95,49 @@
   },
   "billing": {
     "title": "Billing & Plans",
+    "meta_title": "Billing & Plans — dzLeadsFinder",
+    "meta_description": "Manage your dzLeadsFinder plan, add-on credit packs, payment history, and subscription.",
     "current_plan": "Current Plan",
-    "free_plan": "Free",
-    "free_description": "15 free credits to get started",
-    "starter_plan": "Starter",
-    "starter_description": "200 credits per month — renews at 1,500 DZD/mo",
+    "currency": "DZD",
     "renewal_date": "Renews on {date}",
     "failed_renewal": "Payment failed. Update your payment method.",
+    "upgrade_stub": "Upgrade to Starter",
+    "plan": {
+      "free_tier": "Free tier",
+      "starter_title": "Starter — 1,500 DZD/mo — renews on {date}",
+      "cancelled_title": "Cancelled — access until {date}",
+      "failed_title": "Payment failed — access until {date}",
+      "expired_title": "Subscription ended",
+      "credits_cycle": "Credits left this cycle",
+      "credits": "Credits",
+      "upgrade": "Upgrade",
+      "reactivate": "Reactivate",
+      "retry_payment": "Retry payment",
+      "resubscribe": "Resubscribe"
+    },
     "packs": {
       "title": "Add-on Credit Packs",
-      "pack1_name": "Starter Pack",
-      "pack1_price": "500 DZD",
-      "pack1_credits": "75 credits",
-      "pack2_name": "Pro Pack",
-      "pack2_price": "1,500 DZD",
-      "pack2_credits": "250 credits",
-      "best_value": "Best Value",
-      "never_expire": "Credits never expire",
-      "buy": "Buy Now"
+      "unit_price": "{price} DZD/credit",
+      "never_expires": "Never expires",
+      "best_value": "Best value",
+      "processing": "Redirecting…"
     },
     "history": {
       "title": "Payment History",
       "empty": "No payments yet",
       "date": "Date",
       "amount": "Amount",
+      "type": "Type",
       "status": "Status",
-      "credits": "Credits"
+      "status_pending": "Pending",
+      "status_paid": "Paid",
+      "status_failed": "Failed",
+      "status_refunded": "Refunded",
+      "type_subscription_creation": "Subscription",
+      "type_subscription_renewal": "Monthly renewal",
+      "type_pack_purchase": "Credit pack purchase",
+      "failed_note": "Payment failed. Contact {support} if you were charged.",
+      "support_link": "support"
     },
     "status": {
       "pending": "Processing payment...",
@@ -128,17 +145,16 @@
       "failed": "Payment failed",
       "timeout": "Payment received — credits will post shortly"
     },
-    "cancel": {
-      "title": "Cancel Subscription",
-      "description": "Your credits remain usable until the end of the billing period. No refunds.",
-      "confirm": "I understand, cancel my subscription"
-    },
-    "upgrade_stub": "Upgrade to Starter",
     "dzone": {
       "title": "Danger Zone",
-      "delete_account": "Delete Account",
-      "delete_description": "Permanently delete your account and all data. This action cannot be undone.",
-      "delete_confirm": "I understand, delete my account"
+      "description": "Cancel your subscription. You keep access until the end of the current cycle — no refund for the current cycle.",
+      "cancel_button": "Cancel subscription",
+      "dialog_title": "Cancel your subscription?",
+      "dialog_body": "You will keep access until {date}. No refund for the current cycle.",
+      "keep": "Keep my subscription",
+      "confirm": "Cancel subscription",
+      "confirming": "Cancelling…",
+      "error": "We could not cancel your subscription. Please try again."
     }
   },
   "common": {
