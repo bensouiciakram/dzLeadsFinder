@@ -99,10 +99,20 @@ def _resolve_user(user_id_value: Any) -> Optional[Any]:
 def _shaped_metadata(
     payload_data: Dict[str, Any], amount: int, user_id_value: Any
 ) -> Dict[str, Any]:
-    """SHAPED metadata — never the raw payload (deferred-work #4, resolved — 5.2 D5)."""
+    """SHAPED metadata — never the raw payload (deferred-work #4, resolved — 5.2 D5).
+
+    ``subscription_id`` (5.3 review P2): the Chargily subscription id carried
+    by renewal payloads is persisted onto the subscription row by the grant
+    task — it is the recovery key for subscription-keyed payment_failed
+    lookups when ``metadata.user_id`` is absent.
+    """
     from django.conf import settings
 
     metadata = payload_data.get('metadata')
+    subscription_id = payload_data.get('subscription_id')
+    subscription = payload_data.get('subscription')
+    if subscription_id is None and isinstance(subscription, dict):
+        subscription_id = subscription.get('id')
     return {
         'checkout_id': payload_data.get('id'),
         'payment_method': payload_data.get('payment_method'),
@@ -111,6 +121,7 @@ def _shaped_metadata(
         'checkout_type': metadata.get('type') if isinstance(metadata, dict) else None,
         'amount': amount,
         'user_id': user_id_value,
+        'subscription_id': subscription_id,
     }
 
 
@@ -155,6 +166,94 @@ def _insert_transaction(
     return row[0] if row is not None else None
 
 
+def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
+    """5.3 (AC clause 4; D16): set the user's ACTIVE subscription to
+    'failed_renewal'. Inline single UPDATE (microseconds, no outbound calls —
+    the ≤5s guarantee holds); idempotent by predicate (replays match nothing
+    → no-op); never 400-loops Chargily. Credits are untouched (usable until
+    the next cycle — the 5.3 expiry task enforces the end). No transaction
+    row (5.2 D3 — the type CHECK excludes it).
+
+    Review P2/P3 (2026-08-10): when ``metadata.user_id`` is absent, the
+    Chargily subscription id (persisted onto the row by the grant task) is
+    the fallback lookup key; when the payload names a subscription id, a
+    stale retry for a PREVIOUS Chargily subscription cannot flip the fresh
+    paid cycle (legacy NULL-id rows are tolerated).
+    """
+    from django.db.models import Q
+
+    from apps.billing.models import Subscription
+
+    event_id = payload_data.get('id')
+    metadata = payload_data.get('metadata')
+    user_id_value = metadata.get('user_id') if isinstance(metadata, dict) else None
+    subscription = payload_data.get('subscription')
+    payload_sub_id = payload_data.get('subscription_id')
+    if payload_sub_id is None and isinstance(subscription, dict):
+        payload_sub_id = subscription.get('id')
+    if not isinstance(payload_sub_id, str) or not payload_sub_id.strip():
+        payload_sub_id = None
+
+    user = _resolve_user(user_id_value) if user_id_value is not None else None
+    if user is None:
+        if payload_sub_id is not None:
+            matched = (
+                Subscription.objects.filter(
+                    chargily_subscription_id=payload_sub_id, status='active'
+                )
+                .select_related('user')
+                .first()
+            )
+            if matched is None or matched.user is None:
+                logger.warning(
+                    'chargily subscription.payment_failed: no active '
+                    'subscription matches subscription id %r (event_id=%s) — '
+                    'no state change',
+                    payload_sub_id,
+                    event_id,
+                )
+                return
+            matched.status = 'failed_renewal'
+            matched.save(update_fields=['status'])
+            logger.warning(
+                'chargily subscription.payment_failed: subscription %s set to '
+                'failed_renewal via subscription-id lookup (user %s, '
+                'event_id=%s)',
+                matched.id,
+                matched.user_id,
+                event_id,
+            )
+            return
+        logger.error(
+            'chargily subscription.payment_failed: no metadata user_id and no '
+            'subscription id — failed_renewal state write SKIPPED (event_id=%s)',
+            event_id,
+        )
+        return
+
+    queryset = Subscription.objects.filter(user=user, status='active')
+    if payload_sub_id is not None:
+        queryset = queryset.filter(
+            Q(chargily_subscription_id__isnull=True)
+            | Q(chargily_subscription_id=payload_sub_id)
+        )
+    updated = queryset.update(status='failed_renewal')
+    if updated:
+        logger.warning(
+            'chargily subscription.payment_failed: user %s subscription set '
+            'to failed_renewal (event_id=%s)',
+            user.pk,
+            event_id,
+        )
+    else:
+        logger.info(
+            'chargily subscription.payment_failed: no active subscription for '
+            'user %s — no state change (event_id=%s)',
+            user.pk,
+            event_id,
+        )
+
+
 @csrf_exempt  # type: ignore[misc]
 def chargily_webhook(request: HttpRequest) -> JsonResponse:
     """POST /api/webhooks/chargily/ — verify, dedupe, enqueue (spine L616-624).
@@ -190,10 +289,7 @@ def chargily_webhook(request: HttpRequest) -> JsonResponse:
     event_type = event_type.lower()
 
     if event_type == 'subscription.payment_failed':
-        logger.info(
-            'chargily subscription.payment_failed received: event_id=%s',
-            payload_data.get('id'),
-        )
+        _apply_payment_failed_state(payload_data)
         return JsonResponse({'status': 'ok'})
 
     if event_type != 'checkout.paid':

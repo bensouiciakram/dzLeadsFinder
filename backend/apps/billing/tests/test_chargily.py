@@ -86,6 +86,57 @@ class TestCreateCheckout:
             'amount': 500,
         }
 
+    def test_subscription_description_echoed_into_payload(self, monkeypatch: Any) -> None:
+        """The hosted checkout renders the payload description (5.3 AC clause 1)."""
+        captured: Dict[str, Any] = {}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> Dict[str, str]:
+                return {
+                    'id': 'checkout_sub',
+                    'checkout_url': 'https://pay.chargily.com/checkout/sub',
+                }
+
+        def fake_post(url: str, **kwargs: Any) -> FakeResponse:
+            captured['kwargs'] = kwargs
+            return FakeResponse()
+
+        monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
+        create_checkout(
+            {
+                'user_id': 42,
+                'type': 'subscription',
+                'amount': 1500,
+                'description': 'DZLeads Starter — 200 credits/mo',
+            }
+        )
+        body = captured['kwargs']['json']
+        assert body['description'] == 'DZLeads Starter — 200 credits/mo'
+
+    def test_pack_checkout_carries_no_description(self, monkeypatch: Any) -> None:
+        captured: Dict[str, Any] = {}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> Dict[str, str]:
+                return {
+                    'id': 'checkout_pack2',
+                    'checkout_url': 'https://pay.chargily.com/checkout/pack2',
+                }
+
+        def fake_post(url: str, **kwargs: Any) -> FakeResponse:
+            captured['kwargs'] = kwargs
+            return FakeResponse()
+
+        monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
+        create_checkout({'user_id': 7, 'type': 'pack', 'amount': 500})
+        assert 'description' not in captured['kwargs']['json']
+
     def test_raises_on_http_error(self, monkeypatch: Any) -> None:
         import requests
 

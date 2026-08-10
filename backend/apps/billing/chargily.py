@@ -43,7 +43,7 @@ def _create_checkout(plan_data: Dict[str, Any]) -> Dict[str, str]:
         'Accept': 'application/json',
         'Content-Type': 'application/json',
     }
-    payload = {
+    payload: Dict[str, Any] = {
         'amount': plan_data['amount'],
         'currency': 'dzd',
         'payment_methods': ['cib', 'edahabia'],
@@ -55,6 +55,12 @@ def _create_checkout(plan_data: Dict[str, Any]) -> Dict[str, str]:
         'success_url': settings.CHARGILY_SUCCESS_URL,
         'failure_url': settings.CHARGILY_FAILURE_URL,
     }
+    # The hosted checkout renders the payload description (5.3 AC clause 1 —
+    # "DZLeads Starter — 200 credits/mo"). Only subscriptions carry one in
+    # 5.3 (5.2 D11 envelope risk rides the isolated adapter).
+    description = plan_data.get('description')
+    if description:
+        payload['description'] = description
     try:
         response = requests.post(
             CHECKOUTS_API_URL, headers=headers, json=payload, timeout=TIMEOUT_SECONDS

@@ -23,6 +23,45 @@ describe('POST /api/emails/render', () => {
     expect(response.status).toBe(200)
   })
 
+  it('renders a localized arabic payment receipt (5.3)', async () => {
+    const response = await POST(mockRequest({
+      template: 'payment_receipt',
+      locale: 'ar',
+      context: { amount: 1500, creditsGranted: 200, date: '2025-01-01' },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('تم استلام الدفع')
+    expect(body.html).toContain('1,500')
+  })
+
+  it('renders the renewal variant of the receipt (5.3)', async () => {
+    const response = await POST(mockRequest({
+      template: 'payment_receipt',
+      locale: 'en',
+      context: {
+        amount: 1500,
+        creditsGranted: 200,
+        date: '2025-01-01',
+        isRenewal: true,
+      },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('200 fresh credits')
+  })
+
+  it('renders a localized french payment receipt (5.3)', async () => {
+    const response = await POST(mockRequest({
+      template: 'payment_receipt',
+      locale: 'fr',
+      context: { amount: 1500, creditsGranted: 200, date: '2025-01-01' },
+    }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.html).toContain('Paiement reçu')
+  })
+
   it('returns 200 for pack_receipt template', async () => {
     const response = await POST(mockRequest({
       template: 'pack_receipt',

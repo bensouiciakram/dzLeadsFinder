@@ -6,8 +6,9 @@ from typing import Any, Dict, Optional
 
 import pytest
 from django.conf import settings
+from django.utils import timezone
 
-from apps.billing.models import PaymentTransaction
+from apps.billing.models import PaymentTransaction, Subscription
 
 pytestmark = pytest.mark.django_db
 
@@ -136,6 +137,7 @@ class TestCheckoutPaidEvents:
             'checkout_type': 'subscription',
             'amount': 1500,
             'user_id': str(create_user.pk),
+            'subscription_id': None,
         }
 
     def test_pack_purchase_event(
@@ -396,4 +398,196 @@ class TestNonGrantEvents:
         response = _post(api_client, payload)
         assert response.status_code == 200
         assert PaymentTransaction.objects.count() == 0
+        assert calls == []
+
+
+class TestPaymentFailedStateWrite:
+    """5.3 (AC clause 4; D16): the state write owns 'failed_renewal' — the
+    banner UI is 5.7. Idempotent by predicate; no transaction row; no task."""
+
+    def _active_sub(self, user: Any) -> Any:
+        from datetime import timedelta
+
+        from apps.billing.models import Subscription
+
+        now = timezone.now()
+        return Subscription.objects.create(
+            user=user,
+            status='active',
+            current_period_start=now - timedelta(days=10),
+            current_period_end=now + timedelta(days=20),
+        )
+
+    def _failed_event(
+        self,
+        *,
+        event_id: str = 'evt_pf_1',
+        user_id: Any = None,
+        subscription_id: Any = 'sub_42',
+    ) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            'id': event_id,
+            'metadata': {'user_id': user_id},
+        }
+        if subscription_id is not None:
+            data['subscription'] = {'id': subscription_id}
+        return {'type': 'subscription.payment_failed', 'data': data}
+
+    def test_sets_active_subscription_to_failed_renewal(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        response = _post(
+            api_client, self._failed_event(user_id=str(create_user.pk))
+        )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'failed_renewal'
+        assert PaymentTransaction.objects.count() == 0
+        assert calls == []
+        from apps.credits.models import CreditLedger
+
+        assert CreditLedger.objects.count() == 0
+
+    def test_replay_is_idempotent(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        payload = self._failed_event(user_id=str(create_user.pk))
+        _post(api_client, payload)
+        _post(api_client, payload)
+        sub.refresh_from_db()
+        assert sub.status == 'failed_renewal'
+        assert Subscription.objects.count() == 1
+        assert calls == []
+
+    def test_missing_user_metadata_logs_error_and_skips(
+        self, monkeypatch: Any, api_client: Any, create_user: Any, caplog: Any
+    ) -> None:
+        """No metadata user_id AND no subscription id → ERROR + skip
+        (nothing to key on)."""
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        with caplog.at_level('ERROR'):
+            response = _post(
+                api_client,
+                self._failed_event(event_id='evt_pf_noid', subscription_id=None),
+            )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'active'
+        assert calls == []
+        assert 'evt_pf_noid' in caplog.text
+
+    def test_subscription_id_fallback_lookup(
+        self, monkeypatch: Any, api_client: Any, create_user: Any, caplog: Any
+    ) -> None:
+        """Review P2: no metadata user_id, but the Chargily subscription id
+        (persisted by the grant task) identifies the failing row."""
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        sub.chargily_subscription_id = 'sub_ch_9'
+        sub.save(update_fields=['chargily_subscription_id'])
+        with caplog.at_level('WARNING'):
+            response = _post(
+                api_client,
+                self._failed_event(event_id='evt_pf_fbk', subscription_id='sub_ch_9'),
+            )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'failed_renewal'
+        assert calls == []
+
+    def test_subscription_id_fallback_no_match_skips(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        response = _post(
+            api_client,
+            self._failed_event(event_id='evt_pf_nomatch', subscription_id='sub_ghost'),
+        )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'active'
+        assert calls == []
+
+    def test_stale_subscription_retry_does_not_flip_fresh_cycle(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        """Review P3 (Edge Hunter E3 / Blind Hunter B5): a late payment_failed
+        for a PREVIOUS Chargily subscription must not regress the fresh paid
+        cycle."""
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        sub.chargily_subscription_id = 'sub_fresh'
+        sub.save(update_fields=['chargily_subscription_id'])
+        response = _post(
+            api_client,
+            self._failed_event(
+                event_id='evt_pf_stale',
+                user_id=str(create_user.pk),
+                subscription_id='sub_old',
+            ),
+        )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'active'
+        assert calls == []
+
+    def test_legacy_null_id_row_still_flips(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        """Legacy rows (NULL chargily_subscription_id) are tolerated when the
+        payload names a subscription id — pre-P2 rows stay flippable."""
+        calls = _spy_grant_credits(monkeypatch)
+        sub = self._active_sub(create_user)
+        response = _post(
+            api_client,
+            self._failed_event(
+                event_id='evt_pf_legacy',
+                user_id=str(create_user.pk),
+                subscription_id='sub_any',
+            ),
+        )
+        assert response.status_code == 200
+        sub.refresh_from_db()
+        assert sub.status == 'failed_renewal'
+        assert calls == []
+
+    def test_user_without_subscription_is_noop(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        calls = _spy_grant_credits(monkeypatch)
+        response = _post(
+            api_client, self._failed_event(user_id=str(create_user.pk))
+        )
+        assert response.status_code == 200
+        assert Subscription.objects.count() == 0
+        assert calls == []
+
+    def test_deleted_user_is_noop(
+        self, monkeypatch: Any, api_client: Any
+    ) -> None:
+        calls = _spy_grant_credits(monkeypatch)
+        ghost = str(uuid.uuid4())
+        response = _post(api_client, self._failed_event(user_id=ghost))
+        assert response.status_code == 200
+        assert Subscription.objects.count() == 0
+        assert calls == []
+
+    def test_failed_renewal_state_write_never_creates_ledger_rows(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        from apps.credits.models import CreditLedger
+
+        calls = _spy_grant_credits(monkeypatch)
+        self._active_sub(create_user)
+        response = _post(
+            api_client, self._failed_event(user_id=str(create_user.pk))
+        )
+        assert response.status_code == 200
+        assert CreditLedger.objects.count() == 0
         assert calls == []

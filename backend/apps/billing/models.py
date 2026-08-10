@@ -123,6 +123,13 @@ class PaymentTransaction(models.Model):
                 fields=['user', '-created_at'],
                 name='payments_user_created_idx',
             ),
+            # The 5.3 reconciliation sweep (apps.billing.tasks.reconcile_pending_payments)
+            # scans pending rows by age — the deferred-work 5.1 item, resolved here.
+            models.Index(
+                fields=['created_at'],
+                condition=models.Q(status='pending'),
+                name='payments_pending_created_idx',
+            ),
         ]
         constraints = [
             models.CheckConstraint(

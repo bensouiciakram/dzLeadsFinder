@@ -22,4 +22,12 @@ app.conf.beat_schedule = {
         'task': 'tasks.maintenance_tasks.hard_delete_expired',
         'schedule': crontab(hour=3, minute=0),
     },
+    'reconcile-pending-payments-hourly': {
+        'task': 'apps.billing.tasks.reconcile_pending_payments',
+        'schedule': crontab(minute=0),
+    },
+    'expire-failed-renewals-daily': {
+        'task': 'apps.billing.tasks.expire_failed_renewals',
+        'schedule': crontab(hour=4, minute=0),
+    },
 }

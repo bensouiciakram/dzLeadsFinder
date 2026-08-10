@@ -1,15 +1,57 @@
 from typing import Any
 
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.billing.chargily import ChargilyError, create_checkout_details
+from apps.billing.pricing import (
+    SUBSCRIPTION_DESCRIPTION,
+    SUBSCRIPTION_PRICE_DZD,
+)
 
 PAYMENT_TYPES = frozenset({'subscription', 'pack'})
 # PG int4 parity — 5.1 D14 `payments_amount_range_check` upper bound.
 MAX_AMOUNT_DZD = 2147483647
+
+
+class PlanView(APIView):
+    """GET /api/billing/plan/ — the 5.3 forward contract (5.3 D12).
+
+    ``{tier, status, renews_on}``: tier = ``user.tier`` (the 5.1
+    tier-split-brain owner — the 5.3 grant writes it atomically with the
+    subscription); status = the LATEST subscription row's status or null
+    (the ``subscriptions_user_created_idx`` ordering — never a dead row);
+    renews_on = the ISO local date of ``current_period_end`` or null. 200
+    always (free users get the stable free shape — the header renders on
+    every surface). RAW data only — the FE formats per AD-8; balances are
+    the pill endpoint's job (no read duplication).
+    """
+
+    def get(self, request: Request) -> Response:
+        from apps.billing.models import Subscription
+
+        sub = (
+            Subscription.objects.filter(user=request.user)
+            # -id tiebreak: two rows created in the same microsecond would
+            # otherwise resolve nondeterministically (review P8 — the test
+            # suite already tripped this on Windows).
+            .order_by('-created_at', '-id')
+            .first()
+        )
+        return Response(
+            {
+                'tier': request.user.tier,
+                'status': sub.status if sub is not None else None,
+                'renews_on': (
+                    timezone.localdate(sub.current_period_end).isoformat()
+                    if sub is not None
+                    else None
+                ),
+            }
+        )
 
 
 def _validation_response(exc: ValidationError) -> Response:
@@ -23,9 +65,14 @@ def _validation_response(exc: ValidationError) -> Response:
 class CreateCheckoutView(APIView):
     """POST /api/billing/create-checkout/ — Chargily redirect URL.
 
-    5.2 D6: pure pass-through ({type, amount} validated, NO payment_transactions
+    5.2 D6: pass-through ({type, amount} validated, NO payment_transactions
     row — the webhook creates the row). The response carries the Chargily
     checkout id so the 5.6 status-card polling has a key (5.2 D14).
+
+    5.3 (D5/D4): the server price table + FR-24 precondition land here —
+    subscription checkouts must match the server price (400 on mismatch,
+    client amount never forwarded) and the user must not hold an ACTIVE
+    subscription (409). Pack amounts stay unowned (5.4).
     """
 
     def post(self, request: Request) -> Response:
@@ -46,14 +93,45 @@ class CreateCheckoutView(APIView):
                 ValidationError('amount out of range (1..2147483647 DZD)')
             )
 
+        if checkout_type == 'subscription':
+            if amount != SUBSCRIPTION_PRICE_DZD:
+                return Response(
+                    {
+                        'detail': 'subscription amount must match the server price',
+                        'code': 'subscription_price_mismatch',
+                    },
+                    status=400,
+                )
+            from apps.billing.models import Subscription
+
+            if Subscription.objects.filter(
+                user=request.user, status='active'
+            ).exists():
+                return Response(
+                    {
+                        'detail': 'an active subscription already exists',
+                        'code': 'active_subscription_exists',
+                    },
+                    status=409,
+                )
+            # The client amount is validated but never forwarded — the server
+            # constant ships (5.3 D5). Pack amounts stay client-supplied until
+            # 5.4 owns the pack price table.
+            plan_data = {
+                'user_id': str(request.user.pk),
+                'type': checkout_type,
+                'amount': SUBSCRIPTION_PRICE_DZD,
+                'description': SUBSCRIPTION_DESCRIPTION,
+            }
+        else:
+            plan_data = {
+                'user_id': str(request.user.pk),
+                'type': checkout_type,
+                'amount': amount,
+            }
+
         try:
-            details = create_checkout_details(
-                {
-                    'user_id': str(request.user.pk),
-                    'type': checkout_type,
-                    'amount': amount,
-                }
-            )
+            details = create_checkout_details(plan_data)
         except ChargilyError:
             return Response(
                 {

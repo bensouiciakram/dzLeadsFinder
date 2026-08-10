@@ -141,13 +141,91 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
     message.send()
 
 
-@shared_task  # type: ignore[misc]
-def send_payment_receipt(txn_id: str) -> None:
-    """Send payment receipt after successful payment.
+PAYMENT_RECEIPT_SUBJECTS = {
+    'ar': {
+        'creation': 'اشتراكك في DZLeads Starter نشط الآن',
+        'renewal': 'تم تجديد اشتراكك في DZLeads Starter',
+    },
+    'fr': {
+        'creation': 'Votre abonnement DZLeads Starter est actif',
+        'renewal': 'Votre abonnement DZLeads Starter a été renouvelé',
+    },
+    'en': {
+        'creation': 'Your DZLeads Starter subscription is active',
+        'renewal': 'Your DZLeads Starter subscription has been renewed',
+    },
+}
 
-    TODO: Story 5.x — fetch transaction + user, build context, render, send.
+
+@shared_task(  # type: ignore[misc]
+    autoretry_for=(Exception,),
+    max_retries=1,
+    retry_backoff=True,
+)
+def send_payment_receipt(txn_id: str) -> None:
+    """Send the localized payment receipt after a successful subscription
+    payment (5.3 — replaces the 1.8 stub).
+
+    Django imports are deferred to runtime: config/celery.py imports this
+    module before the app registry is ready. The subject is localized per
+    ``user.effective_locale`` and differentiated creation vs renewal; the
+    body renders via the Next.js render route (PaymentReceipt component —
+    locale + isRenewal props). ``date`` is the raw ISO local date of the
+    transaction; the template owns localized formatting (AD-8).
     """
-    logger.info('send_payment_receipt called for txn_id=%s (not yet implemented)', txn_id)
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.core.exceptions import ValidationError
+    from django.core.mail import EmailMultiAlternatives
+    from django.utils import timezone
+
+    from apps.billing.models import PaymentTransaction
+
+    try:
+        row = PaymentTransaction.objects.get(pk=txn_id)
+    except (PaymentTransaction.DoesNotExist, ValueError, TypeError, ValidationError):
+        logger.warning('send_payment_receipt: transaction %s not found', txn_id)
+        return
+    if row.user_id is None:
+        logger.warning(
+            'send_payment_receipt: transaction %s has no user (anonymised) — skip',
+            txn_id,
+        )
+        return
+    user = get_user_model().objects.filter(pk=row.user_id).first()
+    if user is None:
+        logger.warning(
+            'send_payment_receipt: user %s for transaction %s not found — skip',
+            row.user_id,
+            txn_id,
+        )
+        return
+    is_renewal = row.type == 'subscription_renewal'
+    locale = user.effective_locale
+    variant = 'renewal' if is_renewal else 'creation'
+    subject = PAYMENT_RECEIPT_SUBJECTS[locale][variant]
+    html, plain_text = render_email(
+        'payment_receipt',
+        locale,
+        {
+            'amount': row.amount_dzd,
+            'currency': 'DZD',
+            'creditsGranted': row.credits_granted or 0,
+            'date': timezone.localdate(row.created_at).isoformat(),
+            'isRenewal': is_renewal,
+        },
+    )
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_text or html,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    if plain_text:
+        message.attach_alternative(html, 'text/html')
+    else:
+        message.content_subtype = 'html'
+    message.send()
 
 
 @shared_task  # type: ignore[misc]
