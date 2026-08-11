@@ -184,10 +184,20 @@ components:
     best-value-badge-radius: '{rounded.full}'
   status-card:
     radius: '{rounded.lg}'
+    padding: 14px
     polling-background: '{colors.info-container}'
     polling-foreground: '{colors.info-on-container}'
     success-background: '{colors.success-container}'
     success-foreground: '{colors.success-on-container}'
+    failed-background: '{colors.danger-container}'
+    failed-foreground: '{colors.danger-on-container}'
+    # 5.6 anatomy (2026-08-11 doc pass): spinner = lucide Loader2 size-4
+    # currentColor + animate-spin + motion-reduce:animate-none, aria-hidden;
+    # success icon = lucide Check size-4 aria-hidden at inline-start; timeout
+    # = info pair with NO spinner and NO icon (static text); no border (tonal
+    # container register). Copy contracts live in the message map
+    # (billing.status.polling / success_pack / success_subscription /
+    # timeout; failed reuses billing.history.failed_note).
   banner:
     radius: '{rounded.md}'
     info-background: '{colors.info-container}'

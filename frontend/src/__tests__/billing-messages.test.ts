@@ -88,6 +88,32 @@ const PINNED: Record<string, [string, string, string]> = {
   'billing.history.status_paid': ['Paid', 'Payé', 'مدفوع'],
   'billing.history.status_failed': ['Failed', 'Échoué', 'فشل'],
   'billing.history.status_refunded': ['Refunded', 'Remboursé', 'مسترد'],
+  'billing.history.failed_note': [
+    'Payment failed. Contact {support} if you were charged.',
+    'Paiement échoué. Contactez {support} si vous avez été débité.',
+    'فشل الدفع. تواصل مع {support} إذا تم خصم المبلغ.',
+  ],
+  // Status Card (Sally's 5.6 verbatim map; AC + EXPERIENCE.md:101-102 + D15)
+  'billing.status.polling': [
+    'Confirming payment…',
+    'Confirmation du paiement…',
+    'جارٍ تأكيد الدفع…',
+  ],
+  'billing.status.success_pack': [
+    '{n} credits added — pack credits never expire',
+    "{n} crédits ajoutés — les crédits de pack n'expirent jamais",
+    'أُضيف {n} رصيدًا — أرصدة الحزم لا تنتهي صلاحيتها أبدًا',
+  ],
+  'billing.status.success_subscription': [
+    '{n} credits added',
+    '{n} crédits ajoutés',
+    'أُضيف {n} رصيدًا',
+  ],
+  'billing.status.timeout': [
+    'Payment received — credits will post shortly',
+    'Paiement reçu — les crédits seront crédités sous peu',
+    'تم استلام الدفع — سيتم إضافة الرصيد قريبًا',
+  ],
 }
 
 describe('billing i18n copy contracts (×3 locales)', () => {

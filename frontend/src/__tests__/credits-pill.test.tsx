@@ -305,6 +305,118 @@ describe('CreditsPill announcement', () => {
     fireEvent.click(screen.getByTestId('delta-1'))
     await waitFor(() => expect(screen.getByTestId('pill-announcer')).toHaveTextContent(''))
   })
+
+  it('treats a baseline reset as mount-like — a renewal grant never announces a false DECREASE', async () => {
+    // Sally's 5.3 pill-trap handoff: the 5.6 success flow bumps the baseline
+    // nonce before the grant-announced balance lands (e.g. a renewal's pool
+    // math 250 → 200). The pill must NOT announce the drop.
+    useSessionMock.mockReturnValue({
+      isAuthenticated: true,
+      status: 'authenticated',
+      user: authenticatedUser({ tier: 'starter', credits_balance: 250 }),
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const ResetProbe = () => {
+      const { applyCreditDelta, resetBaseline } = useCredits()
+      return (
+        <button
+          type="button"
+          data-testid="reset-probe"
+          onClick={() => {
+            resetBaseline()
+            applyCreditDelta(-50)
+          }}
+        >
+          probe
+        </button>
+      )
+    }
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <CreditProvider>
+            <ResetProbe />
+            <CreditsPill />
+          </CreditProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    expect(screen.getByTestId('pill-announcer')).toHaveTextContent('')
+    // The success-flow ordering: baseline reset first, THEN the balance
+    // update lands — the diff reads the reset baseline, no announcement.
+    fireEvent.click(screen.getByTestId('reset-probe'))
+    await waitFor(() => expect(screen.getByTestId('credits-pill-balance')).toHaveTextContent('200'))
+    await waitFor(() => expect(screen.getByTestId('pill-announcer')).toHaveTextContent(''))
+  })
+
+  it('keeps the baseline reset pending until the grant balance arrives in a LATER frame (review P1)', async () => {
+    // The production flow never batches reset+balance like the test above:
+    // the StatusCard bumps the nonce and calls refresh() in one effect; the
+    // grant-announced balance lands a frame later via the async /me probe.
+    // The deferred capture must land on the NEW balance — a subsequent real
+    // spend must still announce normally.
+    useSessionMock.mockReturnValue({
+      isAuthenticated: true,
+      status: 'authenticated',
+      user: authenticatedUser({ tier: 'starter', credits_balance: 250 }),
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const SplitFrameProbe = () => {
+      const { applyCreditDelta, resetBaseline } = useCredits()
+      return (
+        <button
+          type="button"
+          data-testid="split-probe"
+          onClick={() => {
+            // Frame A: the success effect — nonce bump only.
+            resetBaseline()
+          }}
+        >
+          probe
+        </button>
+      )
+    }
+    const DeltaProbe = ({ delta }: { delta: number }) => {
+      const { applyCreditDelta } = useCredits()
+      return (
+        <button
+          type="button"
+          data-testid={`split-delta-${delta}`}
+          onClick={() => applyCreditDelta(delta)}
+        >
+          probe
+        </button>
+      )
+    }
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <CreditProvider>
+            <SplitFrameProbe />
+            <DeltaProbe delta={-50} />
+            <DeltaProbe delta={-1} />
+            <CreditsPill />
+          </CreditProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    // Frame A: nonce bump with the PRE-grant balance still rendered.
+    fireEvent.click(screen.getByTestId('split-probe'))
+    await waitFor(() => expect(screen.getByTestId('credits-pill-balance')).toHaveTextContent('250'))
+    expect(screen.getByTestId('pill-announcer')).toHaveTextContent('')
+    // Frame B: the grant-announced balance lands (250 → 200) — deferred
+    // capture, no false DECREASE announcement.
+    fireEvent.click(screen.getByTestId('split-delta--50'))
+    await waitFor(() => expect(screen.getByTestId('credits-pill-balance')).toHaveTextContent('200'))
+    expect(screen.getByTestId('pill-announcer')).toHaveTextContent('')
+    // Frame C: a REAL subsequent spend (200 → 199) still announces.
+    fireEvent.click(screen.getByTestId('split-delta--1'))
+    await waitFor(() =>
+      expect(screen.getByTestId('pill-announcer')).toHaveTextContent(
+        'common.credits.updated',
+      ),
+    )
+  })
 })
 
 describe('CreditsPill RTL smoke', () => {

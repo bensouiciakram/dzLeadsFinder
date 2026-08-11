@@ -58,6 +58,6 @@ b.num{font-variant-numeric:tabular-nums}
     </div>
   </div>
 </div>
-<p class="note"><b>What this mock pins:</b> the status card is inline and non-blocking — the rest of /billing stays interactive while it polls ≤60s; on success it flips to the success container pair and the same text lands as a toast (announced via role="status" + polite live region); on timeout it degrades to « paiement reçu, crédits postés dans une minute » — never an error, never a re-pay prompt (idempotent webhook reconciliation, FR-27). Pack cards show unit price + never-expires + Best-value badge per FR-25; free users see the same cards.</p>
+<p class="note"><b>What this mock pins:</b> the status card is inline and non-blocking — the rest of /billing stays interactive while it polls ≤60s; on success it flips to the success container pair and the same text lands as a toast (announced via role="status" + polite live region); on timeout it degrades to « paiement reçu, les crédits seront crédités sous peu » — never an error, never a re-pay prompt (idempotent webhook reconciliation, FR-27). [2026-08-11 doc pass: the timeout phrasing now matches the authoritative FR key « …seront crédités sous peu » (AC "shortly" verbatim), superseding the earlier "dans une minute" draft.] Pack cards show unit price + never-expires + Best-value badge per FR-25; free users see the same cards.</p>
 </body>
 </html>

@@ -145,6 +145,56 @@ describe('BillingService', () => {
     })
   })
 
+  it('gets /billing/status/{txnId}/ with the since bound (5.6)', async () => {
+    const service = new BillingService()
+    const status = {
+      id: 'txn-1',
+      status: 'succeeded',
+      type: 'pack_purchase',
+      credits_granted: 75,
+      date: '2026-08-11T12:00:00+01:00',
+    }
+    const getMock = stubGet(service, status)
+
+    const result = await service.status('checkout_abc', '2026-08-11T11:59:00+01:00')
+
+    expect(getMock).toHaveBeenCalledWith('/billing/status/checkout_abc/', {
+      params: { since: '2026-08-11T11:59:00+01:00' },
+    })
+    expect(result).toEqual(status)
+  })
+
+  it('pins the StatusResult shape to the backend exact keys (5.6)', async () => {
+    const service = new BillingService()
+    const row = {
+      id: 'txn-1',
+      status: 'pending',
+      type: null,
+      credits_granted: null,
+      date: null,
+    }
+    const getMock = stubGet(service, row)
+    const result = await service.status('checkout_abc', '2026-08-11T11:59:00+01:00')
+    expect(getMock).toHaveBeenCalledTimes(1)
+    expect(Object.keys(result).sort()).toEqual(
+      ['id', 'status', 'type', 'credits_granted', 'date'].sort(),
+    )
+  })
+
+  it('pins the CheckoutResult shape with the additive started_at (5.6 Winston Q6)', async () => {
+    const service = new BillingService()
+    const postMock = stubPost(service, {
+      checkout_url: 'https://pay.chargily.com/checkout/1',
+      checkout_id: 'chk-1',
+      started_at: '2026-08-11T11:59:00+01:00',
+    })
+    const result = await service.createCheckout('subscription', 1500)
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(Object.keys(result).sort()).toEqual(
+      ['checkout_url', 'checkout_id', 'started_at'].sort(),
+    )
+  })
+
   it('pins the PlanResult shape to the backend exact keys', () => {
     expect(Object.keys(PLAN).sort()).toEqual(
       ['tier', 'status', 'renews_on', 'balances'].sort(),

@@ -140,9 +140,10 @@
       "support_link": "le support"
     },
     "status": {
-      "pending": "Traitement du paiement...",
+      "polling": "Confirmation du paiement…",
+      "success_pack": "{n} crédits ajoutés — les crédits de pack n'expirent jamais",
+      "success_subscription": "{n} crédits ajoutés",
       "succeeded": "Paiement réussi !",
-      "failed": "Paiement échoué",
       "timeout": "Paiement reçu — les crédits seront crédités sous peu"
     },
     "dzone": {

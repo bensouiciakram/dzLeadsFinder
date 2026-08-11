@@ -45,7 +45,34 @@ export type CheckoutType = 'subscription' | 'pack'
 export type CheckoutResult = {
   checkout_url: string
   checkout_id: string
+  // 5.6 (Winston Q6): server-issued checkout start — the exact since-bound
+  // for the status polling (client-ahead/behind skew must not widen the
+  // old-row window).
+  started_at: string
 }
+
+// 5.6 status polling contract (Winston Q2): {id, status, type,
+// credits_granted, date} — RAW codes (the ledger precedent — localize
+// client-side per AD-8); no row in range returns the SAME shape with
+// status 'pending' and nulls (absence is a state — never 404 mid-poll).
+export type StatusResult = {
+  id: string | null
+  status: string
+  type: string | null
+  credits_granted: number | null
+  date: string | null
+}
+
+export const TERMINAL_PAYMENT_STATUSES: ReadonlySet<string> = new Set([
+  'succeeded',
+  'failed',
+  'refunded',
+])
+
+// The card's poll budget (AC ≤60s) — the FE deadline is checkout_start + 60s.
+export const PAYMENT_POLL_DEADLINE_MS = 60_000
+// AC polling cadence: every 5 seconds.
+export const PAYMENT_POLL_INTERVAL_MS = 5_000
 
 // The FE sends the server price so create-checkout passes its price check;
 // the server is authoritative (a mismatch is a loud 400 — price drift
@@ -131,6 +158,18 @@ export class BillingService extends HttpClient {
       type,
       amount,
     })
+    return data
+  }
+
+  // 5.6: the status-polling endpoint. txnId = the Chargily checkout id
+  // (5.2 D14); since = the server-issued started_at echoed back (the
+  // REQUIRED bound — a stale row from a previous checkout must never flip
+  // the card).
+  async status(txnId: string, since: string): Promise<StatusResult> {
+    const { data } = await this.client.get<StatusResult>(
+      `/billing/status/${encodeURIComponent(txnId)}/`,
+      { params: { since } },
+    )
     return data
   }
 }

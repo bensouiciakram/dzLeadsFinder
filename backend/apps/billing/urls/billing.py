@@ -6,6 +6,7 @@ from apps.billing.views import (
     HistoryView,
     PacksView,
     PlanView,
+    StatusView,
 )
 
 app_name = 'billing'
@@ -16,4 +17,5 @@ urlpatterns = [
     path('packs/', PacksView.as_view(), name='packs'),
     path('history/', HistoryView.as_view(), name='history'),
     path('cancel/', CancelView.as_view(), name='cancel'),
+    path('status/<str:txn_id>/', StatusView.as_view(), name='status'),
 ]

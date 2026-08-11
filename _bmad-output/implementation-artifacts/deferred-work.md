@@ -1,4 +1,9 @@
-# Deferred Work
+
+## Deferred from: code review of story-5.6 (2026-08-11)
+
+- **Checkout-id-keyed polling** (the concurrent-checkout V1 limitation, John V5/Winston Q1): `GET /api/billing/status/{txnId}/` resolves the user's latest row within a since-bound because the Chargily checkout id cannot be matched to a payment_transactions row at V1 — the webhook's shaped metadata `checkout_id` stores the EVENT id (5.2 B13 docs gate). Two deliberate concurrent checkouts in one 60s window can misattribute a second tab's terminal row into the first tab's card (a false-failure card for a still-pending checkout is possible — Blind Hunter's severity note for the V1.5 fix priority). The fix: pin the Chargily payload semantics at the docs gate → `chargily_checkout_id` column + webhook write + exact-match lookup (one migration, one view change; the view docstring already records the upgrade path). [backend/apps/billing/views.py, backend/apps/billing/webhooks.py]
+- **Abandoned-checkout timeout copy** (John V4): the 60s polling window cannot distinguish paid-but-delayed from abandoned, so an abandoner sees "Payment received — credits will post shortly" (info-toned, non-blocking, entry-scoped — the AC pins the timeout note unconditionally; the AC-literal behavior ships). A neutral V1.5 phrasing ("still confirming your payment") is a candidate — not a 5.6 change. [frontend/messages/{en,fr,ar}.json billing.status.timeout]
+- **Failure EMAIL for charged-but-ungrantable payments** — unchanged from the 5.5 review deferral (V1.5; the visible surface — Payment History failed rows + the 5.6 failed card with the support mailto — shipped in 5.5/5.6).# Deferred Work
 
 ## Deferred from: code review of story-5.5 (2026-08-10)
 

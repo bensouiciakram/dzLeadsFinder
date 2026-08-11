@@ -14,13 +14,40 @@ import { cn } from '@/lib/utils'
 export function CreditsPill() {
   const t = useTranslations()
   const { user } = useSession()
-  const { balance } = useCredits()
+  const { balance, baselineNonce } = useCredits()
   const { toast } = useToast()
   const prevBalanceRef = useRef<number | null>(null)
   const userKeyRef = useRef<string | null>(null)
+  const nonceRef = useRef<number>(baselineNonce)
+  // 5.6 review P1: the baseline reset must land on the GRANT-ANNOUNCED
+  // balance, not the pre-grant one. The StatusCard bumps the nonce and
+  // refreshes the session in the same effect — the new balance arrives a
+  // frame later via the async /me probe. Capturing at the nonce frame
+  // would diff the grant balance against the pre-grant baseline and fire
+  // the false DECREASE the handoff was built to prevent. The pending
+  // marker defers the capture to the next balance-change frame.
+  const pendingResetRef = useRef(false)
   const [announceDecrease, setAnnounceDecrease] = useState(false)
 
   useEffect(() => {
+    // 5.6 (Sally's pill-trap handoff): the status-card success flow bumps
+    // the baseline nonce — the grant-announced balance update (e.g. a
+    // renewal's pool math 250 → 200) must be treated mount-like, never as
+    // a spend decrease.
+    if (baselineNonce !== nonceRef.current) {
+      nonceRef.current = baselineNonce
+      pendingResetRef.current = true
+      setAnnounceDecrease(false)
+      return
+    }
+    if (pendingResetRef.current) {
+      // The grant-announced balance has landed — capture IT as the fresh
+      // baseline (review P1: never the pre-grant value).
+      pendingResetRef.current = false
+      prevBalanceRef.current = balance
+      setAnnounceDecrease(false)
+      return
+    }
     // A user change (logout/login, or the 4.2 refresh-reconcile re-seeding
     // the provider from a fresh /me probe) must never read the previous
     // user's balance as a decrease: reset the diff baseline so the first
@@ -39,7 +66,7 @@ export function CreditsPill() {
       return
     }
     setAnnounceDecrease(balance < prev)
-  }, [balance, user])
+  }, [balance, user, baselineNonce])
 
   if (user === null || balance === null) return null
 

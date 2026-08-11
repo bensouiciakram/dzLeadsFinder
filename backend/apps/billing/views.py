@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any
 
 from django.utils import timezone
@@ -209,6 +210,112 @@ class CancelView(APIView):
             )
 
 
+class StatusView(APIView):
+    """GET /api/billing/status/{txn_id}/ — the 5.6 payment-polling endpoint.
+
+    ``txn_id`` = the Chargily CHECKOUT id (5.2 D14 — the create-checkout
+    response id), never a payment_transactions id. The row is resolved
+    USER-SCOPED and SINCE-BOUND: ``since`` is REQUIRED (an ISO datetime —
+    the FE echoes the server-issued checkout ``started_at`` back), so a row
+    created before the checkout began can never be that checkout's row (the
+    false-success guard). The lookup NEVER relies on
+    ``chargily_metadata.checkout_id`` — that field stores the webhook EVENT
+    id (deferred-work 5.2 B13); the exact checkout-id match is V1.5 behind
+    the docs gate (column + webhook write + exact lookup).
+
+    Contract (Winston Q1-Q3): ``{id, status, type, credits_granted, date}``
+    — RAW codes (the ledger precedent — the FE localizes per AD-8); no row
+    in range returns the SAME shape with ``status='pending'`` and nulls
+    (absence is a state — never 404 mid-poll, an error branch in the 5s
+    poll loop is worse); failed/refunded rows report raw (the FE maps
+    refunded into the failed family). Read-only and lock-free: the grant
+    task owns status transitions under its row lock — a poll observes
+    pre- or post-commit state, never torn (monotonic pending→succeeded/
+    failed). The ``payments_user_created_idx`` index covers the lookup
+    (equality user + range created_at) — no new index, no migration.
+    """
+
+    MAX_TXN_ID_LENGTH = 255
+
+    def get(self, request: Request, txn_id: str) -> Response:
+        from django.utils.dateparse import parse_datetime
+
+        from apps.billing.models import PaymentTransaction
+
+        if not txn_id or len(txn_id) > self.MAX_TXN_ID_LENGTH:
+            return Response(
+                {
+                    'detail': 'txn_id must be a non-empty string '
+                    f'≤ {self.MAX_TXN_ID_LENGTH} characters',
+                    'code': 'invalid_txn_id',
+                },
+                status=400,
+            )
+        since_raw = request.query_params.get('since')
+        if not since_raw:
+            # Never a silent default: without a bound, a stale succeeded row
+            # from a previous checkout would flip the card (Winston Q1 — a
+            # default IS the rejected option (c)).
+            return Response(
+                {'detail': 'since is required', 'code': 'since_required'},
+                status=400,
+            )
+        since = parse_datetime(since_raw)
+        if since is None:
+            return Response(
+                {'detail': 'since must be an ISO 8601 datetime', 'code': 'invalid_since'},
+                status=400,
+            )
+        if timezone.is_naive(since):
+            # SQLite stores naive-UTC, PG aware — comparisons must be TZ
+            # consistent (Winston Q5).
+            from datetime import timezone as dt_timezone
+
+            since = timezone.make_aware(since, dt_timezone.utc)
+        # Review P5: cap the window. The `since` bound is client-supplied —
+        # a tampered stash with an ancient started_at would defeat the
+        # false-success guard (an old succeeded row flips the card). The
+        # polling + reconciliation horizon is minutes; 24h is generous for
+        # any realistic return while bounding the lookup to this checkout's
+        # era.
+        if since < timezone.now() - timedelta(hours=24):
+            return Response(
+                {
+                    'detail': 'since must be within the last 24 hours',
+                    'code': 'invalid_since',
+                },
+                status=400,
+            )
+
+        row = (
+            PaymentTransaction.objects.filter(
+                user=request.user, created_at__gte=since
+            )
+            # -id tiebreak: the P8 deterministic-ordering precedent.
+            .order_by('-created_at', '-id')
+            .first()
+        )
+        if row is None:
+            return Response(
+                {
+                    'id': None,
+                    'status': 'pending',
+                    'type': None,
+                    'credits_granted': None,
+                    'date': None,
+                }
+            )
+        return Response(
+            {
+                'id': str(row.id),
+                'status': row.status,
+                'type': row.type,
+                'credits_granted': row.credits_granted,
+                'date': row.created_at.isoformat(),
+            }
+        )
+
+
 def _validation_response(exc: ValidationError) -> Response:
     detail = exc.detail
     message = str(detail[0]) if isinstance(detail, list) else str(detail)
@@ -310,5 +417,12 @@ class CreateCheckoutView(APIView):
                 status=502,
             )
         return Response(
-            {'checkout_url': details.checkout_url, 'checkout_id': details.checkout_id}
+            {
+                'checkout_url': details.checkout_url,
+                'checkout_id': details.checkout_id,
+                # 5.6 (Winston Q6): the additive started_at is the exact
+                # since-bound for the status polling — server-issued so
+                # client-ahead/behind skew cannot widen the old-row window.
+                'started_at': timezone.now().isoformat(),
+            }
         )

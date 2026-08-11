@@ -63,13 +63,35 @@ class TestCreateCheckoutView:
             content_type='application/json',
         )
         assert response.status_code == 200
-        assert response.data == {'checkout_url': CHECKOUT_URL, 'checkout_id': CHECKOUT_ID}
+        assert response.data['checkout_url'] == CHECKOUT_URL
+        assert response.data['checkout_id'] == CHECKOUT_ID
         assert captured['plan_data'] == {
             'user_id': str(create_user.pk),
             'type': 'subscription',
             'amount': SUBSCRIPTION_PRICE_DZD,
             'description': SUBSCRIPTION_DESCRIPTION,
         }
+
+    def test_returns_server_started_at(
+        self,
+        monkeypatch: Any,
+        logged_in_client: Any,
+    ) -> None:
+        # 5.6 Winston Q6: the additive started_at is the exact since-bound
+        # for the status polling — server-issued so client-ahead/behind
+        # skew cannot widen the old-row window. Parseable ISO, near-now.
+        _mock_client(monkeypatch)
+        response = logged_in_client.post(
+            '/api/billing/create-checkout/',
+            {'type': 'subscription', 'amount': 1500},
+            content_type='application/json',
+        )
+        assert response.status_code == 200
+        started_at = response.data['started_at']
+        from datetime import datetime, timedelta
+
+        parsed = datetime.fromisoformat(started_at)
+        assert timezone.now() - timedelta(seconds=30) <= parsed <= timezone.now()
 
     def test_creates_pack_checkout(self, monkeypatch: Any, logged_in_client: Any) -> None:
         captured: dict[str, Any] = {}

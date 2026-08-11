@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 
 import { BillingPage } from '@/components/billing/BillingPage'
@@ -72,6 +72,20 @@ vi.mock('@/hooks/useBilling', () => ({
   useBilling: () => hoisted.billing,
 }))
 
+const statusCardProps = vi.hoisted(() => ({
+  checkout: null as { checkout_id: string; started_at: string } | null,
+  fallback: null as 'success' | 'failure' | null,
+}))
+
+vi.mock('@/components/billing/StatusCard', () => ({
+  StatusCard: ({ checkout, fallback }: { checkout: unknown; fallback: unknown }) => {
+    statusCardProps.checkout = checkout as never
+    statusCardProps.fallback = fallback as never
+    if (checkout === null && fallback === null) return null
+    return <div data-testid="status-card" />
+  },
+}))
+
 const ACTIVE_PLAN: PlanResult = {
   tier: 'starter',
   status: 'active',
@@ -127,6 +141,13 @@ function freeBilling() {
 }
 
 describe('BillingPage', () => {
+  beforeEach(() => {
+    statusCardProps.checkout = null
+    statusCardProps.fallback = null
+    window.sessionStorage.clear()
+    window.history.replaceState({}, '', '/en/billing')
+  })
+
   it('renders the four stacked sections for an active subscriber', () => {
     activeBilling()
     render(<BillingPage />)
@@ -158,5 +179,84 @@ describe('BillingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel subscription' }))
 
     await waitFor(() => expect(hoisted.billing.cancel.mutate).toHaveBeenCalled())
+  })
+
+  it('renders no status card without an entry or a return param', () => {
+    activeBilling()
+    render(<BillingPage />)
+    expect(screen.queryByTestId('status-card')).toBeNull()
+  })
+
+  it('renders the status card when a pending checkout entry exists (John V3 entry path)', () => {
+    activeBilling()
+    window.sessionStorage.setItem(
+      'billing.pending_checkout',
+      JSON.stringify({
+        checkout_id: 'checkout_abc',
+        started_at: '2026-08-11T12:00:00+01:00',
+      }),
+    )
+    render(<BillingPage />)
+    expect(screen.getByTestId('status-card')).toBeInTheDocument()
+    expect(statusCardProps.checkout).toEqual({
+      checkout_id: 'checkout_abc',
+      started_at: '2026-08-11T12:00:00+01:00',
+    })
+    expect(statusCardProps.fallback).toBeNull()
+  })
+
+  it('uses the ?status=success param as a static fallback when no entry exists', () => {
+    activeBilling()
+    window.history.replaceState({}, '', '/en/billing?status=success')
+    render(<BillingPage />)
+    expect(screen.getByTestId('status-card')).toBeInTheDocument()
+    expect(statusCardProps.checkout).toBeNull()
+    expect(statusCardProps.fallback).toBe('success')
+  })
+
+  it('uses the ?status=failure param as a static fallback when no entry exists', () => {
+    activeBilling()
+    window.history.replaceState({}, '', '/en/billing?status=failure')
+    render(<BillingPage />)
+    expect(statusCardProps.fallback).toBe('failure')
+  })
+
+  it('strips the status param after the first render (no re-trigger on refresh)', () => {
+    activeBilling()
+    window.history.replaceState({}, '', '/en/billing?status=success')
+    render(<BillingPage />)
+    expect(window.location.search).not.toContain('status=')
+  })
+
+  it('lets the entry path win when both the entry and the param exist', () => {
+    activeBilling()
+    window.history.replaceState({}, '', '/en/billing?status=failure')
+    window.sessionStorage.setItem(
+      'billing.pending_checkout',
+      JSON.stringify({
+        checkout_id: 'checkout_abc',
+        started_at: '2026-08-11T12:00:00+01:00',
+      }),
+    )
+    render(<BillingPage />)
+    expect(statusCardProps.checkout).not.toBeNull()
+    expect(statusCardProps.fallback).toBeNull()
+  })
+
+  it('strips the status param on the entry-wins path too (review P3)', () => {
+    // The param must not survive an entry-wins session — after the stash
+    // clears (terminal state), a refresh would otherwise re-trigger the
+    // static fallback card.
+    activeBilling()
+    window.history.replaceState({}, '', '/en/billing?status=failure')
+    window.sessionStorage.setItem(
+      'billing.pending_checkout',
+      JSON.stringify({
+        checkout_id: 'checkout_abc',
+        started_at: '2026-08-11T12:00:00+01:00',
+      }),
+    )
+    render(<BillingPage />)
+    expect(window.location.search).not.toContain('status=')
   })
 })
