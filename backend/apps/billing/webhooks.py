@@ -36,6 +36,27 @@ def _normalize_event_id(event_id: Any) -> Optional[str]:
     return normalized or None
 
 
+def _metadata_dict(payload_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize Chargily metadata to a dict (manual-review fix 2026-08-11).
+
+    The v2 API stores metadata as a LIST of dicts (SDK ``Checkout.metadata:
+    List[dict]`` — confirmed against the live test API round-trip). The
+    5.2-era handler read ``metadata`` as a dict, so post-shape-fix webhook
+    payloads would lose user_id/type/amount. Merges the list (later keys
+    win), passes dicts through, and never raises on junk.
+    """
+    metadata = payload_data.get('metadata')
+    if isinstance(metadata, dict):
+        return metadata
+    if isinstance(metadata, list):
+        merged: Dict[str, Any] = {}
+        for item in metadata:
+            if isinstance(item, dict):
+                merged.update(item)
+        return merged
+    return {}
+
+
 def _mapped_type(payload_data: Dict[str, Any]) -> Tuple[str, bool]:
     """Map a checkout.paid event to a transaction type (AC table; 5.2 D11).
 
@@ -44,8 +65,8 @@ def _mapped_type(payload_data: Dict[str, Any]) -> Tuple[str, bool]:
     ``subscription_creation`` with a loud log instead of a 500/drop
     (Winston Q5).
     """
-    metadata = payload_data.get('metadata')
-    checkout_type = metadata.get('type') if isinstance(metadata, dict) else None
+    metadata = _metadata_dict(payload_data)
+    checkout_type = metadata.get('type')
 
     if checkout_type == 'pack':
         return 'pack_purchase', False
@@ -68,11 +89,10 @@ def _resolve_amount(payload_data: Dict[str, Any]) -> Optional[int]:
     amount = payload_data.get('amount')
     if isinstance(amount, int) and not isinstance(amount, bool):
         candidates.append(amount)
-    metadata = payload_data.get('metadata')
-    if isinstance(metadata, dict):
-        meta_amount = metadata.get('amount')
-        if isinstance(meta_amount, int) and not isinstance(meta_amount, bool):
-            candidates.append(meta_amount)
+    metadata = _metadata_dict(payload_data)
+    meta_amount = metadata.get('amount')
+    if isinstance(meta_amount, int) and not isinstance(meta_amount, bool):
+        candidates.append(meta_amount)
     if not candidates:
         return None
     # Provider-confirmed amount preferred, but a glitched provider value
@@ -108,7 +128,7 @@ def _shaped_metadata(
     """
     from django.conf import settings
 
-    metadata = payload_data.get('metadata')
+    metadata = _metadata_dict(payload_data)
     subscription_id = payload_data.get('subscription_id')
     subscription = payload_data.get('subscription')
     if subscription_id is None and isinstance(subscription, dict):
@@ -118,7 +138,7 @@ def _shaped_metadata(
         'payment_method': payload_data.get('payment_method'),
         'mode': payload_data.get('mode'),
         'server_mode': settings.CHARGILY_MODE,
-        'checkout_type': metadata.get('type') if isinstance(metadata, dict) else None,
+        'checkout_type': metadata.get('type'),
         'amount': amount,
         'user_id': user_id_value,
         'subscription_id': subscription_id,
@@ -185,8 +205,8 @@ def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
     from apps.billing.models import Subscription
 
     event_id = payload_data.get('id')
-    metadata = payload_data.get('metadata')
-    user_id_value = metadata.get('user_id') if isinstance(metadata, dict) else None
+    metadata = _metadata_dict(payload_data)
+    user_id_value = metadata.get('user_id')
     subscription = payload_data.get('subscription')
     payload_sub_id = payload_data.get('subscription_id')
     if payload_sub_id is None and isinstance(subscription, dict):
@@ -271,7 +291,13 @@ def chargily_webhook(request: HttpRequest) -> JsonResponse:
     if declared_length > MAX_WEBHOOK_BYTES:
         return JsonResponse({'detail': 'payload too large'}, status=413)
 
-    signature = request.headers.get('X-Signature')
+    # Manual-review fix (2026-08-11): Chargily's official SDK signs webhooks
+    # with HMAC-SHA256 over the raw body keyed by the SECRET key and sends
+    # the digest in the `signature` header (chargily-pay-python
+    # src/chargily_pay/api.py validate_signature + docs/examples/django.md).
+    # The 5.2-era pin assumed `X-Signature` — accept the documented header
+    # first, keep the old spelling as a fallback for safety.
+    signature = request.headers.get('signature') or request.headers.get('X-Signature')
     raw_payload = request.body
     if not verify_webhook_signature(raw_payload, signature):
         return JsonResponse({'detail': 'invalid signature'}, status=400)
@@ -319,8 +345,8 @@ def chargily_webhook(request: HttpRequest) -> JsonResponse:
         )
         return JsonResponse({'detail': 'invalid amount'}, status=400)
 
-    metadata = payload_data.get('metadata')
-    user_id_value = metadata.get('user_id') if isinstance(metadata, dict) else None
+    metadata = _metadata_dict(payload_data)
+    user_id_value = metadata.get('user_id')
     user = _resolve_user(user_id_value)
     shaped = _shaped_metadata(payload_data, amount, user_id_value)
 

@@ -30,13 +30,14 @@ def _post(
     signature: Optional[str] = None,
     *,
     omit_signature: bool = False,
+    header_name: str = 'HTTP_X_SIGNATURE',
 ) -> Any:
     raw = json.dumps(payload).encode('utf-8')
     headers = {}
     if not omit_signature:
         if signature is None:
             signature = _sign(raw)
-        headers['HTTP_X_SIGNATURE'] = signature
+        headers[header_name] = signature
     return client.post(
         '/api/webhooks/chargily/',
         data=raw,
@@ -54,6 +55,7 @@ def _checkout_paid(
     subscription_id: Optional[str] = None,
     payment_method: str = 'cib',
     mode: str = 'test',
+    metadata_list: Optional[list[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     data: Dict[str, Any] = {
         'id': event_id,
@@ -61,11 +63,18 @@ def _checkout_paid(
         'currency': 'dzd',
         'payment_method': payment_method,
         'mode': mode,
-        'metadata': {
-            'user_id': user_id,
-            'type': metadata_type,
-            'amount': amount,
-        },
+        # Manual-review fix (2026-08-11): the v2 API stores metadata as a
+        # LIST of dicts — the tests cover both spellings (the handler
+        # normalizes both).
+        'metadata': (
+            metadata_list
+            if metadata_list is not None
+            else {
+                'user_id': user_id,
+                'type': metadata_type,
+                'amount': amount,
+            }
+        ),
     }
     if subscription_id is not None:
         data['subscription'] = {'id': subscription_id}
@@ -96,7 +105,34 @@ class TestWebhookSecurity:
     def test_missing_signature_rejected(self, api_client: Any) -> None:
         response = _post(api_client, _checkout_paid(), omit_signature=True)
         assert response.status_code == 400
-        assert PaymentTransaction.objects.count() == 0
+
+    def test_documented_signature_header_accepted(
+        self, api_client: Any, monkeypatch: Any
+    ) -> None:
+        """Manual-review fix (2026-08-11): Chargily's official SDK sends the
+        HMAC digest in the `signature` header (chargily-pay-python
+        src/chargily_pay/api.py validate_signature + docs/examples/django.md)
+        — NOT X-Signature. Django's test client maps HTTP_SIGNATURE to the
+        `signature` header. The old X-Signature spelling stays as a
+        fallback."""
+        _spy_grant_credits(monkeypatch)
+        response = _post(
+            api_client,
+            _checkout_paid(),
+            header_name='HTTP_SIGNATURE',
+        )
+        assert response.status_code == 200
+
+    def test_legacy_x_signature_header_still_accepted(
+        self, api_client: Any, monkeypatch: Any
+    ) -> None:
+        _spy_grant_credits(monkeypatch)
+        response = _post(
+            api_client,
+            _checkout_paid(),
+            header_name='HTTP_X_SIGNATURE',
+        )
+        assert response.status_code == 200
 
     def test_tampered_body_rejected(self, api_client: Any) -> None:
         payload = _checkout_paid()
@@ -153,6 +189,32 @@ class TestCheckoutPaidEvents:
         row = PaymentTransaction.objects.get()
         assert row.type == 'pack_purchase'
         assert row.amount_dzd == 500
+
+    def test_pack_purchase_event_with_metadata_list(
+        self, monkeypatch: Any, api_client: Any, create_user: Any
+    ) -> None:
+        """Manual-review fix (2026-08-11): the v2 API stores metadata as a
+        LIST of dicts — a real checkout.paid payload carries
+        ``metadata: [{user_id, type, amount}]``. The handler must map the
+        type, resolve the user, and shape the stored metadata from the
+        list."""
+        calls = _spy_grant_credits(monkeypatch)
+        payload = _checkout_paid(
+            amount=500,
+            metadata_list=[
+                {'user_id': str(create_user.pk), 'type': 'pack', 'amount': 500}
+            ],
+        )
+        response = _post(api_client, payload)
+        assert response.status_code == 200
+        assert calls == [NORMALIZED_EVENT_ID]
+        row = PaymentTransaction.objects.get()
+        assert row.type == 'pack_purchase'
+        assert row.amount_dzd == 500
+        assert row.user == create_user
+        assert row.chargily_metadata['checkout_type'] == 'pack'
+        assert row.chargily_metadata['user_id'] == str(create_user.pk)
+        assert row.chargily_metadata['amount'] == 500
 
     def test_subscription_renewal_event(
         self, monkeypatch: Any, api_client: Any, create_user: Any

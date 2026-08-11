@@ -6,13 +6,15 @@ import pytest
 from django.conf import settings
 
 from apps.billing.chargily import (
+    CHECKOUTS_API_BASE,
+    CHECKOUTS_TEST_BASE,
     ChargilyError,
     create_checkout,
     create_checkout_details,
     verify_webhook_signature,
 )
 
-CHECKOUTS_API_URL = 'https://pay.chargily.com/api/v2/checkouts'
+CHECKOUTS_API_URL = f'{CHECKOUTS_TEST_BASE}/checkouts'
 
 
 def _sign(payload: bytes, secret: str) -> str:
@@ -51,15 +53,42 @@ class TestCreateCheckout:
         body = captured['kwargs']['json']
         assert body['amount'] == 1500
         assert body['currency'] == 'dzd'
-        assert body['payment_methods'] == ['cib', 'edahabia']
-        assert body['metadata'] == {
-            'user_id': 42,
-            'type': 'subscription',
-            'amount': 1500,
-        }
+        # Manual-review fix (2026-08-11): the v2 API rejects a
+        # `payment_methods` ARRAY ("Unknown parameter") — the singular
+        # `payment_method` is the contract; omitting it entirely lets the
+        # hosted page offer both CIB + EDahabia (FR-24).
+        assert 'payment_method' not in body or isinstance(body['payment_method'], str)
+        assert 'payment_methods' not in body
+        # Manual-review fix: metadata must be a LIST of dicts (SDK
+        # Checkout.metadata: List[dict] — the API round-trips [{...}]).
+        assert body['metadata'] == [
+            {'user_id': 42, 'type': 'subscription', 'amount': 1500}
+        ]
         assert body['success_url'] == settings.CHARGILY_SUCCESS_URL
         assert body['failure_url'] == settings.CHARGILY_FAILURE_URL
         assert captured['kwargs']['timeout'] > 0
+
+    def test_live_mode_uses_production_url(self, monkeypatch: Any, settings: Any) -> None:
+        captured: Dict[str, Any] = {}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> Dict[str, str]:
+                return {
+                    'id': 'checkout_live',
+                    'checkout_url': 'https://pay.chargily.com/checkout/live',
+                }
+
+        def fake_post(url: str, **kwargs: Any) -> FakeResponse:
+            captured['url'] = url
+            return FakeResponse()
+
+        settings.CHARGILY_MODE = 'live'
+        monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
+        create_checkout({'user_id': 42, 'type': 'subscription', 'amount': 1500})
+        assert captured['url'] == f'{CHECKOUTS_API_BASE}/checkouts'
 
     def test_pack_checkout_uses_pack_type(self, monkeypatch: Any) -> None:
         captured: Dict[str, Any] = {}
@@ -80,11 +109,9 @@ class TestCreateCheckout:
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
         create_checkout({'user_id': 7, 'type': 'pack', 'amount': 500})
-        assert captured['kwargs']['json']['metadata'] == {
-            'user_id': 7,
-            'type': 'pack',
-            'amount': 500,
-        }
+        assert captured['kwargs']['json']['metadata'] == [
+            {'user_id': 7, 'type': 'pack', 'amount': 500}
+        ]
 
     def test_subscription_description_echoed_into_payload(self, monkeypatch: Any) -> None:
         """The hosted checkout renders the payload description (5.3 AC clause 1)."""

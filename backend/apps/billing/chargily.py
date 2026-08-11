@@ -1,15 +1,20 @@
 """Chargily Pay v2 API client.
 
-Envelope pinned 2026-08-09 (public Chargily Pay v2 documentation):
-- checkouts: POST https://pay.chargily.com/api/v2/checkouts
-- auth: ``Authorization: Bearer <CHARGILY_API_KEY>``
-- currency ``dzd``; payment methods restricted to CIB + EDahabia
+Envelope CONFIRMED 2026-08-11 against the live test API + the official
+chargily-pay-python SDK (this resolves the 5.2 D11 docs-gate risk):
+- checkouts: POST https://pay.chargily.net/test/api/v2/checkouts (test) /
+  https://pay.chargily.net/api/v2/checkouts (live) — NOT pay.chargily.com
+  (the production host 401s test keys).
+- auth: ``Authorization: Bearer <CHARGILY_API_KEY>`` (the test_sk_ key).
+- payload: ``amount`` + ``currency: dzd``; ``payment_method`` is a SINGLE
+  string (a ``payment_methods`` array is rejected: "Unknown parameter");
+  omitting it lets the hosted page offer both CIB + EDahabia (FR-24).
+- ``metadata`` is a LIST of dicts (SDK ``Checkout.metadata: List[dict]``;
+  the API round-trips [{...}]) — the webhook handler normalizes it.
 - webhook signatures: HMAC-SHA256 hex digest over the RAW request body,
-  verified against ``CHARGILY_WEBHOOK_SECRET`` (X-Signature header).
-
-NOTE (5.2 D11 risk): docs.chargily.com was unreachable from the dev
-environment at pin time. The envelope is isolated to this module so a
-docs-pin correction is a single-file change plus its tests.
+  verified against ``CHARGILY_WEBHOOK_SECRET`` (the secret key), sent in
+  the ``signature`` header (SDK validate_signature + django.md example;
+  the 5.7-era X-Signature spelling is kept as a fallback).
 """
 
 import hashlib
@@ -23,7 +28,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-CHECKOUTS_API_URL = 'https://pay.chargily.com/api/v2/checkouts'
+CHECKOUTS_API_BASE = 'https://pay.chargily.net/api/v2'
+CHECKOUTS_TEST_BASE = 'https://pay.chargily.net/test/api/v2'
 TIMEOUT_SECONDS = 10.0
 
 
@@ -37,33 +43,41 @@ class CheckoutDetails:
     checkout_id: str
 
 
+def _checkouts_api_url() -> str:
+    mode = getattr(settings, 'CHARGILY_MODE', 'test')
+    base = CHECKOUTS_TEST_BASE if mode == 'test' else CHECKOUTS_API_BASE
+    return f'{base}/checkouts'
+
+
 def _create_checkout(plan_data: Dict[str, Any]) -> Dict[str, str]:
     headers = {
         'Authorization': f'Bearer {settings.CHARGILY_API_KEY}',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
     }
+    # metadata must be a LIST of dicts (SDK contract + live API round-trip).
     payload: Dict[str, Any] = {
         'amount': plan_data['amount'],
         'currency': 'dzd',
-        'payment_methods': ['cib', 'edahabia'],
-        'metadata': {
-            'user_id': plan_data['user_id'],
-            'type': plan_data['type'],
-            'amount': plan_data['amount'],
-        },
+        'metadata': [
+            {
+                'user_id': plan_data['user_id'],
+                'type': plan_data['type'],
+                'amount': plan_data['amount'],
+            }
+        ],
         'success_url': settings.CHARGILY_SUCCESS_URL,
         'failure_url': settings.CHARGILY_FAILURE_URL,
     }
     # The hosted checkout renders the payload description (5.3 AC clause 1 —
     # "DZLeads Starter — 200 credits/mo"). Only subscriptions carry one in
-    # 5.3 (5.2 D11 envelope risk rides the isolated adapter).
+    # 5.3.
     description = plan_data.get('description')
     if description:
         payload['description'] = description
     try:
         response = requests.post(
-            CHECKOUTS_API_URL, headers=headers, json=payload, timeout=TIMEOUT_SECONDS
+            _checkouts_api_url(), headers=headers, json=payload, timeout=TIMEOUT_SECONDS
         )
         response.raise_for_status()
     except requests.RequestException as exc:
