@@ -56,15 +56,18 @@ export function DangerZone({ plan, phase, cancel }: Props) {
 
   const accessUntil = plan!.renews_on
   const dialogBody = accessUntil !== null ? (
+    // Review P1 fix: next-intl v4 rich text — the date renders via a
+    // <date>…</date> TAG whose chunks are the interpolated {d} value (the
+    // 5.5-era {date}-value-with-function pattern rendered null in the real
+    // formatter).
     t.rich('dzone.dialog_body', {
-      date: () => (
-        <bdi className="tabular-nums">
-          {formatBillingDate(accessUntil, locale, { withTime: false })}
-        </bdi>
+      date: (chunks) => (
+        <bdi className="tabular-nums">{chunks}</bdi>
       ),
+      d: formatBillingDate(accessUntil, locale, { withTime: false }),
     })
   ) : (
-    t('dzone.dialog_body', { date: '' })
+    t('dzone.dialog_body', { d: '' })
   )
 
   function confirmCancel() {

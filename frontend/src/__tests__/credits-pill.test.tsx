@@ -23,8 +23,35 @@ const { useSessionMock } = vi.hoisted(() => {
   }
 })
 
+const planMock = vi.hoisted(() => vi.fn(() => Promise.resolve({
+  tier: 'free', status: null as string | null, renews_on: null,
+  balances: { subscription_balance: 0, pack_balance: 0, display_balance: 15 },
+})))
+vi.mock('@/lib/api/billing-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/billing-service')>()
+  return { ...actual, billingService: { ...actual.billingService, plan: planMock } }
+})
+
 vi.mock('@/components/providers/SessionProvider', () => ({
   useSession: useSessionMock,
+}))
+
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
+const recoveryOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/RecoveryDialogProvider', () => ({
+  useRecoveryDialog: () => ({
+    open: recoveryOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
 }))
 
 function BalanceProbe() {
@@ -42,7 +69,7 @@ function BalanceProbe() {
 
 function renderPill() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ToastProvider>
         <CreditProvider>
@@ -52,6 +79,7 @@ function renderPill() {
       </ToastProvider>
     </QueryClientProvider>,
   )
+  return { ...view, client }
 }
 
 function authenticatedUser(
@@ -228,12 +256,51 @@ describe('CreditsPill zero state', () => {
     expect(pill.className).toContain('text-danger-on-container')
   })
 
-  it('fires the recovery-stub toast on click instead of navigating', () => {
+  it('opens the RecoveryDialog top-up for a STARTER user at 0 credits (the 0-credit recovery entry)', () => {
     renderPill()
     const pill = screen.getByTestId('credits-pill')
     fireEvent.click(pill)
-    expect(screen.getByText('common.credits.no_credits')).toBeInTheDocument()
+    expect(recoveryOpenMock).toHaveBeenCalledTimes(1)
+    expect(upgradeOpenMock).not.toHaveBeenCalled()
     expect(screen.getByTestId('credits-pill')).toHaveAttribute('href', '/credits')
+  })
+
+  it('opens the Upgrade Dialog for a FREE user at 0 credits (the 0-credit recovery entry)', () => {
+    useSessionMock.mockReturnValue({
+      isAuthenticated: true,
+      status: 'authenticated',
+      user: authenticatedUser({ tier: 'free', credits_balance: 0 }),
+    })
+    renderPill()
+    fireEvent.click(screen.getByTestId('credits-pill'))
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('common.credits.no_credits')).not.toBeInTheDocument()
+  })
+
+  it('dispatches on the PLAN tier, not the stale session tier (review P5)', async () => {
+    // The 5.7 expiry sync wrote user.tier='free' in the DB but the open
+    // tab's SESSION still says 'starter' — the plan query (window-focus
+    // refetched) must win the dispatch.
+    useSessionMock.mockReturnValue({
+      isAuthenticated: true,
+      status: 'authenticated',
+      user: authenticatedUser({ tier: 'starter', credits_balance: 0 }),
+    })
+    planMock.mockResolvedValue({
+      tier: 'free',
+      status: 'expired',
+      renews_on: null,
+      balances: { subscription_balance: 0, pack_balance: 0, display_balance: 0 },
+    })
+    const { client } = renderPill()
+    await waitFor(() =>
+      expect(client.getQueryState(['billing', 'plan', 'a@b.dz'])?.status).toBe(
+        'success',
+      ),
+    )
+    fireEvent.click(screen.getByTestId('credits-pill'))
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+    expect(recoveryOpenMock).not.toHaveBeenCalled()
   })
 })
 

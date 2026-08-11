@@ -99,14 +99,23 @@
     "meta_description": "أدر باقة dzLeadsFinder وحزم الرصيد الإضافية وسجل مدفوعاتك واشتراكك.",
     "current_plan": "الباقة الحالية",
     "currency": "د.ج",
-    "renewal_date": "التجديد في {date}",
-    "failed_renewal": "فشل الدفع. يرجى تحديث وسيلة الدفع الخاصة بك.",
-    "upgrade_stub": "الترقية إلى Starter",
+    "failed_renewal": "فشل الدفع — <update>حدِّث وسيلة الدفع للاحتفاظ بـ Starter</update>",
+    "chip": {
+      "free": "مجاني — الترقية إلى Starter",
+      "starter": "Starter — التجديد في <date>{d}</date>",
+      "failed": "Starter — فشل الدفع"
+    },
+    "upgrade_dialog": {
+      "title": "الترقية إلى Starter",
+      "price": "1,500 د.ج/شهريًا",
+      "credits": "200 نقطة شهريًا",
+      "cta": "الاشتراك عبر Chargily"
+    },
     "plan": {
       "free_tier": "الباقة المجانية",
-      "starter_title": "Starter — 1,500 د.ج/شهريًا — التجديد في {date}",
-      "cancelled_title": "ملغاة — الوصول حتى {date}",
-      "failed_title": "فشل الدفع — الوصول حتى {date}",
+      "starter_title": "Starter — 1,500 د.ج/شهريًا — التجديد في <date>{d}</date>",
+      "cancelled_title": "ملغاة — الوصول حتى <date>{d}</date>",
+      "failed_title": "فشل الدفع — الوصول حتى <date>{d}</date>",
       "expired_title": "انتهى الاشتراك",
       "credits_cycle": "النقاط المتبقية في هذه الدورة",
       "credits": "النقاط",
@@ -136,7 +145,7 @@
       "type_subscription_creation": "اشتراك",
       "type_subscription_renewal": "تجديد شهري",
       "type_pack_purchase": "شراء حزمة رصيد",
-      "failed_note": "فشل الدفع. تواصل مع {support} إذا تم خصم المبلغ.",
+      "failed_note": "فشل الدفع. تواصل مع <support>الدعم</support> إذا تم خصم المبلغ.",
       "support_link": "الدعم"
     },
     "status": {
@@ -151,7 +160,7 @@
       "description": "ألغِ اشتراكك. يستمر الوصول حتى نهاية الدورة الحالية — لا استرداد للدورة الحالية.",
       "cancel_button": "إلغاء الاشتراك",
       "dialog_title": "إلغاء اشتراكك؟",
-      "dialog_body": "ستحتفظ بالوصول حتى {date}. لا يوجد استرداد للدورة الحالية.",
+      "dialog_body": "ستحتفظ بالوصول حتى <date>{d}</date>. لا يوجد استرداد للدورة الحالية.",
       "keep": "الاحتفاظ باشتراكي",
       "confirm": "تأكيد الإلغاء",
       "confirming": "جارٍ الإلغاء…",

@@ -17,44 +17,8 @@ const hoisted = vi.hoisted(() => ({
 }))
 
 vi.mock('next-intl', async () => {
-  const en = (await import('../../messages/en.json')).default as Record<
-    string,
-    unknown
-  >
-  function lookup(key: string): string {
-    let node: unknown = en
-    for (const part of key.split('.')) {
-      if (typeof node !== 'object' || node === null) return key
-      node = (node as Record<string, unknown>)[part]
-      if (node === undefined) return key
-    }
-    return typeof node === 'string' ? node : key
-  }
-  return {
-    useLocale: () => 'en',
-    useTranslations: (ns?: string) => {
-      const fn = (key: string, params?: Record<string, unknown>): ReactNode => {
-        const template = lookup(ns === undefined ? key : `${ns}.${key}`)
-        if (params === undefined) return template
-        const parts: ReactNode[] = []
-        const re = /\{(\w+)\}/g
-        let last = 0
-        let m: RegExpExecArray | null
-        while ((m = re.exec(template)) !== null) {
-          if (m.index > last) parts.push(template.slice(last, m.index))
-          const value = params[m[1]]
-          parts.push(
-            typeof value === 'function' ? (value as () => ReactNode)() : (value as ReactNode),
-          )
-          last = m.index + m[0].length
-        }
-        if (last < template.length) parts.push(template.slice(last))
-        return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts
-      }
-      fn.rich = (key: string, params?: Record<string, unknown>): ReactNode => fn(key, params)
-      return fn
-    },
-  }
+  const mock = await import('@/test/next-intl-mock')
+  return mock.buildNextIntlMock()
 })
 
 vi.mock('@/lib/api/billing-service', () => ({

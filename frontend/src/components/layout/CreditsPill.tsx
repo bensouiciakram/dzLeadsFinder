@@ -7,7 +7,9 @@ import { Coins, TriangleAlert } from 'lucide-react'
 
 import { useCredits } from '@/components/providers/CreditProvider'
 import { useSession } from '@/components/providers/SessionProvider'
-import { useToast } from '@/components/providers/ToastProvider'
+import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
+import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider'
+import { usePlan } from '@/hooks/usePlan'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +17,16 @@ export function CreditsPill() {
   const t = useTranslations()
   const { user } = useSession()
   const { balance, baselineNonce } = useCredits()
-  const { toast } = useToast()
+  const { open: openUpgradeDialog } = useUpgradeDialog()
+  const { open: openRecoveryDialog } = useRecoveryDialog()
+  // Review P5 (5.7 full review): the 0-credit dispatch reads the PLAN
+  // query's tier — the SAME entitlement field, but refreshed via the
+  // window-focus refetch (the 5.7 expiry sync writes user.tier='free' in
+  // the DB; the SESSION tier is only refreshed at mount/login, so an open
+  // tab would keep dispatching an expired user to the Starter top-up).
+  // The plan cache is already warm on every authed page (the header chip).
+  const { plan } = usePlan({ user })
+  const dispatchTier = plan?.tier ?? user?.tier
   const prevBalanceRef = useRef<number | null>(null)
   const userKeyRef = useRef<string | null>(null)
   const nonceRef = useRef<number>(baselineNonce)
@@ -87,10 +98,16 @@ export function CreditsPill() {
       }
       onClick={(event) => {
         if (zeroCredits) {
-          // Epic-5 recovery dialog stub (4.2 D9 precedent): the zero-state
-          // click announces the recovery path instead of navigating.
+          // 5.7 (John V1 amendment 3 — the AC's "0-credit recovery"
+          // entry): the zero-state click dispatches by the entitlement
+          // tier. Free users → the single Upgrade Dialog. Starter users →
+          // the RecoveryDialog top-up surface (the 4.2 D9 stub resolved).
           event.preventDefault()
-          toast('common.credits.no_credits')
+          if (dispatchTier === 'free') {
+            openUpgradeDialog()
+            return
+          }
+          openRecoveryDialog()
         }
       }}
       className={cn(

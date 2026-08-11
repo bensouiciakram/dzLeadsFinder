@@ -579,6 +579,21 @@ def expire_failed_renewals() -> None:
     the subscription row re-locked + status re-checked — no ABBA cycle with
     the grant task and no lost cache update vs concurrent reveals (Blind
     Hunter B3). The daily beat re-scans, so a transient failure self-heals.
+
+    5.7 (deferred-work 5.5 "cancelled-row state after period end" + 5.1
+    "tier split-brain — 5.7 cancel sync"): CANCELLED rows join the due
+    predicate — a cancelled subscription keeps Starter entitlement to period
+    end (the AC chip "access until {date}") and is expired by the same beat
+    at period end: pool zeroed (FR-24 no-rollover — John V4; the PACK pool
+    is never touched, FR-25) and ``user.tier`` synced to 'free' (entitlement
+    reads user.tier — search/quota.py). Two 5.7 guards: (a) the in-lock
+    re-check re-applies the FULL due predicate (status AND period end —
+    Winston Q3: the due-SELECT runs before any lock; a paid grant can
+    re-anchor the row in the window, and expiring it would ALSO downgrade a
+    freshly re-activated PAID subscriber); (b) the tier write is skipped
+    when ANOTHER active row exists (the orphan-renewal anomaly — a user can
+    hold cancelled + active rows; the user-row lock serializes against
+    concurrent grants, so the check under the lock is authoritative).
     """
     from django.contrib.auth import get_user_model
     from django.db import transaction
@@ -589,7 +604,7 @@ def expire_failed_renewals() -> None:
 
     now = timezone.now()
     due = Subscription.objects.filter(
-        status__in=('active', 'failed_renewal'),
+        status__in=('active', 'failed_renewal', 'cancelled'),
         current_period_end__lte=now,
     )
     user_model = get_user_model()
@@ -605,7 +620,13 @@ def expire_failed_renewals() -> None:
                 except user_model.DoesNotExist:
                     pass
             locked = Subscription.objects.select_for_update().get(pk=sub.pk)
-            if locked.status not in ('active', 'failed_renewal'):
+            # 5.7 (Winston Q3): re-apply the FULL due predicate under the
+            # lock — a status-only re-check would expire a row a grant
+            # re-anchored between the due-SELECT and this lock.
+            if (
+                locked.status not in ('active', 'failed_renewal', 'cancelled')
+                or locked.current_period_end > now
+            ):
                 continue
             if locked.user_id is not None:
                 total, subscription = _ledger_totals(locked.user_id)
@@ -622,8 +643,31 @@ def expire_failed_renewals() -> None:
                     user_model.objects.filter(pk=locked.user_id).update(
                         credits_balance=total - subscription
                     )
+                # 5.7 tier sync (the split-brain close): entitlement reads
+                # user.tier — an expiring row downgrades to 'free'. Guarded:
+                # never downgrade while ANOTHER active row exists (the
+                # orphan-renewal anomaly). The user-row lock serializes
+                # against concurrent grants, so this check is authoritative.
+                # Review P2 (5.7 full review): the guard MUST exclude the
+                # locked row itself — on the active-due path (P4(a): a
+                # renewal that never lands, status still 'active') the row's
+                # own DB status matches 'active' until the flip below, so a
+                # self-matching guard would skip the downgrade and leave an
+                # expired subscription holding Starter quota forever.
+                if not Subscription.objects.filter(
+                    user_id=locked.user_id, status='active'
+                ).exclude(pk=locked.pk).exists():
+                    user_model.objects.filter(pk=locked.user_id).update(tier='free')
             locked.status = 'expired'
-            locked.save(update_fields=['status'])
+            # A cancelled row carries cancelled_at — the one-directional
+            # subscriptions_cancel_state_check (cancelled_at IS NULL OR
+            # status='cancelled') demands the clear with the flip (the
+            # _grant_creation re-activation precedent).
+            if locked.cancelled_at is not None:
+                locked.cancelled_at = None
+                locked.save(update_fields=['status', 'cancelled_at'])
+            else:
+                locked.save(update_fields=['status'])
             logger.info(
                 'expire_failed_renewals: subscription %s expired (user %s)',
                 locked.id,

@@ -1,11 +1,46 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FilterSidebar, removeFacetValue } from '@/components/search/FilterSidebar'
 import { EMPTY_FILTERS, type StagedFilters } from '@/lib/api/search-service'
+import type { ReactNode } from 'react'
+
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+const planMock = vi.hoisted(() => vi.fn(() => Promise.resolve({
+  tier: 'free', status: null, renews_on: null,
+  balances: { subscription_balance: 0, pack_balance: 0, display_balance: 15 },
+})))
+vi.mock('@/lib/api/billing-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/billing-service')>()
+  return { ...actual, billingService: { ...actual.billingService, plan: planMock } }
+})
+
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
+const sessionUser = vi.hoisted(() => ({
+  value: null as null | { email: string; locale: string; tier: string },
+}))
+vi.mock('@/components/providers/SessionProvider', () => ({
+  useSession: () => ({ user: sessionUser.value }),
+}))
 
 const EMPTY: StagedFilters = { ...EMPTY_FILTERS }
+
+// The FilterSidebar now hosts a data island (the 5.7 daily-limit dialog
+// trigger reads the plan query) — every render + rerender must sit inside
+// the QueryClientProvider (a raw rerender drops the wrapper).
+function wrap(element: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return <QueryClientProvider client={client}>{element}</QueryClientProvider>
+}
 
 function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> = {}) {
   const props = {
@@ -13,9 +48,14 @@ function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> =
     onSubmit: vi.fn(),
     ...overrides,
   }
-  const view = render(<FilterSidebar {...props} />)
+  const view = render(wrap(<FilterSidebar {...props} />))
   return { ...view, props }
 }
+
+beforeEach(() => {
+  upgradeOpenMock.mockReset()
+  sessionUser.value = null
+})
 
 function groupOf(key: string): HTMLElement {
   const match = screen
@@ -116,7 +156,7 @@ describe('FilterSidebar desktop', () => {
       facet: 'industries',
       value: 1,
     }
-    rerender(<FilterSidebar {...props} chipRemove={remove} />)
+    rerender(wrap(<FilterSidebar {...props} chipRemove={remove} />))
 
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
     expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
@@ -129,7 +169,7 @@ describe('FilterSidebar desktop', () => {
       facet: 'industries',
       value: 1,
     }
-    rerender(<FilterSidebar {...props} chipRemove={remove} />)
+    rerender(wrap(<FilterSidebar {...props} chipRemove={remove} />))
 
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
     expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
@@ -141,12 +181,12 @@ describe('FilterSidebar desktop', () => {
       facet: 'industries',
       value: 1,
     }
-    rerender(<FilterSidebar {...props} chipRemove={removeOne} />)
+    rerender(wrap(<FilterSidebar {...props} chipRemove={removeOne} />))
     const removeTwo: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
       facet: 'industries',
       value: 4,
     }
-    rerender(<FilterSidebar {...props} chipRemove={removeTwo} />)
+    rerender(wrap(<FilterSidebar {...props} chipRemove={removeTwo} />))
 
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
     expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [9] }))
@@ -155,7 +195,7 @@ describe('FilterSidebar desktop', () => {
   it('resets the draft when the clear nonce bumps', () => {
     const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1] } })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
-    rerender(<FilterSidebar {...props} clearNonce={1} />)
+    rerender(wrap(<FilterSidebar {...props} clearNonce={1} />))
 
     const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
     expect(within(trigger).queryByText('1')).toBeNull()
@@ -231,6 +271,25 @@ describe('FilterSidebar desktop', () => {
 
     fireEvent.click(apply)
     expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('opens the Upgrade Dialog when a FREE user clicks the rate-limited Apply (daily-limit entry)', () => {
+    // 5.7 (John V7 amendment 4): the search 429 is the AC's "daily-limit
+    // state" — disabled-but-actionable: a free user's click opens the
+    // dialog (the search quota is tier-keyed: 30 free / 100 starter).
+    sessionUser.value = { email: 'a@b.dz', locale: 'en', tier: 'free' }
+    const { props } = renderSidebar({ rateLimited: true })
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('never opens the dialog for a rate-limited STARTER user (nothing to upgrade into)', () => {
+    sessionUser.value = { email: 'a@b.dz', locale: 'en', tier: 'starter' }
+    const { props } = renderSidebar({ rateLimited: true })
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
+    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(upgradeOpenMock).not.toHaveBeenCalled()
   })
 
   it('falls back to the generic rate-limit key when no message is provided', () => {
@@ -518,9 +577,11 @@ describe('removeFacetValue', () => {
 describe('FilterSidebar RTL', () => {
   it('keeps the group order and uses no physical layout classes inside an RTL container', () => {
     const { container } = render(
-      <div dir="rtl">
-        <FilterSidebar tab="people" onSubmit={vi.fn()} />
-      </div>,
+      wrap(
+        <div dir="rtl">
+          <FilterSidebar tab="people" onSubmit={vi.fn()} />
+        </div>,
+      ),
     )
 
     assertHeadingOrder([

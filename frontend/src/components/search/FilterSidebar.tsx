@@ -7,6 +7,9 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { CheckboxGroup } from '@/components/search/CheckboxGroup'
 import { KeywordField } from '@/components/search/KeywordField'
 import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
+import { useSession } from '@/components/providers/SessionProvider'
+import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
+import { usePlan } from '@/hooks/usePlan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -98,6 +101,13 @@ export function FilterSidebar({
 }: FilterSidebarProps) {
   const t = useTranslations()
   const locale = useLocale()
+  const { user } = useSession()
+  const { open: openUpgradeDialog } = useUpgradeDialog()
+  // Review P5 (5.7 full review): the daily-limit gate reads the plan
+  // query's tier (fresh via the window-focus refetch) with the session
+  // fallback — the 5.7 expiry sync never refreshes the open tab's session.
+  const { plan } = usePlan({ user })
+  const dispatchTier = plan?.tier ?? user?.tier
   const baseId = useId()
   const [draft, setDraft] = useState<StagedFilters>(() => applied ?? EMPTY_FILTERS)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -167,7 +177,26 @@ export function FilterSidebar({
   }
 
   const handleApply = () => {
-    if (busy || rateLimited) return
+    if (busy) return
+    if (rateLimited) {
+      // 5.7 (John V7 amendment 4 — the AC's "daily-limit state"): the
+      // search 429 is tier-keyed (30/day free, 100/day Starter) — a FREE
+      // user's click on the aria-disabled Apply opens the Upgrade Dialog
+      // (disabled-but-actionable, EXPERIENCE.md L163). A Starter user at
+      // the cap has nothing to upgrade into — message only. The export
+      // 5,000/24h limit (FR-20) is tier-independent and stays the
+      // come-back-tomorrow message — never a dialog.
+      //
+      // Review P4 (5.7 full review): the mobile drawer path must close the
+      // drawer FIRST — the success path does setSheetOpen(false), the
+      // rate-limited path previously didn't (two stacked modals — the
+      // stack-depth-1 rule).
+      setSheetOpen(false)
+      if (dispatchTier === 'free') {
+        openUpgradeDialog()
+      }
+      return
+    }
     dirtyRef.current = false
     onSubmit({ ...draft })
     setSheetOpen(false)

@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useSession } from '@/components/providers/SessionProvider'
 import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
 import { CreditsPill } from '@/components/layout/CreditsPill'
+import { SubscriptionChip } from '@/components/layout/SubscriptionChip'
 
 export function Header() {
   const { isAuthenticated, status, logout } = useSession()
@@ -33,6 +34,7 @@ export function Header() {
               {t('search')}
             </Link>
             <CreditsPill />
+            <SubscriptionChip />
             <Link href="/billing" className="text-small text-muted-foreground hover:text-foreground">
               {t('billing')}
             </Link>

@@ -7,6 +7,9 @@ import { useTranslations } from 'next-intl'
 import { useCredits } from '@/components/providers/CreditProvider'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useToast } from '@/components/providers/ToastProvider'
+import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
+import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider'
+import { usePlan } from '@/hooks/usePlan'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useReveal, type RevealInFlight } from '@/hooks/useReveal'
 import type {
@@ -178,6 +181,14 @@ export function RevealControl({
   const state = useRevealState({ tab, row })
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { user } = useSession()
+  const { open: openUpgradeDialog } = useUpgradeDialog()
+  const { open: openRecoveryDialog } = useRecoveryDialog()
+  // Review P5 (5.7 full review): dispatch on the plan query's tier (fresh
+  // via the window-focus refetch) with the session fallback — the expiry
+  // sync never refreshes the open tab's session.
+  const { plan } = usePlan({ user })
+  const dispatchTier = plan?.tier ?? user?.tier
   const { reveal } = useReveal()
 
   const handleClick = () => {
@@ -187,7 +198,15 @@ export function RevealControl({
     const inFlight = queryClient.getQueryData<RevealInFlight>(revealKeys.inFlight)
     if (inFlight !== null && inFlight !== undefined) return
     if (state.zeroCredits) {
-      toast('search.reveal.no_credits')
+      // 5.7 (John V1 amendment 3 — the AC's "0-credit recovery" entry):
+      // the aria-disabled reveal dispatches by the entitlement tier —
+      // free → the Upgrade Dialog, Starter → the RecoveryDialog top-up
+      // (the 4.2 D9 stub resolved; the disabled-but-actionable primitive).
+      if (dispatchTier === 'free') {
+        openUpgradeDialog()
+      } else {
+        openRecoveryDialog()
+      }
       return
     }
     // Offline fail-fast (deferred-work manual-testing fix): the POST would

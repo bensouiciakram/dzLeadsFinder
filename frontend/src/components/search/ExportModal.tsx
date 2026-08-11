@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useToast } from '@/components/providers/ToastProvider'
+import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useExport } from '@/hooks/useExport'
 import { useExportPreview } from '@/hooks/useExportPreview'
@@ -49,6 +50,7 @@ export function ExportModal({
 }: ExportModalProps) {
   const t = useTranslations()
   const { toast } = useToast()
+  const { open: openUpgradeDialog } = useUpgradeDialog()
   const [includeUnrevealed, setIncludeUnrevealed] = useState(true)
   const [format, setFormat] = useState<ExportFormat>('csv')
   const regionRef = useRef<HTMLDivElement>(null)
@@ -72,10 +74,22 @@ export function ExportModal({
   const freeTier = tier === 'free'
 
   useEffect(() => {
-    if (mutationError === 'starter') {
-      toast('billing.upgrade_stub')
+    // 5.7 re-point (John V8): the 402/409 starter-only error opens the
+    // single Upgrade Dialog — the modal closes first (stack-depth-1,
+    // Sally M4: host modal then dialog). The 4.5 upgrade_stub toast is
+    // gone (John V6 — the key dies with the re-pointing).
+    //
+    // Review P3 (5.7 full review): the effect must gate on the modal's
+    // `open` prop — the provider's open() identity changes on every
+    // dialog isOpen flip, so an ungated effect would re-fire when the
+    // user closes the dialog and reopen it (the reopen loop — the tests'
+    // identity-stable mock masked it). The modal-open gate makes the
+    // effect fire exactly once per error.
+    if (mutationError === 'starter' && open) {
+      onOpenChange(false)
+      openUpgradeDialog()
     }
-  }, [mutationError, toast])
+  }, [mutationError, onOpenChange, openUpgradeDialog, open])
 
   // On every open the form returns to its AC-pinned defaults and the mutation
   // error state is cleared — a 429 from yesterday must not block today's
@@ -135,7 +149,11 @@ export function ExportModal({
 
   const handleFormatClick = (next: ExportFormat) => {
     if (freeTier && next === 'xlsx') {
-      toast('billing.upgrade_stub')
+      // 5.7 re-point (John V8): the xlsx tooltip click opens the single
+      // Upgrade Dialog (the AC's "xlsx tooltip" entry point) — host modal
+      // closes first. The upgrade_stub toast is gone.
+      onOpenChange(false)
+      openUpgradeDialog()
       return
     }
     setFormat(next)

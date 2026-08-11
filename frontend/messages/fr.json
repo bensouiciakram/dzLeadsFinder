@@ -99,14 +99,23 @@
     "meta_description": "Gérez votre forfait dzLeadsFinder, vos packs de crédits, votre historique de paiements et votre abonnement.",
     "current_plan": "Forfait actuel",
     "currency": "DZD",
-    "renewal_date": "Renouvellement le {date}",
-    "failed_renewal": "Paiement échoué. Mettez à jour votre moyen de paiement.",
-    "upgrade_stub": "Passer à Starter",
+    "failed_renewal": "Paiement échoué — <update>mettez à jour votre moyen de paiement pour garder Starter</update>",
+    "chip": {
+      "free": "Gratuit — Passer à Starter",
+      "starter": "Starter — renouvellement le <date>{d}</date>",
+      "failed": "Starter — paiement échoué"
+    },
+    "upgrade_dialog": {
+      "title": "Passer à Starter",
+      "price": "1,500 DZD/mois",
+      "credits": "200 crédits/mois",
+      "cta": "S'abonner via Chargily"
+    },
     "plan": {
       "free_tier": "Forfait gratuit",
-      "starter_title": "Starter — 1,500 DZD/mois — renouvellement le {date}",
-      "cancelled_title": "Annulé — accès jusqu'au {date}",
-      "failed_title": "Paiement échoué — accès jusqu'au {date}",
+      "starter_title": "Starter — 1,500 DZD/mois — renouvellement le <date>{d}</date>",
+      "cancelled_title": "Annulé — accès jusqu'au <date>{d}</date>",
+      "failed_title": "Paiement échoué — accès jusqu'au <date>{d}</date>",
       "expired_title": "Abonnement terminé",
       "credits_cycle": "Crédits restants ce cycle",
       "credits": "Crédits",
@@ -136,7 +145,7 @@
       "type_subscription_creation": "Abonnement",
       "type_subscription_renewal": "Renouvellement mensuel",
       "type_pack_purchase": "Achat de pack de crédits",
-      "failed_note": "Paiement échoué. Contactez {support} si vous avez été débité.",
+      "failed_note": "Paiement échoué. Contactez <support>le support</support> si vous avez été débité.",
       "support_link": "le support"
     },
     "status": {
@@ -151,7 +160,7 @@
       "description": "Annulez votre abonnement. L'accès se poursuit jusqu'à la fin du cycle en cours — aucun remboursement pour le cycle en cours.",
       "cancel_button": "Annuler l'abonnement",
       "dialog_title": "Annuler votre abonnement ?",
-      "dialog_body": "Vous garderez l'accès jusqu'au {date}. Aucun remboursement pour le cycle en cours.",
+      "dialog_body": "Vous garderez l'accès jusqu'au <date>{d}</date>. Aucun remboursement pour le cycle en cours.",
       "keep": "Garder mon abonnement",
       "confirm": "Annuler l'abonnement",
       "confirming": "Annulation…",

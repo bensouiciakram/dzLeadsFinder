@@ -27,11 +27,38 @@ const sessionMock = vi.hoisted(() => ({
   refresh: vi.fn(),
 }))
 
+const planMock = vi.hoisted(() => vi.fn(() => Promise.resolve({
+  tier: 'free', status: null, renews_on: null,
+  balances: { subscription_balance: 0, pack_balance: 0, display_balance: 15 },
+})))
+vi.mock('@/lib/api/billing-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/billing-service')>()
+  return { ...actual, billingService: { ...actual.billingService, plan: planMock } }
+})
+
 vi.mock('@/components/providers/SessionProvider', () => ({
   useSession: () => ({ user: sessionMock.user, refresh: sessionMock.refresh }),
 }))
 
 const revealMock = vi.hoisted(() => ({ reveal: vi.fn() }))
+
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
+const recoveryOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/RecoveryDialogProvider', () => ({
+  useRecoveryDialog: () => ({
+    open: recoveryOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
 
 vi.mock('@/lib/api/reveal-service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/reveal-service')>()
@@ -613,8 +640,8 @@ describe('ResultsTable reveal control', () => {
     expect(screen.getAllByTestId('reveal-slot')).toHaveLength(1)
   })
 
-  it('renders the aria-disabled zero-credit button with tooltip and recovery stub', async () => {
-    sessionMock.user = { ...sessionMock.user, credits_balance: 0 }
+  it('renders the aria-disabled zero-credit button and dispatches the recovery by tier', async () => {
+    sessionMock.user = { ...sessionMock.user, tier: 'free', credits_balance: 0 }
     peopleTable()
 
     const button = screen.getAllByTestId('reveal-slot')[0]
@@ -628,9 +655,21 @@ describe('ResultsTable reveal control', () => {
     fireEvent.focus(button)
     expect(await screen.findByText('search.reveal.no_credits')).toBeInTheDocument()
 
+    // 5.7 (John V1): the 0-credit click dispatches by tier — free → the
+    // Upgrade Dialog (the AC's "0-credit recovery" entry).
     fireEvent.click(button)
-    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
-    expect(screen.getByRole('status')).toHaveTextContent('search.reveal.no_credits')
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+    expect(recoveryOpenMock).not.toHaveBeenCalled()
+    expect(revealMock.reveal).not.toHaveBeenCalled()
+  })
+
+  it('routes a STARTER user at 0 credits to the RecoveryDialog top-up', async () => {
+    sessionMock.user = { ...sessionMock.user, tier: 'starter', credits_balance: 0 }
+    peopleTable()
+
+    fireEvent.click(screen.getAllByTestId('reveal-slot')[0])
+    expect(recoveryOpenMock).toHaveBeenCalledTimes(1)
+    expect(upgradeOpenMock).not.toHaveBeenCalled()
     expect(revealMock.reveal).not.toHaveBeenCalled()
   })
 })

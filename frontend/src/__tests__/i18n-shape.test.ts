@@ -234,7 +234,17 @@ describe('export modal i18n shapes (×3 locales)', () => {
         expect(messages.export.modal[key]).toBeTruthy()
       }
       expect(messages.export.watermark).toBeTruthy()
-      expect(messages.billing.upgrade_stub).toBeTruthy()
+      // 5.7 (John V6): the upgrade_stub key died with the ExportModal
+      // re-pointing — its strings live on unchanged under
+      // billing.upgrade_dialog.title.
+      expect(messages.billing.upgrade_dialog.title).toBeTruthy()
+      expect(messages.billing.chip.free).toBeTruthy()
+      expect(messages.billing.chip.starter).toBeTruthy()
+      expect(messages.billing.chip.failed).toBeTruthy()
+      expect(messages.billing.upgrade_dialog.price).toBeTruthy()
+      expect(messages.billing.upgrade_dialog.credits).toBeTruthy()
+      expect(messages.billing.upgrade_dialog.cta).toBeTruthy()
+      expect(messages.billing.failed_renewal).toContain('<update>')
     }
   })
 
@@ -302,10 +312,10 @@ describe('export modal i18n shapes (×3 locales)', () => {
     )
   })
 
-  it('pins the upgrade-stub title verbatim (EXPERIENCE.md:95)', () => {
-    expect(en.billing.upgrade_stub).toBe('Upgrade to Starter')
-    expect(fr.billing.upgrade_stub).toBe('Passer à Starter')
-    expect(ar.billing.upgrade_stub).toBe('الترقية إلى Starter')
+  it('pins the upgrade-dialog title verbatim (EXPERIENCE.md:95 — the upgrade_stub strings live on)', () => {
+    expect(en.billing.upgrade_dialog.title).toBe('Upgrade to Starter')
+    expect(fr.billing.upgrade_dialog.title).toBe('Passer à Starter')
+    expect(ar.billing.upgrade_dialog.title).toBe('الترقية إلى Starter')
   })
 
   it('flags every new fr/ar translation [PENDING REVIEW] except the verbatim keys', () => {

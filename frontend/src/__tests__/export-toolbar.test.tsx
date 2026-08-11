@@ -8,6 +8,15 @@ vi.mock('@/components/providers/ToastProvider', () => ({
   useToast: () => ({ toast: toastMock }),
 }))
 
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
 const creditsMock = vi.hoisted(() => ({
   balance: 15,
   applyCreditDelta: vi.fn(),

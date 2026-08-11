@@ -102,12 +102,16 @@ export function StatusCard({
           className="flex items-center gap-2.5 rounded-lg bg-danger-container p-3.5 text-small text-danger-on-container"
         >
           {t.rich('history.failed_note', {
-            support: () => (
+            // Review P1 fix: next-intl v4 TAG syntax — the localized
+            // "support" word lives INSIDE the <support>…</support> tags in
+            // the message; the renderer receives it as chunks (the 5.6-era
+            // {support}-value-with-function pattern rendered null).
+            support: (chunks) => (
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
                 className="font-medium underline"
               >
-                {t('history.support_link')}
+                {chunks}
               </a>
             ),
           })}
@@ -142,12 +146,13 @@ export function StatusCard({
     )
   } else if (state === 'failed') {
     content = t.rich('history.failed_note', {
-      support: () => (
+      // Review P1 fix: next-intl v4 TAG syntax (see above).
+      support: (chunks) => (
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
           className="font-medium underline"
         >
-          {t('history.support_link')}
+          {chunks}
         </a>
       ),
     })

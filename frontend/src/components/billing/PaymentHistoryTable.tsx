@@ -107,12 +107,18 @@ export function PaymentHistoryTable({ history, phase }: Props) {
                       <tr>
                         <td colSpan={4} className="border-b border-border px-3 py-3 text-caption text-muted-foreground last:border-b-0">
                           {t.rich('history.failed_note', {
-                            support: () => (
+                            // Review P1 fix: next-intl v4 TAG syntax — the
+                            // localized "support" word lives INSIDE the
+                            // <support>…</support> tags; the renderer
+                            // receives it as chunks (the 5.5-era
+                            // {support}-value-with-function pattern
+                            // rendered null).
+                            support: (chunks) => (
                               <a
                                 href={`mailto:${SUPPORT_EMAIL}`}
                                 className="underline text-destructive"
                               >
-                                {t('history.support_link')}
+                                {chunks}
                               </a>
                             ),
                           })}

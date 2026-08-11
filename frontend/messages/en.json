@@ -99,14 +99,23 @@
     "meta_description": "Manage your dzLeadsFinder plan, add-on credit packs, payment history, and subscription.",
     "current_plan": "Current Plan",
     "currency": "DZD",
-    "renewal_date": "Renews on {date}",
-    "failed_renewal": "Payment failed. Update your payment method.",
-    "upgrade_stub": "Upgrade to Starter",
+    "failed_renewal": "Payment failed — <update>update your payment method to keep Starter</update>",
+    "chip": {
+      "free": "Free — Upgrade",
+      "starter": "Starter — renews on <date>{d}</date>",
+      "failed": "Starter — payment failed"
+    },
+    "upgrade_dialog": {
+      "title": "Upgrade to Starter",
+      "price": "1,500 DZD/mo",
+      "credits": "200 credits/mo",
+      "cta": "Subscribe via Chargily"
+    },
     "plan": {
       "free_tier": "Free tier",
-      "starter_title": "Starter — 1,500 DZD/mo — renews on {date}",
-      "cancelled_title": "Cancelled — access until {date}",
-      "failed_title": "Payment failed — access until {date}",
+      "starter_title": "Starter — 1,500 DZD/mo — renews on <date>{d}</date>",
+      "cancelled_title": "Cancelled — access until <date>{d}</date>",
+      "failed_title": "Payment failed — access until <date>{d}</date>",
       "expired_title": "Subscription ended",
       "credits_cycle": "Credits left this cycle",
       "credits": "Credits",
@@ -136,7 +145,7 @@
       "type_subscription_creation": "Subscription",
       "type_subscription_renewal": "Monthly renewal",
       "type_pack_purchase": "Credit pack purchase",
-      "failed_note": "Payment failed. Contact {support} if you were charged.",
+      "failed_note": "Payment failed. Contact <support>support</support> if you were charged.",
       "support_link": "support"
     },
     "status": {
@@ -151,7 +160,7 @@
       "description": "Cancel your subscription. You keep access until the end of the current cycle — no refund for the current cycle.",
       "cancel_button": "Cancel subscription",
       "dialog_title": "Cancel your subscription?",
-      "dialog_body": "You will keep access until {date}. No refund for the current cycle.",
+      "dialog_body": "You will keep access until <date>{d}</date>. No refund for the current cycle.",
       "keep": "Keep my subscription",
       "confirm": "Cancel subscription",
       "confirming": "Cancelling…",

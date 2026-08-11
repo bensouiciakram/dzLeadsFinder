@@ -1210,3 +1210,231 @@ class TestExpireFailedRenewals:
             )['total']
         )
         assert pack_total == 75
+
+    # ---- 5.7: the cancelled-row post-period state machine (deferred-work
+    # 5.5) + the tier-split-brain close (deferred-work 5.1 — "5.7 cancel
+    # sync"). A cancelled row keeps Starter entitlement to period end (the
+    # AC chip "access until {date}") and is expired by the same beat at
+    # period end — pool zeroed (FR-24 no-rollover — John V4), user.tier
+    # synced to 'free' (entitlement reads user.tier — search/quota.py).
+
+    def test_cancelled_row_past_period_end_expires_zeroes_pool_and_syncs_tier(
+        self, create_user: Any
+    ) -> None:
+        now = timezone.now()
+        create_user.tier = 'starter'
+        create_user.credits_balance = 200
+        create_user.save(update_fields=['tier', 'credits_balance'])
+        sub = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        _grant(create_user, 200)
+        CreditLedger.objects.create(
+            user=create_user,
+            event_type='reveal_debit',
+            amount=-5,
+            balance_after=195,
+            pool='subscription',
+        )
+        expire_failed_renewals()
+        sub.refresh_from_db()
+        assert sub.status == 'expired'
+        entries = list(
+            CreditLedger.objects.filter(user=create_user).order_by('created_at')
+        )
+        assert [e.event_type for e in entries] == [
+            'subscription_grant',
+            'reveal_debit',
+            'expiry',
+        ]
+        assert entries[2].amount == -195
+        assert entries[2].balance_after == 0
+        assert entries[2].reference_id == str(sub.id)
+        create_user.refresh_from_db()
+        assert create_user.credits_balance == 0
+        assert create_user.tier == 'free'
+
+    def test_cancelled_row_with_future_end_untouched(self, create_user: Any) -> None:
+        now = timezone.now()
+        create_user.tier = 'starter'
+        create_user.save(update_fields=['tier'])
+        Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now,
+            current_period_start=now - timedelta(days=30),
+            current_period_end=now + timedelta(days=5),
+        )
+        expire_failed_renewals()
+        sub = Subscription.objects.get(user=create_user)
+        assert sub.status == 'cancelled'
+        create_user.refresh_from_db()
+        assert create_user.tier == 'starter'
+
+    def test_cancelled_expiry_does_not_touch_pack_pool(self, create_user: Any) -> None:
+        now = timezone.now()
+        Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        _grant(create_user, 200)
+        _grant(create_user, 150, pool='pack')
+        expire_failed_renewals()
+        pack_total = (
+            CreditLedger.objects.filter(user=create_user, pool='pack').aggregate(
+                total=Sum('amount')
+            )['total']
+        )
+        assert pack_total == 150
+        sub = Subscription.objects.get(user=create_user)
+        assert sub.status == 'expired'
+
+    def test_anonymised_cancelled_row_expires_without_ledger_or_tier_write(
+        self,
+    ) -> None:
+        now = timezone.now()
+        Subscription.objects.create(
+            user=None,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        expire_failed_renewals()
+        sub = Subscription.objects.get()
+        assert sub.status == 'expired'
+        assert CreditLedger.objects.count() == 0
+
+    def test_tier_not_downgraded_when_another_active_row_exists(
+        self, create_user: Any
+    ) -> None:
+        """The orphan-renewal anomaly (5.5 P4/5.3 Q8): a user can hold a
+        cancelled row AND an active row. The expiry must not write
+        tier='free' on a genuinely active subscriber."""
+        now = timezone.now()
+        create_user.tier = 'starter'
+        create_user.save(update_fields=['tier'])
+        cancelled = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        active = Subscription.objects.create(
+            user=create_user,
+            status='active',
+            current_period_start=now - timedelta(days=10),
+            current_period_end=now + timedelta(days=20),
+        )
+        expire_failed_renewals()
+        cancelled.refresh_from_db()
+        assert cancelled.status == 'expired'
+        active.refresh_from_db()
+        assert active.status == 'active'
+        create_user.refresh_from_db()
+        assert create_user.tier == 'starter'
+
+    def test_stale_due_snapshot_cannot_expire_a_reactivated_row(
+        self, create_user: Any, monkeypatch: Any
+    ) -> None:
+        """Winston Q3 race pin: the due predicate is evaluated BEFORE any
+        lock. If a paid grant re-anchors the row (status → active, period
+        end → future) between the due-SELECT and the expiry's lock
+        acquisition, the in-lock re-check must re-apply the FULL due
+        predicate (status AND period end) — otherwise the beat would expire
+        AND downgrade a freshly re-activated PAID row (the split-brain
+        reopened silently)."""
+        now = timezone.now()
+        create_user.tier = 'starter'
+        create_user.credits_balance = 200
+        create_user.save(update_fields=['tier', 'credits_balance'])
+        sub = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        _grant(create_user, 200)
+        # The due-SELECT snapshot (the row as it was at query time).
+        stale = Subscription.objects.get(pk=sub.pk)
+        # The grant commits BEFORE the expiry acquires its locks.
+        sub.status = 'active'
+        sub.cancelled_at = None
+        sub.current_period_end = now + timedelta(days=30)
+        sub.save(
+            update_fields=['status', 'cancelled_at', 'current_period_end']
+        )
+
+        class StaleDueQuerySet:
+            def iterator(self) -> Any:
+                yield stale
+
+        real_filter = Subscription.objects.filter
+
+        def fake_filter(*args: Any, **kwargs: Any) -> Any:
+            if 'status__in' in kwargs:
+                return StaleDueQuerySet()
+            return real_filter(*args, **kwargs)
+
+        monkeypatch.setattr(Subscription.objects, 'filter', fake_filter)
+        expire_failed_renewals()
+        sub.refresh_from_db()
+        assert sub.status == 'active'
+        create_user.refresh_from_db()
+        assert create_user.tier == 'starter'
+        assert create_user.credits_balance == 200
+        # The pool was NOT zeroed (no expiry entry).
+        assert CreditLedger.objects.filter(event_type='expiry').count() == 0
+
+    def test_cancelled_expiry_is_idempotent_on_rerun(self, create_user: Any) -> None:
+        now = timezone.now()
+        sub = Subscription.objects.create(
+            user=create_user,
+            status='cancelled',
+            cancelled_at=now - timedelta(days=10),
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        _grant(create_user, 200)
+        expire_failed_renewals()
+        expire_failed_renewals()
+        sub.refresh_from_db()
+        assert sub.status == 'expired'
+        assert (
+            CreditLedger.objects.filter(
+                user=create_user, event_type='expiry'
+            ).count()
+            == 1
+        )
+
+    def test_active_past_due_expiry_syncs_tier_to_free(self, create_user: Any) -> None:
+        """Review P2 (5.7 full review): on the active-due path (P4(a) — a
+        renewal that never lands, status still 'active') the tier guard
+        must NOT self-match the row being expired — an expired subscription
+        must not keep Starter quota. The guard excludes the locked row."""
+        now = timezone.now()
+        create_user.tier = 'starter'
+        create_user.credits_balance = 200
+        create_user.save(update_fields=['tier', 'credits_balance'])
+        sub = Subscription.objects.create(
+            user=create_user,
+            status='active',
+            current_period_start=now - timedelta(days=40),
+            current_period_end=now - timedelta(days=1),
+        )
+        _grant(create_user, 200)
+        expire_failed_renewals()
+        sub.refresh_from_db()
+        assert sub.status == 'expired'
+        create_user.refresh_from_db()
+        assert create_user.tier == 'free'
+        assert create_user.credits_balance == 0

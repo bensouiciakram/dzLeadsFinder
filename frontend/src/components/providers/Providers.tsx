@@ -6,6 +6,8 @@ import { SessionProvider } from './SessionProvider'
 import { LocaleProvider } from './LocaleProvider'
 import { CreditProvider } from './CreditProvider'
 import { ToastProvider } from './ToastProvider'
+import { UpgradeDialogProvider } from './UpgradeDialogProvider'
+import { RecoveryDialogProvider } from './RecoveryDialogProvider'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,7 +24,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <SessionProvider>
         <LocaleProvider>
           <ToastProvider>
-            <CreditProvider>{children}</CreditProvider>
+            <UpgradeDialogProvider>
+              <RecoveryDialogProvider>
+                <CreditProvider>{children}</CreditProvider>
+              </RecoveryDialogProvider>
+            </UpgradeDialogProvider>
           </ToastProvider>
         </LocaleProvider>
       </SessionProvider>

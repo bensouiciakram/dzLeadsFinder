@@ -17,6 +17,15 @@ vi.mock('@/components/providers/ToastProvider', () => ({
   useToast: () => ({ toast: toastMock }),
 }))
 
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
 const creditsMock = vi.hoisted(() => ({
   balance: 15,
   applyCreditDelta: vi.fn(),
@@ -340,13 +349,50 @@ describe('ExportModal — free tier (4.6: the confirm is a REAL export)', () => 
     expect(screen.getByText('export.modal.xlsx_upgrade')).toBeInTheDocument()
   })
 
-  it('routes the xlsx click to the upgrade stub toast, never a mutation', () => {
+  it('routes the xlsx click to the Upgrade Dialog (the 5.7 re-point), never a mutation', () => {
     const create = vi.fn()
     stubExport(undefined, false, create)
-    renderModal(freshClient(), { tier: 'free' })
+    const { onOpenChange } = renderModal(freshClient(), { tier: 'free' })
     fireEvent.click(screen.getByRole('button', { name: /Excel/ }))
-    expect(toastMock).toHaveBeenCalledWith('billing.upgrade_stub')
+    // Stack-depth-1 (Sally M4): the host modal closes before the dialog
+    // opens; the dialog is the sole conversion surface.
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
     expect(create).not.toHaveBeenCalled()
+    expect(toastMock).not.toHaveBeenCalledWith('billing.upgrade_stub')
+  })
+
+  it('opens the Upgrade Dialog when a starter-only mutation error arrives (the 5.7 re-point)', () => {
+    stubExport('starter')
+    const { onOpenChange } = renderModal(freshClient(), { tier: 'free' })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+    expect(toastMock).not.toHaveBeenCalledWith('billing.upgrade_stub')
+  })
+
+  it('does not reopen the dialog after the user closes it (review P3 — the reopen loop)', async () => {
+    // The provider's open() identity changes on every dialog isOpen flip —
+    // an effect gated only on the mutation error would re-fire on the
+    // close (reopening the dialog). The modal-open gate prevents it.
+    stubExport('starter')
+    const { onOpenChange, rerender } = renderModal(freshClient(), { tier: 'free' })
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+    // The modal is closed (stack-depth-1) and the error is still 'starter' —
+    // any re-run of the effect must NOT reopen the dialog.
+    rerender(
+      <ExportModal
+        open={false}
+        onOpenChange={onOpenChange}
+        tab="people"
+        filtersJson="{}"
+        sort="name:asc"
+        nonce={1}
+        total={3}
+        tier="free"
+        balance={15}
+      />,
+    )
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
   })
 
   it('confirms a REAL free export: POSTs the first-5 ids as csv and closes + navigates on success', () => {

@@ -15,6 +15,33 @@ const hoisted = vi.hoisted(() => ({
   savedList: vi.fn(),
 }))
 
+const upgradeOpenMock = vi.hoisted(() => vi.fn())
+const planMock = vi.hoisted(() => vi.fn(() => Promise.resolve({
+  tier: 'free', status: null, renews_on: null,
+  balances: { subscription_balance: 0, pack_balance: 0, display_balance: 15 },
+})))
+vi.mock('@/lib/api/billing-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/billing-service')>()
+  return { ...actual, billingService: { ...actual.billingService, plan: planMock } }
+})
+
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: upgradeOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
+const recoveryOpenMock = vi.hoisted(() => vi.fn())
+vi.mock('@/components/providers/RecoveryDialogProvider', () => ({
+  useRecoveryDialog: () => ({
+    open: recoveryOpenMock,
+    close: vi.fn(),
+    isOpen: false,
+  }),
+}))
+
 vi.mock('@/lib/api/search-service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/search-service')>()
   return {

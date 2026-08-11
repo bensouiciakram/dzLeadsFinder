@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
+import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
 import {
   formatBillingDate,
   numerals,
@@ -13,14 +14,18 @@ import type { BillingPhase } from '@/hooks/useBilling'
 import { useCheckoutRedirect } from '@/hooks/useCheckoutRedirect'
 
 function dateChunk(iso: string, locale: string) {
-  // A 0-arg RichTagsFunction (next-intl v3 types don't accept a ReactNode
-  // value for {date}) â€” the renderer produces the bdi-isolated date.
+  // Review P1 fix: next-intl v4 rich text — the date renders via a
+  // <date>…</date> TAG whose chunks are the interpolated {d} value. The
+  // 5.5-era {date}-value-with-function pattern rendered null in the real
+  // formatter (the tests' regex mocks masked it). The returned object is
+  // the t.rich params spread: { date: tagRenderer, d: formatted }.
   const formatted = formatBillingDate(iso, locale, { withTime: false })
-  function DateChunk(): React.ReactNode {
-    return <bdi className="tabular-nums">{formatted}</bdi>
+  return {
+    date: (chunks: React.ReactNode) => (
+      <bdi className="tabular-nums">{chunks}</bdi>
+    ),
+    d: formatted,
   }
-  DateChunk.displayName = 'PlanCardDateChunk'
-  return DateChunk
 }
 
 type Props = {
@@ -33,6 +38,7 @@ export function PlanCard({ plan, phase }: Props) {
   const states = useTranslations('common.states')
   const locale = useLocale()
   const { redirecting, error, redirect } = useCheckoutRedirect()
+  const { open: openUpgradeDialog } = useUpgradeDialog()
 
   if (phase === 'idle') {
     return null
@@ -82,23 +88,17 @@ export function PlanCard({ plan, phase }: Props) {
     creditsValue = displayCredits
     cta = 'upgrade'
   } else if (status === 'active') {
-    headline = t.rich('plan.starter_title', {
-      date: renewsOn !== null ? dateChunk(renewsOn, locale) : '',
-    })
+    headline = t.rich('plan.starter_title', dateChunk(renewsOn ?? '', locale))
     creditsLabel = t('plan.credits_cycle')
     creditsValue = subscriptionCredits
     cta = null
   } else if (status === 'failed_renewal') {
-    headline = t.rich('plan.failed_title', {
-      date: renewsOn !== null ? dateChunk(renewsOn, locale) : '',
-    })
+    headline = t.rich('plan.failed_title', dateChunk(renewsOn ?? '', locale))
     creditsLabel = t('plan.credits_cycle')
     creditsValue = subscriptionCredits
     cta = 'retry_payment'
   } else if (status === 'cancelled') {
-    headline = t.rich('plan.cancelled_title', {
-      date: renewsOn !== null ? dateChunk(renewsOn, locale) : '',
-    })
+    headline = t.rich('plan.cancelled_title', dateChunk(renewsOn ?? '', locale))
     creditsLabel = t('plan.credits_cycle')
     creditsValue = subscriptionCredits
     cta = 'reactivate'
@@ -115,6 +115,18 @@ export function PlanCard({ plan, phase }: Props) {
     reactivate: t('plan.reactivate'),
     retry_payment: t('plan.retry_payment'),
     resubscribe: t('plan.resubscribe'),
+  }
+
+  const handleCta = () => {
+    if (cta === 'upgrade' || cta === 'resubscribe') {
+      // 5.7 re-point (John V8 amendment 5): Upgrade + Resubscribe open the
+      // single Upgrade Dialog (the 5.5 D10 handoff — direct redirects
+      // replaced). Reactivate + Retry payment are RECOVERY paths and keep
+      // the direct create-checkout redirect.
+      openUpgradeDialog()
+      return
+    }
+    void redirect('subscription', SUBSCRIPTION_PRICE_DZD)
   }
 
   return (
@@ -142,7 +154,7 @@ export function PlanCard({ plan, phase }: Props) {
               className="min-h-11 px-5 md:h-8"
               disabled={redirecting}
               aria-busy={redirecting}
-              onClick={() => void redirect('subscription', SUBSCRIPTION_PRICE_DZD)}
+              onClick={handleCta}
             >
               {redirecting ? t('packs.processing') : ctaLabels[cta]}
             </Button>

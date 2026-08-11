@@ -23,13 +23,24 @@ export type UseCheckoutRedirectResult = {
 // them after the Chargily round-trip (the entry path; the ?status= URL
 // param is the no-entry fallback). Stash only on a successful create —
 // a failed checkout leaves no phantom card behind.
+//
+// Review P9 (5.7 full review): a MODULE-LEVEL in-flight guard — the
+// per-instance `redirecting` state only blocks double-clicks on ONE
+// consumer, but 5.7 triples the simultaneous redirect-capable CTAs on a
+// screen (chip + banner link + dialog CTAs + PlanCard): two concurrent
+// create-checkout POSTs would double-stash (last-writer-wins) and orphan
+// the first checkout. The module guard serializes ALL consumers — a
+// second redirect attempt while any is in flight is a no-op.
+let globalRedirectInFlight = false
+
 export function useCheckoutRedirect(): UseCheckoutRedirectResult {
   const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState(false)
 
   const redirect = useCallback(
     async (type: CheckoutType, amount: number): Promise<void> => {
-      if (redirecting) return
+      if (redirecting || globalRedirectInFlight) return
+      globalRedirectInFlight = true
       setRedirecting(true)
       setError(false)
       try {
@@ -49,6 +60,7 @@ export function useCheckoutRedirect(): UseCheckoutRedirectResult {
         setError(true)
       } finally {
         setRedirecting(false)
+        globalRedirectInFlight = false
       }
     },
     [redirecting],

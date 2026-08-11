@@ -9,54 +9,20 @@ import { navigator } from '@/lib/api/http-client'
 
 const hoisted = vi.hoisted(() => ({
   createCheckout: vi.fn(),
+  upgradeOpen: vi.fn(),
+}))
+
+vi.mock('@/components/providers/UpgradeDialogProvider', () => ({
+  useUpgradeDialog: () => ({
+    open: hoisted.upgradeOpen,
+    close: vi.fn(),
+    isOpen: false,
+  }),
 }))
 
 vi.mock('next-intl', async () => {
-  const en = (await import('../../messages/en.json')).default as Record<
-    string,
-    unknown
-  >
-  function lookup(key: string): string {
-    let node: unknown = en
-    for (const part of key.split('.')) {
-      if (typeof node !== 'object' || node === null) return key
-      node = (node as Record<string, unknown>)[part]
-      if (node === undefined) return key
-    }
-    return typeof node === 'string' ? node : key
-  }
-  function translate(
-    ns: string | undefined,
-    key: string,
-    params?: Record<string, unknown>,
-  ): ReactNode {
-    const template = lookup(ns === undefined ? key : `${ns}.${key}`)
-    if (params === undefined) return template
-    const parts: ReactNode[] = []
-    const re = /\{(\w+)\}/g
-    let last = 0
-    let m: RegExpExecArray | null
-    while ((m = re.exec(template)) !== null) {
-      if (m.index > last) parts.push(template.slice(last, m.index))
-      const value = params[m[1]]
-      parts.push(
-        typeof value === 'function' ? (value as () => ReactNode)() : (value as ReactNode),
-      )
-      last = m.index + m[0].length
-    }
-    if (last < template.length) parts.push(template.slice(last))
-    return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts
-  }
-  return {
-    useLocale: () => 'en',
-    useTranslations: (ns?: string) => {
-      const fn = (key: string, params?: Record<string, unknown>): ReactNode =>
-        translate(ns, key, params)
-      fn.rich = (key: string, params?: Record<string, unknown>): ReactNode =>
-        translate(ns, key, params)
-      return fn
-    },
-  }
+  const mock = await import('@/test/next-intl-mock')
+  return mock.buildNextIntlMock()
 })
 
 vi.mock('@/lib/api/billing-service', async (importOriginal) => {
@@ -91,6 +57,7 @@ function renderCard(plan: PlanResult | null, phase: BillingPhase) {
 
 beforeEach(() => {
   hoisted.createCheckout.mockReset()
+  hoisted.upgradeOpen.mockReset()
   hoisted.createCheckout.mockResolvedValue({
     checkout_url: 'https://pay.chargily.com/x',
     checkout_id: 'chk-x',
@@ -99,7 +66,7 @@ beforeEach(() => {
 })
 
 describe('PlanCard', () => {
-  it('shows the free state with the display balance and an Upgrade CTA', async () => {
+  it('shows the free state with the display balance and an Upgrade CTA opening the dialog', async () => {
     renderCard(FREE_PLAN, 'success')
 
     expect(screen.getByRole('heading', { name: 'Current Plan' })).toBeInTheDocument()
@@ -109,13 +76,12 @@ describe('PlanCard', () => {
     const upgrade = screen.getByRole('button', { name: 'Upgrade' })
     expect(upgrade).toBeInTheDocument()
 
+    // 5.7 re-point (John V8 amendment 5): the Upgrade CTA opens the single
+    // Upgrade Dialog — never a direct checkout (no dead stubs).
     fireEvent.click(upgrade)
-    await waitFor(() =>
-      expect(hoisted.createCheckout).toHaveBeenCalledWith('subscription', 1500),
-    )
-    await waitFor(() =>
-      expect(navigator.assign).toHaveBeenCalledWith('https://pay.chargily.com/x'),
-    )
+    expect(hoisted.upgradeOpen).toHaveBeenCalledTimes(1)
+    expect(hoisted.createCheckout).not.toHaveBeenCalled()
+    expect(navigator.assign).not.toHaveBeenCalled()
   })
 
   it('shows the starter state with the cycle credits and no CTA', () => {
@@ -159,7 +125,7 @@ describe('PlanCard', () => {
     expect(screen.getByRole('button', { name: 'Retry payment' })).toBeInTheDocument()
   })
 
-  it('shows the expired state with the display balance and a resubscribe CTA', () => {
+  it('shows the expired state with the display balance and a resubscribe CTA opening the dialog', () => {
     const expired: PlanResult = {
       tier: 'free',
       status: 'expired',
@@ -171,7 +137,10 @@ describe('PlanCard', () => {
     expect(screen.getByText('Subscription ended')).toBeInTheDocument()
     expect(screen.getByText('Credits')).toBeInTheDocument()
     expect(screen.getByText('40')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Resubscribe' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Resubscribe' }))
+    // 5.7 re-point: Resubscribe (the post-period cancelled state's home —
+    // John V4) opens the single Upgrade Dialog.
+    expect(hoisted.upgradeOpen).toHaveBeenCalledTimes(1)
   })
 
   it('shows the loading state', () => {
@@ -189,12 +158,15 @@ describe('PlanCard', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows an inline error when the checkout fails', async () => {
+  it('shows an inline error when the checkout fails (the recovery paths keep direct redirects)', async () => {
     hoisted.createCheckout.mockRejectedValue(new Error('boom'))
-    renderCard(FREE_PLAN, 'success')
+    renderCard(starterPlan('cancelled'), 'success')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upgrade' }))
+    // Reactivate is a RECOVERY path (John V8 amendment 5) — it keeps the
+    // direct create-checkout redirect + the inline role=alert error surface.
+    fireEvent.click(screen.getByRole('button', { name: 'Reactivate' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong'))
     expect(navigator.assign).not.toHaveBeenCalled()
+    expect(hoisted.upgradeOpen).not.toHaveBeenCalled()
   })
 })
