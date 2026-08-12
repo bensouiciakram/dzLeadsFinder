@@ -99,7 +99,10 @@ export function SubscriptionChip() {
       void redirect('subscription', SUBSCRIPTION_PRICE_DZD)
       return
     }
-    open()
+    // Manual-review fix: a cancelled user's dialog is a REACTIVATION offer
+    // — open('reactivate') makes the dialog title read "Reactivate" (the
+    // state-aware copy; the Subscribe CTA re-activates the same row).
+    open(status === 'cancelled' ? 'reactivate' : 'upgrade')
   }
 
   return (

@@ -1,5 +1,6 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
@@ -58,10 +59,11 @@ export function PackCards({ packs, phase }: Props) {
                   {t('packs.unit_price', { price: pack.unit_price })}
                 </p>
                 {pack.never_expires ? (
-                  <p className="mt-3 text-small text-foreground">
-                    <span aria-hidden="true" className="text-success">
-                      âœ“{' '}
-                    </span>
+                  <p className="mt-3 flex items-center gap-1.5 text-small text-foreground">
+                    {/* Manual-review fix: the 5.5-era literal `âœ“` (mojibake
+                        ✓) is replaced with the lucide Check icon — the
+                        UpgradeDialog/RecoveryDialog pattern. */}
+                    <Check className="size-4 shrink-0 text-success" aria-hidden="true" />
                     {t('packs.never_expires')}
                   </p>
                 ) : null}

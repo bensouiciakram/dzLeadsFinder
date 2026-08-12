@@ -111,7 +111,11 @@ export function CreditsPill() {
         }
       }}
       className={cn(
-        'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none md:h-7 md:min-h-7',
+        // Manual-review polish: the 44px mobile tap target stays (the AA
+        // floor) but the geometry tightens — px-2.5/gap-1 on mobile so the
+        // pill doesn't read as an oversized blob next to the 28px chip;
+        // desktop keeps the DESIGN.md 28px/pill proportions (h-7, px-3).
+        'inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none md:h-7 md:min-h-7 md:gap-1.5 md:px-3',
         zeroCredits
           ? 'bg-danger-container text-danger-on-container'
           : warning

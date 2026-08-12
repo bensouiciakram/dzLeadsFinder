@@ -126,7 +126,9 @@ describe('PackCards', () => {
 
   it('renders the never-expires check icon as aria-hidden', () => {
     const { container } = renderCards(PACKS, 'success')
-    const check = container.querySelector('span[aria-hidden="true"]')
+    // Manual-review fix: the lucide Check icon replaces the 5.5-era
+    // mojibake `âœ“` literal — the icon renders as an aria-hidden svg.
+    const check = container.querySelector('svg[aria-hidden="true"]')
     expect(check).not.toBeNull()
   })
 

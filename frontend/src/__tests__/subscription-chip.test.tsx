@@ -159,7 +159,9 @@ describe('SubscriptionChip — cancelled (access until date)', () => {
     expect(screen.getByText('Cancelled — access until')).toBeInTheDocument()
     expect(container.querySelector('bdi')).not.toBeNull()
     fireEvent.click(chip)
-    expect(hoisted.openDialog).toHaveBeenCalledTimes(1)
+    // Manual-review fix: the cancelled chip opens the dialog with the
+    // REACTIVATE intent (the state-aware title).
+    expect(hoisted.openDialog).toHaveBeenCalledWith('reactivate')
   })
 })
 

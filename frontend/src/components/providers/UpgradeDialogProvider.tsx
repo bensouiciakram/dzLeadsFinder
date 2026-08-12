@@ -23,16 +23,26 @@ import { SUBSCRIPTION_PRICE_DZD } from '@/lib/api/billing-service'
 // re-activation) makes that correct. On close the user is never
 // redirected (AC) — only the CTA navigates via useCheckoutRedirect
 // (stash-before-assign for the 5.6 return flow).
+//
+// Manual-review fix (deferred-work): the title is state-aware. The only
+// dialog trigger that means REACTIVATION (not upgrade) is the cancelled
+// chip — it calls open('reactivate') and the title reads the existing
+// `plan.reactivate` string ("Reactivate" ×3) instead of "Upgrade to
+// Starter" (zero new i18n keys — Sally's reuse-first discipline).
+export type UpgradeIntent = 'upgrade' | 'reactivate'
+
 export type UpgradeDialogContextValue = {
-  open: () => void
+  open: (intent?: UpgradeIntent) => void
   close: () => void
   isOpen: boolean
+  intent: UpgradeIntent
 }
 
 const UpgradeDialogContext = createContext<UpgradeDialogContextValue | null>(null)
 
 export function UpgradeDialogProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [intent, setIntent] = useState<UpgradeIntent>('upgrade')
   // Focus restore (Sally M4): capture the invoking control at open — no
   // ref plumbing across five entry points; every invoker (chip button,
   // PlanCard CTA, aria-disabled RevealControl, CreditsPill link, export
@@ -41,21 +51,25 @@ export function UpgradeDialogProvider({ children }: { children: React.ReactNode 
   // DangerZone precedent).
   const lastFocusRef = useRef<HTMLElement | null>(null)
 
-  const open = useCallback(() => {
-    if (isOpen) {
-      // open() while open is a no-op (double-click guard — Winston Q4).
-      return
-    }
-    lastFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null
-    setIsOpen(true)
-  }, [isOpen])
+  const open = useCallback(
+    (nextIntent: UpgradeIntent = 'upgrade') => {
+      if (isOpen) {
+        // open() while open is a no-op (double-click guard — Winston Q4).
+        return
+      }
+      lastFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setIntent(nextIntent)
+      setIsOpen(true)
+    },
+    [isOpen],
+  )
 
   const close = useCallback(() => setIsOpen(false), [])
 
   const value = useMemo(
-    () => ({ open, close, isOpen }),
-    [open, close, isOpen],
+    () => ({ open, close, isOpen, intent }),
+    [open, close, isOpen, intent],
   )
 
   return (
@@ -83,7 +97,7 @@ function UpgradeDialogBody({
   const trust = useTranslations('trust.homepage')
   const actions = useTranslations('common.actions')
   const states = useTranslations('common.states')
-  const { isOpen, close } = useUpgradeDialog()
+  const { isOpen, close, intent } = useUpgradeDialog()
   const { redirecting, error, redirect } = useCheckoutRedirect()
 
   const subscribe = () => {
@@ -114,7 +128,11 @@ function UpgradeDialogBody({
           className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg"
         >
           <DialogPrimitive.Title className="text-headline font-semibold text-foreground">
-            {t('upgrade_dialog.title')}
+            {/* Manual-review fix: state-aware title — a cancelled user's
+                dialog means REACTIVATION (the Subscribe CTA re-activates
+                the same row); the existing `plan.reactivate` string is
+                reused (zero new i18n keys). */}
+            {intent === 'reactivate' ? t('plan.reactivate') : t('upgrade_dialog.title')}
           </DialogPrimitive.Title>
           <DialogPrimitive.Close
             render={

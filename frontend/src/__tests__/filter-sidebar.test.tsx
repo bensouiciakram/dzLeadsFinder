@@ -273,6 +273,22 @@ describe('FilterSidebar desktop', () => {
     expect(props.onSubmit).not.toHaveBeenCalled()
   })
 
+  it('renders the rate-limited Apply with the tonal disabled-but-actionable treatment (manual-review fix)', () => {
+    // The shared Button's aria-disabled variant: muted fill + muted-strong
+    // label + border — the DESIGN.md disabled-but-actionable look (the
+    // reveal-button precedent) while remaining clickable (the dialog path).
+    sessionUser.value = { email: 'a@b.dz', locale: 'en', tier: 'free' }
+    renderSidebar({ rateLimited: true })
+    const apply = screen.getByRole('button', { name: 'search.filters.apply' })
+    expect(apply).toHaveAttribute('aria-disabled', 'true')
+    expect(apply.className).toContain('bg-muted')
+    expect(apply.className).toContain('text-muted-strong')
+    expect(apply.className).toContain('border-border')
+    // Still clickable — the daily-limit dialog trigger.
+    fireEvent.click(apply)
+    expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
+  })
+
   it('opens the Upgrade Dialog when a FREE user clicks the rate-limited Apply (daily-limit entry)', () => {
     // 5.7 (John V7 amendment 4): the search 429 is the AC's "daily-limit
     // state" — disabled-but-actionable: a free user's click opens the

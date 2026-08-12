@@ -53,9 +53,18 @@ async function flushRaf(): Promise<void> {
 function Probe() {
   const { open } = useUpgradeDialog()
   return (
-    <button type="button" data-testid="probe-trigger" onClick={open}>
-      open
-    </button>
+    <>
+      <button type="button" data-testid="probe-trigger" onClick={() => open()}>
+        open
+      </button>
+      <button
+        type="button"
+        data-testid="probe-trigger-reactivate"
+        onClick={() => open('reactivate')}
+      >
+        open reactivate
+      </button>
+    </>
   )
 }
 
@@ -154,5 +163,16 @@ describe('UpgradeDialog — the single shared conversion surface (5.7 AC)', () =
     await flushRaf()
     // The real en.json common.actions.close resolves via the lookup mock.
     expect(screen.getByLabelText('Close')).toBeInTheDocument()
+  })
+
+  it('renders the state-aware REACTIVATE title when opened with the reactivate intent (manual-review fix)', async () => {
+    renderDialog()
+    fireEvent.click(screen.getByTestId('probe-trigger-reactivate'))
+    await flushRaf()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // The existing plan.reactivate string is reused ("Reactivate" — zero
+    // new i18n keys); the default intent still shows "Upgrade to Starter".
+    expect(screen.getByText('Reactivate')).toBeInTheDocument()
+    expect(screen.queryByText('Upgrade to Starter')).toBeNull()
   })
 })

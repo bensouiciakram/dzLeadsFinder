@@ -73,7 +73,7 @@ export function PlanCard({ plan, phase }: Props) {
   const subscriptionCredits = plan.balances.subscription_balance
   const displayCredits = plan.balances.display_balance
 
-  // State driven by the SUBSCRIPTION status, never user.tier (5.5 D8 â€”
+  // State driven by the SUBSCRIPTION status, never user.tier (5.5 D8 —
   // the 5.7 cancel sync owns the tier write; a cancelled user stays
   // tier='starter').
   let headline: React.ReactNode
@@ -134,8 +134,8 @@ export function PlanCard({ plan, phase }: Props) {
       <h2 className="text-headline font-semibold text-foreground">{t('current_plan')}</h2>
       <div className="mt-4 rounded-lg border border-border bg-card p-6">
         {/* role=status wraps the headline text ONLY (ARIA 1.2: no focusable
-            content inside a live region) â€” the cancelled flip announces
-            "Cancelled â€” access until {date}" on the plan refetch. */}
+            content inside a live region) — the cancelled flip announces
+            "Cancelled — access until {date}" on the plan refetch. */}
         {announced ? (
           <p role="status" className="text-title font-semibold text-foreground">
             {headline}

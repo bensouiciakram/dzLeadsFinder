@@ -34,7 +34,12 @@ const PENDING = {
   date: null,
 }
 
-const STARTED_AT = '2026-08-11T12:00:00+01:00'
+// RELATIVE started_at (5.6-record lesson, applied 2026-08-12): a fixed
+// ISO constant goes stale once the wall clock passes it — the deadline
+// alarm (started_at + 60s) then fires immediately and the polling tests
+// flip to timeout on every run. "5 seconds ago" keeps the deadline ~55s
+// in the future forever.
+const STARTED_AT = new Date(Date.now() - 5_000).toISOString()
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
