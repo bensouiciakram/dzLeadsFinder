@@ -14,6 +14,12 @@ CHARGILY_MODE = os.environ.get('CHARGILY_MODE', 'live')
 
 SIMPLE_JWT['AUTH_COOKIE_SECURE'] = True  # noqa: F405
 
+# The host Caddy reverse-proxy terminates TLS — Django must trust its
+# X-Forwarded-Proto or admin redirects and cookie security break behind it.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 FRONTEND_PUBLIC_URL = os.environ['FRONTEND_PUBLIC_URL']
 
 EMAIL_BACKEND = os.environ.get(

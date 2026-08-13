@@ -1,0 +1,99 @@
+# Production stack — deployed behind the HOST-level Caddy (which owns
+# ports 80/443 and terminates TLS for dzleadsfinder.akrambensouici.com).
+# No Caddy service here on purpose: the host Caddyfile holds the site
+# block and proxies to the 127.0.0.1-bound ports below.
+#
+# Bootstrap (one-off, after `up -d`):
+#   docker compose -f docker-compose.prod.yml run --rm django \
+#     sh -c "python manage.py collectstatic --noinput && python manage.py migrate"
+#   docker compose -f docker-compose.prod.yml run --rm django \
+#     python manage.py seed_demo_data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dzleads}
+      POSTGRES_USER: ${POSTGRES_USER:-dzleads}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dzleads}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  django:
+    build:
+      context: ./backend
+      target: production
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8004 --workers 3 --timeout 90 --access-logfile -
+    ports:
+      - "127.0.0.1:8004:8004"
+    networks:
+      - internal
+
+  celery_worker:
+    build:
+      context: ./backend
+      target: production
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config worker -l info
+    networks:
+      - internal
+
+  nextjs:
+    build:
+      context: ./frontend
+      target: runner
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      PORT: "3004"
+    ports:
+      - "127.0.0.1:3004:3004"
+    networks:
+      - internal
+    depends_on:
+      - django
+
+networks:
+  internal:
+
+volumes:
+  postgres_data:
+  redis_data:
