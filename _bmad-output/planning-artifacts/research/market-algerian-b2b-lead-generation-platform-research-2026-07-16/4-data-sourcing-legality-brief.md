@@ -4,6 +4,8 @@
 
 This is a **brief risk note + mitigations**, not a legal opinion. You must consult an Algerian lawyer before commercializing CNRC-scraped data. Confidence: MEDIUM (analyst view grounded in Algerian data-protection context); not legal advice.
 
+> **AMENDED 2026-08-13 (product positioning, not legal advice):** the /how-we-verify page now lists CNRC and LinkedIn as verification sources. This is limited to *confirming publicly published information* (registry lookups, company-published links) — it does NOT authorize bulk scraping or redistribution of either platform's data, and the V1 prohibitions below remain binding until a formal Algerian legal review is obtained.
+
 ## Per-Source Risk Flags
 
 **1. CNRC (Registre National du Commerce)**

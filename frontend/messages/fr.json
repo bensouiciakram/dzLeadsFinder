@@ -95,15 +95,18 @@
   },
   "billing": {
     "title": "Facturation et forfaits",
-    "meta_title": "Facturation et forfaits — dzLeadsFinder",
-    "meta_description": "Gérez votre forfait dzLeadsFinder, vos packs de crédits, votre historique de paiements et votre abonnement.",
+    "meta_title": "Facturation et forfaits — DzLeadsFinder",
+    "meta_description": "Gérez votre forfait DzLeadsFinder, vos packs de crédits, votre historique de paiements et votre abonnement.",
     "current_plan": "Forfait actuel",
     "currency": "DZD",
     "failed_renewal": "Paiement échoué — <update>mettez à jour votre moyen de paiement pour garder Starter</update>",
     "chip": {
       "free": "Gratuit — Passer à Starter",
       "starter": "Starter — renouvellement le <date>{d}</date>",
-      "failed": "Starter — paiement échoué"
+      "failed": "Starter — paiement échoué",
+      "starter_mobile": "Starter",
+      "cancelled_mobile": "Annulé",
+      "failed_mobile": "Paiement échoué"
     },
     "upgrade_dialog": {
       "title": "Passer à Starter",
@@ -169,7 +172,7 @@
   },
   "common": {
     "app": {
-      "name": "dzLeadsFinder",
+      "name": "DzLeadsFinder",
       "tagline": "Plateforme algérienne de génération de leads B2B"
     },
     "nav": {
@@ -181,7 +184,10 @@
       "login": "Connexion",
       "signup": "Inscription",
       "start_free": "Commencer gratuitement",
-      "logout": "Déconnexion"
+      "logout": "Déconnexion",
+      "menu": "Menu",
+      "menu_open": "Ouvrir le menu de navigation",
+      "menu_close": "Fermer le menu de navigation"
     },
     "actions": {
       "save": "Enregistrer",
@@ -303,7 +309,7 @@
     },
     "founder": {
       "note": "Mot du fondateur",
-      "text": "J'ai créé dzLeadsFinder parce que j'ai vu à quel point il est difficile pour les entreprises algériennes de trouver des leads qualifiés. Nous combinons plusieurs sources de données pour vous fournir des coordonnées précises et à jour — pour que vous puissiez vous concentrer sur le développement de votre entreprise."
+      "text": "J'ai créé DzLeadsFinder parce que j'ai vu à quel point il est difficile pour les entreprises algériennes de trouver des leads qualifiés. Nous combinons plusieurs sources de données pour vous fournir des coordonnées précises et à jour — pour que vous puissiez vous concentrer sur le développement de votre entreprise."
     }
   },
   "search": {
@@ -327,6 +333,8 @@
       "badge": "Filtres ({count})",
       "select_all": "Tout sélectionner",
       "clear_group": "Effacer",
+      "show_more": "Afficher plus",
+      "show_less": "Afficher moins",
       "include_unknown_size": "Inclure les tailles inconnues",
       "wilaya_clear": "Effacer la sélection de wilayas",
       "wilaya_label": "Rechercher des wilayas par code ou par nom",
@@ -420,8 +428,8 @@
   },
   "settings": {
     "title": "Paramètres",
-    "meta_title": "Paramètres — dzLeadsFinder",
-    "meta_description": "Gérez votre compte dzLeadsFinder — y compris la suppression du compte.",
+    "meta_title": "Paramètres — DzLeadsFinder",
+    "meta_description": "Gérez votre compte DzLeadsFinder — y compris la suppression du compte.",
     "dzone": {
       "title": "Zone de danger",
       "description": "Supprimez votre compte et toutes les données associées. Après un délai de grâce de 7 jours, la suppression est définitive.",
@@ -447,10 +455,10 @@
   },
   "trust": {
     "wilayas": {
-      "meta_title": "Les 58 Wilayas d'Algérie — dzLeadsFinder",
+      "meta_title": "Les 58 Wilayas d'Algérie — DzLeadsFinder",
       "meta_description": "Taxonomie officielle des 58 wilayas — codes 1–58 avec noms en arabe, français et anglais.",
       "heading": "Les 58 Wilayas d'Algérie",
-      "description": "L'Algérie est divisée en 58 wilayas (provinces), numérotées de 1 à 58. C'est la taxonomie officielle utilisée dans dzLeadsFinder.",
+      "description": "L'Algérie est divisée en 58 wilayas (provinces), numérotées de 1 à 58. C'est la taxonomie officielle utilisée dans DzLeadsFinder.",
       "table_caption": "Les 58 wilayas d'Algérie — codes 1–58 avec noms en arabe, français et anglais",
       "column_code": "Code",
       "column_arabic": "Arabe",
@@ -461,23 +469,34 @@
       "no_results": "Aucune wilaya ne correspond à votre recherche"
     },
     "about": {
-      "title": "\u00c0 propos de dzLeadsFinder",
-      "meta_title": "\u00c0 propos \u2014 dzLeadsFinder",
-      "meta_description": "Rencontrez le fondateur de dzLeadsFinder \u2014 construit \u00e0 Alger pour les entreprises alg\u00e9riennes.",
-      "heading": "Fabriqu\u00e9 par Akram \u00e0 Alger",
-      "narrative_line1": "Je suis Akram, un d\u00e9veloppeur bas\u00e9 \u00e0 Alger. J'ai cr\u00e9\u00e9 dzLeadsFinder parce que j'ai vu de mes propres yeux \u00e0 quel point il est difficile pour les entreprises alg\u00e9riennes de trouver des leads B2B qualifi\u00e9s.",
+      "title": "\u00c0 propos de DzLeadsFinder",
+      "meta_title": "\u00c0 propos \u2014 DzLeadsFinder",
+      "meta_description": "Rencontrez les fondateurs de DzLeadsFinder \u2014 construit \u00e0 Alger pour les entreprises alg\u00e9riennes.",
+      "heading": "Construit par Akram et Sofiane \u00e0 Alger",
+      "team_label": "L'\u00e9quipe",
+      "akram_title": "Akram Bensouici",
+      "akram_role": "Co-fondateur \u2014 Ing\u00e9nierie logicielle",
+      "akram_alt": "Portrait d'Akram Bensouici, co-fondateur",
+      "sofian_title": "Sofiane Mesbah",
+      "sofian_role": "Co-fondateur \u2014 Donn\u00e9es et analyses",
+      "sofian_alt": "Portrait de Sofiane Mesbah, co-fondateur",
+      "carousel_label": "Photos de l'\u00e9quipe",
+      "carousel_prev": "Membre pr\u00e9c\u00e9dent de l'\u00e9quipe",
+      "carousel_next": "Membre suivant de l'\u00e9quipe",
+      "narrative_line1": "Je suis Akram, un d\u00e9veloppeur bas\u00e9 \u00e0 Alger. J'ai cr\u00e9\u00e9 DzLeadsFinder parce que j'ai vu de mes propres yeux \u00e0 quel point il est difficile pour les entreprises alg\u00e9riennes de trouver des leads B2B qualifi\u00e9s.",
       "narrative_line2": "Les outils existants sont con\u00e7us pour d'autres march\u00e9s \u2014 ils ne comprennent pas les wilayas alg\u00e9riennes, ne supportent pas naturellement l'arabe et le fran\u00e7ais, et certainement ne co\u00fbtent pas en DZD.",
       "narrative_line3": "J'ai donc construit cette plateforme. Une plateforme qui combine plusieurs sources de donn\u00e9es locales, respecte la loi alg\u00e9rienne, et rend la g\u00e9n\u00e9ration de leads accessible \u00e0 toutes les entreprises du pays.",
       "narrative_line4": "C'est le premier jour pour les donn\u00e9es B2B alg\u00e9riennes. [PENDING REVIEW]",
-      "headshot_alt": "",
-      "founder_label": "Fondateur",
+      "sofian_line1": "Je suis Sofiane, statisticien et \u00e9conom\u00e8tre. Depuis 2006, j'accompagne des entreprises de plusieurs secteurs et pays dans l'exploitation statistique pour le pilotage strat\u00e9gique et op\u00e9rationnel.",
+      "sofian_line2": "Une donn\u00e9e n'a de valeur que si elle est fiable. C'est pourquoi chaque fiche de DzLeadsFinder est v\u00e9rifi\u00e9e aupr\u00e8s de plusieurs sources avant de vous parvenir.",
+      "sofian_line3": "Avec Akram, nous avons construit une plateforme o\u00f9 les entreprises alg\u00e9riennes peuvent enfin acc\u00e9der \u00e0 des donn\u00e9es de contact fiables et v\u00e9rifi\u00e9es \u2014 sans deviner.",
       "contact_email": "akram@dzleadsfinder.dz",
       "contact_label": "Contactez-moi"
     },
     "how_we_verify": {
-      "title": "Comment nous v\u00e9rifions les donn\u00e9es \u2014 dzLeadsFinder",
-      "meta_title": "Comment nous v\u00e9rifions \u2014 dzLeadsFinder",
-      "meta_description": "D\u00e9couvrez comment dzLeadsFinder v\u00e9rifie les donn\u00e9es de contact professionnelles \u00e0 partir de plusieurs sources alg\u00e9riennes.",
+      "title": "Comment nous v\u00e9rifions les donn\u00e9es \u2014 DzLeadsFinder",
+      "meta_title": "Comment nous v\u00e9rifions \u2014 DzLeadsFinder",
+      "meta_description": "D\u00e9couvrez comment DzLeadsFinder v\u00e9rifie les donn\u00e9es de contact professionnelles \u00e0 partir de plusieurs sources alg\u00e9riennes.",
       "heading": "Comment nous v\u00e9rifions",
       "description": "Nous combinons plusieurs sources de donn\u00e9es pour fournir des coordonn\u00e9es pr\u00e9cises et \u00e0 jour des entreprises alg\u00e9riennes.",
       "sources_used_title": "Sources que nous utilisons",
@@ -487,20 +506,19 @@
       "el_mouchir_desc": "Annuaire des entreprises alg\u00e9riennes \u2014 pages publiques consult\u00e9es dans le respect des limites de d\u00e9bit.",
       "pages_jaunes": "Pages Jaunes Alg\u00e9rie",
       "pages_jaunes_desc": "Annuaire pages jaunes pour l'Alg\u00e9rie \u2014 des limites de d\u00e9bit s'appliquent \u00e0 nos requ\u00eates.",
-      "rate_limit_note": "Nous respectons les limites de d\u00e9bit de toutes les sources tierces pour garantir un acc\u00e8s \u00e9quitable.",
-      "sources_not_used_title": "Sources que nous N'utilisons PAS",
       "cnrc_name": "CNRC (Centre National du Registre du Commerce)",
-      "cnrc_rationale": "Les donn\u00e9es du CNRC ne sont pas accessibles au public dans un format lisible par machine. Nous ne collectons ni n'achetons de registres priv\u00e9s.",
+      "cnrc_desc": "Registre officiel du commerce alg\u00e9rien \u2014 fiches d'entreprises v\u00e9rifi\u00e9es aupr\u00e8s du Centre National du Registre du Commerce.",
       "linkedin_name": "LinkedIn",
-      "linkedin_rationale": "LinkedIn est un r\u00e9seau social, pas un annuaire d'entreprises. Nous n'extrayons pas de donn\u00e9es de profils personnels ou d'entreprise.",
+      "linkedin_desc": "Pages publiques d'entreprises \u2014 utilis\u00e9es uniquement pour confirmer les informations publiquement publi\u00e9es.",
+      "rate_limit_note": "Nous respectons les limites de d\u00e9bit de toutes les sources tierces pour garantir un acc\u00e8s \u00e9quitable.",
       "updates": "Chaque enregistrement est v\u00e9rifi\u00e9 au moins une fois tous les 30 jours."
     },
     "privacy": {
-      "title": "Politique de confidentialit\u00e9 \u2014 dzLeadsFinder",
-      "meta_title": "Politique de confidentialit\u00e9 \u2014 dzLeadsFinder",
-      "meta_description": "Politique de confidentialit\u00e9 de dzLeadsFinder \u2014 conforme \u00e0 la loi alg\u00e9rienne 18-07 sur la protection des donn\u00e9es personnelles.",
+      "title": "Politique de confidentialit\u00e9 \u2014 DzLeadsFinder",
+      "meta_title": "Politique de confidentialit\u00e9 \u2014 DzLeadsFinder",
+      "meta_description": "Politique de confidentialit\u00e9 de DzLeadsFinder \u2014 conforme \u00e0 la loi alg\u00e9rienne 18-07 sur la protection des donn\u00e9es personnelles.",
       "heading": "Politique de confidentialit\u00e9",
-      "law_reference": "dzLeadsFinder est conforme \u00e0 la Loi 18-07 du 10 juin 2018 relative \u00e0 la protection des personnes physiques \u00e0 l'\u00e9gard du traitement des donn\u00e9es \u00e0 caract\u00e8re personnel.",
+      "law_reference": "DzLeadsFinder est conforme \u00e0 la Loi 18-07 du 10 juin 2018 relative \u00e0 la protection des personnes physiques \u00e0 l'\u00e9gard du traitement des donn\u00e9es \u00e0 caract\u00e8re personnel.",
       "data_subject_title": "Vos droits",
       "data_subject_intro": "En tant que personne concern\u00e9e par la Loi 18-07, vous avez le droit de :",
       "right_access": "Demander l'acc\u00e8s aux donn\u00e9es personnelles que nous d\u00e9tenons sur vous",
@@ -515,12 +533,12 @@
       "anpdp_note": "Nous sommes en train de d\u00e9poser une d\u00e9claration aupr\u00e8s de l'ANPDP (Autorit\u00e9 Nationale de Protection des Donn\u00e9es \u00e0 Caract\u00e8re Personnel). Cette page sera mise \u00e0 jour une fois la d\u00e9claration d\u00e9pos\u00e9e. [En attente de confirmation Q8]",
       "takedown_contact": "Pour les demandes de retrait ou les questions relatives \u00e0 la confidentialit\u00e9, contactez-nous \u00e0",
       "takedown_email": "privacy@dzleadsfinder.dz",
-      "mailing_address": "dzLeadsFinder, Alger, Alg\u00e9rie"
+      "mailing_address": "DzLeadsFinder, Alger, Alg\u00e9rie"
     },
     "terms": {
-      "title": "Conditions d'utilisation \u2014 dzLeadsFinder",
-      "meta_title": "Conditions d'utilisation \u2014 dzLeadsFinder",
-      "meta_description": "Conditions d'utilisation de dzLeadsFinder \u2014 conditions d'abonnement, packs suppl\u00e9mentaires et politique de remboursement.",
+      "title": "Conditions d'utilisation \u2014 DzLeadsFinder",
+      "meta_title": "Conditions d'utilisation \u2014 DzLeadsFinder",
+      "meta_description": "Conditions d'utilisation de DzLeadsFinder \u2014 conditions d'abonnement, packs suppl\u00e9mentaires et politique de remboursement.",
       "heading": "Conditions d'utilisation",
       "subscription_title": "Conditions d'abonnement",
       "subscription_desc": "Les abonnements Starter se renouvellent automatiquement \u00e0 1 500 DZD par mois. Vous pouvez annuler \u00e0 tout moment avant la prochaine date de renouvellement.",
@@ -529,20 +547,20 @@
       "norefund_title": "Politique de non-remboursement",
       "norefund_desc": "Tous les frais d'abonnement et les achats suppl\u00e9mentaires sont non remboursables par d\u00e9faut. Voir notre Politique de remboursement pour l'exception document\u00e9e.",
       "usage_title": "Utilisation acceptable",
-      "usage_desc": "dzLeadsFinder est destin\u00e9 uniquement \u00e0 la g\u00e9n\u00e9ration de leads B2B. Vous n'\u00eates pas autoris\u00e9 \u00e0 extraire, revendre ou redistribuer les donn\u00e9es obtenues via la plateforme."
+      "usage_desc": "DzLeadsFinder est destin\u00e9 uniquement \u00e0 la g\u00e9n\u00e9ration de leads B2B. Vous n'\u00eates pas autoris\u00e9 \u00e0 extraire, revendre ou redistribuer les donn\u00e9es obtenues via la plateforme."
     },
     "refund": {
-      "title": "Politique de remboursement \u2014 dzLeadsFinder",
-      "meta_title": "Politique de remboursement \u2014 dzLeadsFinder",
-      "meta_description": "Politique de remboursement de dzLeadsFinder \u2014 non-remboursable par d\u00e9faut avec une exception document\u00e9e pour erreur de paiement.",
+      "title": "Politique de remboursement \u2014 DzLeadsFinder",
+      "meta_title": "Politique de remboursement \u2014 DzLeadsFinder",
+      "meta_description": "Politique de remboursement de DzLeadsFinder \u2014 non-remboursable par d\u00e9faut avec une exception document\u00e9e pour erreur de paiement.",
       "heading": "Politique de remboursement",
-      "default_stance": "Tous les achats sur dzLeadsFinder sont non remboursables par d\u00e9faut. Cela inclut les frais d'abonnement Starter et les achats de packs de cr\u00e9dits suppl\u00e9mentaires.",
+      "default_stance": "Tous les achats sur DzLeadsFinder sont non remboursables par d\u00e9faut. Cela inclut les frais d'abonnement Starter et les achats de packs de cr\u00e9dits suppl\u00e9mentaires.",
       "exception_title": "Exception \u2014 Erreur de paiement document\u00e9e",
       "exception_desc": "Si vous rencontrez une erreur technique av\u00e9r\u00e9e de notre part (ex. : facturation en double, \u00e9chec de livraison de cr\u00e9dits apr\u00e8s un paiement r\u00e9ussi), vous pouvez demander un remboursement en contactant support@dzleadsfinder.dz avec une documentation de l'erreur.",
       "exception_scope": "Les remboursements dans le cadre de cette exception sont accord\u00e9s \u00e0 notre discr\u00e9tion apr\u00e8s examen de l'erreur document\u00e9e. Les cr\u00e9dits d\u00e9j\u00e0 utilis\u00e9s ne seront pas rembours\u00e9s."
     },
     "homepage": {
-      "meta_title": "dzLeadsFinder \u2014 G\u00e9n\u00e9ration de leads B2B en Alg\u00e9rie",
+      "meta_title": "DzLeadsFinder \u2014 G\u00e9n\u00e9ration de leads B2B en Alg\u00e9rie",
       "meta_description": "Trouvez des leads B2B v\u00e9rifi\u00e9s en Alg\u00e9rie. Acc\u00e9dez aux contacts des importateurs, distributeurs et d\u00e9cideurs dans les 58 wilayas.",
       "hero_title": "Trouvez des leads B2B en Alg\u00e9rie",
       "hero_subtitle": "Acc\u00e9dez aux contacts v\u00e9rifi\u00e9s des entreprises alg\u00e9riennes \u2014 importateurs, distributeurs et d\u00e9cideurs dans les 58 wilayas.",
@@ -567,20 +585,13 @@
       "starter_feature_3": "Exportez en CSV ou Excel",
       "free_trial": "Essai gratuit disponible",
       "founder_note_teaser": "Mot du fondateur",
-      "founder_note_text": "J'ai cr\u00e9\u00e9 dzLeadsFinder parce que j'ai vu \u00e0 quel point il est difficile pour les entreprises alg\u00e9riennes de trouver des leads qualifi\u00e9s. Nos donn\u00e9es sont v\u00e9rifi\u00e9es aupr\u00e8s de plusieurs sources locales et respectent la loi alg\u00e9rienne.",
+      "founder_note_text": "J'ai cr\u00e9\u00e9 DzLeadsFinder parce que j'ai vu \u00e0 quel point il est difficile pour les entreprises alg\u00e9riennes de trouver des leads qualifi\u00e9s. Nos donn\u00e9es sont v\u00e9rifi\u00e9es aupr\u00e8s de plusieurs sources locales et respectent la loi alg\u00e9rienne.",
       "founder_note_link": "En savoir plus sur pourquoi j'ai construit cela",
-      "preview": {
-        "results_count": "58 r\u00e9sultats",
-        "verified": "V\u00e9rifi\u00e9",
-        "credit_hint": "1 cr\u00e9dit pour r\u00e9v\u00e9ler",
-        "filter_1": "Importateurs",
-        "filter_2": "Alger",
-        "filter_3": "Grossiste",
-        "company_name": "SARL Algerian Trade Co.",
-        "industry": "Import / Distribution \u00b7 11-50 employ\u00e9s",
-        "location": "Alger, 16",
-        "phone": "+213 5__ __ __",
-        "email": "contact@______.dz"
+      "stats": {
+        "wilayas": "58 wilayas couvertes",
+        "industries": "35 secteurs d'activit\u00e9",
+        "sources": "5 sources v\u00e9rifi\u00e9es",
+        "credits": "200 cr\u00e9dits/mois"
       },
       "trust_title": "Con\u00e7u pour les entreprises alg\u00e9riennes"
     }

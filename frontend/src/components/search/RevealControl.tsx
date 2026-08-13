@@ -244,7 +244,7 @@ export function RevealControl({
       aria-disabled={state.zeroCredits || undefined}
       onClick={handleClick}
       className={cn(
-        'flex w-full min-h-11 items-center justify-center gap-1.5 rounded-md text-small font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8',
+        'flex w-full min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-center text-small font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8',
         state.zeroCredits
           ? 'border border-border bg-muted text-muted-strong'
           : 'bg-primary text-primary-foreground',
@@ -257,8 +257,8 @@ export function RevealControl({
         </>
       ) : (
         <>
-          <span>{t('common.actions.reveal')}</span>
-          <span className="opacity-80">{t('search.reveal.cost')}</span>
+          <span className="min-w-0 whitespace-nowrap">{t('common.actions.reveal')}</span>
+          <span className="min-w-0 whitespace-nowrap opacity-80">{t('search.reveal.cost')}</span>
         </>
       )}
     </button>

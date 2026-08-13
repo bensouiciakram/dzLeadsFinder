@@ -102,7 +102,7 @@ export function DangerZone() {
             <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
             <DialogPrimitive.Popup
               aria-modal="true"
-              className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg md:p-8"
+              className="fixed start-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg md:p-8"
             >
               {step === 1 ? (
                 <>
@@ -118,13 +118,13 @@ export function DangerZone() {
                     <li>{t('settings.dzone.consequence_credits')}</li>
                     <li>{t('settings.dzone.consequence_ledger')}</li>
                   </ul>
-                  <div className="mt-6 flex justify-end gap-3">
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <DialogPrimitive.Close
-                      render={<Button variant="outline" className="px-5" />}
+                      render={<Button variant="outline" className="w-full px-5 sm:w-auto" />}
                     >
                       {t('common.actions.cancel')}
                     </DialogPrimitive.Close>
-                    <Button type="button" className="px-5" onClick={() => setStep(2)}>
+                    <Button type="button" className="w-full px-5 sm:w-auto" onClick={() => setStep(2)}>
                       {t('common.actions.continue')}
                     </Button>
                   </div>
@@ -142,16 +142,16 @@ export function DangerZone() {
                       {t('settings.dzone.confirm_error')}
                     </p>
                   ) : null}
-                  <div className="mt-6 flex justify-end gap-3">
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <DialogPrimitive.Close
-                      render={<Button variant="outline" className="px-5" />}
+                      render={<Button variant="outline" className="w-full px-5 sm:w-auto" />}
                     >
                       {t('common.actions.cancel')}
                     </DialogPrimitive.Close>
                     <Button
                       type="button"
                       variant="destructive"
-                      className="px-5"
+                      className="w-full px-5 sm:w-auto"
                       disabled={submitting}
                       onClick={() => void confirmDeletion()}
                     >

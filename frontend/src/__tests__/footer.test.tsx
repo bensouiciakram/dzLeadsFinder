@@ -33,7 +33,7 @@ describe('Footer', () => {
 
   it('renders founder credit', () => {
     render(<Footer />)
-    expect(screen.getByText('Made by Akram in Algiers')).toBeInTheDocument()
+    expect(screen.getByText('Made by Akram & Sofiane in Algiers')).toBeInTheDocument()
   })
 
   it('renders LocaleSwitcher in footer', () => {

@@ -236,6 +236,7 @@ export function FilterSidebar({
             onToggle={toggleIndustries}
             onSelectAll={() => updateDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
             onClear={() => updateDraft((current) => ({ ...current, industries: [] }))}
+            maxVisible={8}
           />
         </section>
 

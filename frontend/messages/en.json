@@ -95,15 +95,18 @@
   },
   "billing": {
     "title": "Billing & Plans",
-    "meta_title": "Billing & Plans — dzLeadsFinder",
-    "meta_description": "Manage your dzLeadsFinder plan, add-on credit packs, payment history, and subscription.",
+    "meta_title": "Billing & Plans — DzLeadsFinder",
+    "meta_description": "Manage your DzLeadsFinder plan, add-on credit packs, payment history, and subscription.",
     "current_plan": "Current Plan",
     "currency": "DZD",
     "failed_renewal": "Payment failed — <update>update your payment method to keep Starter</update>",
     "chip": {
       "free": "Free — Upgrade",
       "starter": "Starter — renews on <date>{d}</date>",
-      "failed": "Starter — payment failed"
+      "failed": "Starter — payment failed",
+      "starter_mobile": "Starter",
+      "cancelled_mobile": "Cancelled",
+      "failed_mobile": "Payment failed"
     },
     "upgrade_dialog": {
       "title": "Upgrade to Starter",
@@ -169,7 +172,7 @@
   },
   "common": {
     "app": {
-      "name": "dzLeadsFinder",
+      "name": "DzLeadsFinder",
       "tagline": "Algerian B2B Lead Generation Platform"
     },
     "nav": {
@@ -181,7 +184,10 @@
       "login": "Login",
       "signup": "Sign Up",
       "start_free": "Start Free",
-      "logout": "Logout"
+      "logout": "Logout",
+      "menu": "Menu",
+      "menu_open": "Open navigation menu",
+      "menu_close": "Close navigation menu"
     },
     "actions": {
       "save": "Save",
@@ -303,7 +309,7 @@
     },
     "founder": {
       "note": "A word from the founder",
-      "text": "I built dzLeadsFinder because I saw how hard it is for Algerian businesses to find qualified leads. We combine multiple data sources to give you accurate, up-to-date contact information — so you can focus on growing your business."
+      "text": "I built DzLeadsFinder because I saw how hard it is for Algerian businesses to find qualified leads. We combine multiple data sources to give you accurate, up-to-date contact information — so you can focus on growing your business."
     }
   },
   "search": {
@@ -327,6 +333,8 @@
       "badge": "Filters ({count})",
       "select_all": "Select all",
       "clear_group": "Clear",
+      "show_more": "Show more",
+      "show_less": "Show less",
       "include_unknown_size": "Include unknown size",
       "wilaya_clear": "Clear wilaya selection",
       "wilaya_label": "Search wilayas by code or name",
@@ -420,8 +428,8 @@
   },
   "settings": {
     "title": "Settings",
-    "meta_title": "Settings — dzLeadsFinder",
-    "meta_description": "Manage your dzLeadsFinder account — including account deletion.",
+    "meta_title": "Settings — DzLeadsFinder",
+    "meta_description": "Manage your DzLeadsFinder account — including account deletion.",
     "dzone": {
       "title": "Danger Zone",
       "description": "Delete your account and all associated data. After a 7-day grace period, deletion is permanent.",
@@ -447,10 +455,10 @@
   },
   "trust": {
     "wilayas": {
-      "meta_title": "58 Wilayas of Algeria — dzLeadsFinder",
+      "meta_title": "58 Wilayas of Algeria — DzLeadsFinder",
       "meta_description": "Official 58-wilaya taxonomy — codes 1–58 with Arabic, French, and English names.",
       "heading": "The 58 Wilayas of Algeria",
-      "description": "Algeria is divided into 58 wilayas (provinces), numbered 1 through 58. This is the official taxonomy used throughout dzLeadsFinder.",
+      "description": "Algeria is divided into 58 wilayas (provinces), numbered 1 through 58. This is the official taxonomy used throughout DzLeadsFinder.",
       "table_caption": "The 58 wilayas of Algeria — codes 1–58 with Arabic, French, and English names",
       "column_code": "Code",
       "column_arabic": "Arabic",
@@ -461,23 +469,34 @@
       "no_results": "No wilayas match your search"
     },
     "about": {
-      "title": "About dzLeadsFinder",
-      "meta_title": "About — dzLeadsFinder",
-      "meta_description": "Meet the founder behind dzLeadsFinder — built in Algiers for Algerian businesses.",
-      "heading": "Made by Akram in Algiers",
-      "narrative_line1": "I\u2019m Akram, a developer based in Algiers. I built dzLeadsFinder because I saw firsthand how hard it is for Algerian businesses to find qualified B2B leads.",
+      "title": "About DzLeadsFinder",
+      "meta_title": "About — DzLeadsFinder",
+      "meta_description": "Meet the founders behind DzLeadsFinder — built in Algiers for Algerian businesses.",
+      "heading": "Built by Akram & Sofiane in Algiers",
+      "team_label": "The team",
+      "akram_title": "Akram Bensouici",
+      "akram_role": "Co-founder — Software Engineering",
+      "akram_alt": "Portrait of Akram Bensouici, co-founder",
+      "sofian_title": "Sofiane Mesbah",
+      "sofian_role": "Co-founder — Data & Analytics",
+      "sofian_alt": "Portrait of Sofiane Mesbah, co-founder",
+      "carousel_label": "Team photos",
+      "carousel_prev": "Previous team member",
+      "carousel_next": "Next team member",
+      "narrative_line1": "I\u2019m Akram, a developer based in Algiers. I built DzLeadsFinder because I saw firsthand how hard it is for Algerian businesses to find qualified B2B leads.",
       "narrative_line2": "Existing tools are built for other markets \u2014 they don't understand Algerian wilayas, they don't support Arabic and French naturally, and they certainly don't cost in DZD.",
       "narrative_line3": "So I built this. One platform that combines multiple local data sources, respects Algerian law, and makes lead generation accessible to every business in the country.",
       "narrative_line4": "This is day one for Algerian B2B data. [PENDING REVIEW]",
-      "headshot_alt": "",
-      "founder_label": "Founder",
+      "sofian_line1": "I\u2019m Sofiane, a statistician and econometrician. Since 2006, I\u2019ve helped companies across industries and countries turn raw data into strategic and operational decisions.",
+      "sofian_line2": "Data is only valuable when it\u2019s trustworthy. That\u2019s why every record on DzLeadsFinder is checked against multiple sources before it reaches you.",
+      "sofian_line3": "Together with Akram, we built a platform where Algerian businesses can finally access reliable, verified contact data \u2014 without guessing.",
       "contact_email": "akram@dzleadsfinder.dz",
       "contact_label": "Reach out"
     },
     "how_we_verify": {
-      "title": "How We Verify Data \u2014 dzLeadsFinder",
-      "meta_title": "How We Verify \u2014 dzLeadsFinder",
-      "meta_description": "Learn how dzLeadsFinder verifies business contact data from multiple Algerian sources.",
+      "title": "How We Verify Data \u2014 DzLeadsFinder",
+      "meta_title": "How We Verify \u2014 DzLeadsFinder",
+      "meta_description": "Learn how DzLeadsFinder verifies business contact data from multiple Algerian sources.",
       "heading": "How We Verify",
       "description": "We combine multiple data sources to provide accurate, up-to-date contact information for Algerian businesses.",
       "sources_used_title": "Sources We Use",
@@ -487,20 +506,19 @@
       "el_mouchir_desc": "Algerian business directory \u2014 public pages sourced with respect to rate limits.",
       "pages_jaunes": "Pages Jaunes Alg\u00e9rie",
       "pages_jaunes_desc": "Yellow pages directory for Algeria \u2014 rate limits apply to our lookups.",
-      "rate_limit_note": "We respect rate limits on all third-party sources to ensure fair access for everyone.",
-      "sources_not_used_title": "Sources We Do NOT Use",
       "cnrc_name": "CNRC (Centre National du Registre du Commerce)",
-      "cnrc_rationale": "CNRC data is not publicly accessible in machine-readable format. We do not scrape or purchase private registries.",
+      "cnrc_desc": "Official Algerian commercial registry \u2014 company records verified against the National Centre of the Commercial Register.",
       "linkedin_name": "LinkedIn",
-      "linkedin_rationale": "LinkedIn is a social network, not a business directory. We do not extract data from personal or company profiles.",
+      "linkedin_desc": "Public company pages \u2014 used only to confirm publicly published business information.",
+      "rate_limit_note": "We respect rate limits on all third-party sources to ensure fair access for everyone.",
       "updates": "Every record is verified at least once every 30 days."
     },
     "privacy": {
-      "title": "Privacy Policy \u2014 dzLeadsFinder",
-      "meta_title": "Privacy Policy \u2014 dzLeadsFinder",
-      "meta_description": "dzLeadsFinder privacy policy \u2014 compliant with Algerian Law 18-07 on personal data protection.",
+      "title": "Privacy Policy \u2014 DzLeadsFinder",
+      "meta_title": "Privacy Policy \u2014 DzLeadsFinder",
+      "meta_description": "DzLeadsFinder privacy policy \u2014 compliant with Algerian Law 18-07 on personal data protection.",
       "heading": "Privacy Policy",
-      "law_reference": "dzLeadsFinder complies with Loi 18-07 du 10 juin 2018 relative \u00e0 la protection des personnes physiques \u00e0 l'\u00e9gard du traitement des donn\u00e9es \u00e0 caract\u00e8re personnel.",
+      "law_reference": "DzLeadsFinder complies with Law No. 18-07 of 10 June 2018 relating to the protection of natural persons with regard to the processing of personal data.",
       "data_subject_title": "Your Rights",
       "data_subject_intro": "As a data subject under Law 18-07, you have the right to:",
       "right_access": "Request access to the personal data we hold about you",
@@ -515,12 +533,12 @@
       "anpdp_note": "We are in the process of filing a declaration with ANPDP (Autorit\u00e9 Nationale de Protection des Donn\u00e9es \u00e0 Caract\u00e8re Personnel). This page will be updated once the declaration is filed. [PENDING Open Q8 confirmation]",
       "takedown_contact": "For takedown requests or privacy inquiries, contact us at",
       "takedown_email": "privacy@dzleadsfinder.dz",
-      "mailing_address": "dzLeadsFinder, Algiers, Algeria"
+      "mailing_address": "DzLeadsFinder, Algiers, Algeria"
     },
     "terms": {
-      "title": "Terms of Service \u2014 dzLeadsFinder",
-      "meta_title": "Terms of Service \u2014 dzLeadsFinder",
-      "meta_description": "dzLeadsFinder terms of service \u2014 subscription terms, add-on packs, and refund policy.",
+      "title": "Terms of Service \u2014 DzLeadsFinder",
+      "meta_title": "Terms of Service \u2014 DzLeadsFinder",
+      "meta_description": "DzLeadsFinder terms of service \u2014 subscription terms, add-on packs, and refund policy.",
       "heading": "Terms of Service",
       "subscription_title": "Subscription Terms",
       "subscription_desc": "Starter subscriptions renew automatically at 1,500 DZD per month. You may cancel at any time before the next renewal date.",
@@ -529,20 +547,20 @@
       "norefund_title": "No-Refund Policy",
       "norefund_desc": "All subscription fees and add-on purchases are non-refundable by default. See our Refund Policy for the documented exception.",
       "usage_title": "Acceptable Use",
-      "usage_desc": "dzLeadsFinder is intended for B2B lead generation only. You may not scrape, resell, or redistribute data obtained through the platform."
+      "usage_desc": "DzLeadsFinder is intended for B2B lead generation only. You may not scrape, resell, or redistribute data obtained through the platform."
     },
     "refund": {
-      "title": "Refund Policy \u2014 dzLeadsFinder",
-      "meta_title": "Refund Policy \u2014 dzLeadsFinder",
-      "meta_description": "dzLeadsFinder refund policy \u2014 no-refund-by-default with a documented payment-error exception.",
+      "title": "Refund Policy \u2014 DzLeadsFinder",
+      "meta_title": "Refund Policy \u2014 DzLeadsFinder",
+      "meta_description": "DzLeadsFinder refund policy \u2014 no-refund-by-default with a documented payment-error exception.",
       "heading": "Refund Policy",
-      "default_stance": "All purchases on dzLeadsFinder are non-refundable by default. This includes Starter subscription fees and add-on credit pack purchases.",
+      "default_stance": "All purchases on DzLeadsFinder are non-refundable by default. This includes Starter subscription fees and add-on credit pack purchases.",
       "exception_title": "Exception \u2014 Documented Payment Error",
       "exception_desc": "If you experience a proven technical error on our side (e.g., duplicate charge, failed credit delivery after successful payment), you may request a refund by contacting support@dzleadsfinder.dz with documentation of the error.",
       "exception_scope": "Refunds under this exception are issued at our discretion after reviewing the documented error. Credits already used will not be refunded."
     },
     "homepage": {
-      "meta_title": "dzLeadsFinder \u2014 Algerian B2B Lead Generation",
+      "meta_title": "DzLeadsFinder \u2014 Algerian B2B Lead Generation",
       "meta_description": "Find verified B2B leads in Algeria. Access contacts from importers, distributors, and decision-makers across 58 wilayas.",
       "hero_title": "Find B2B Leads in Algeria",
       "hero_subtitle": "Access verified contacts from Algerian companies \u2014 importers, distributors, and decision-makers across 58 wilayas.",
@@ -567,20 +585,13 @@
       "starter_feature_3": "Export to CSV or Excel",
       "free_trial": "Free trial available",
       "founder_note_teaser": "A word from the founder",
-      "founder_note_text": "I built dzLeadsFinder because I saw how hard it is for Algerian businesses to find qualified leads. Our data is verified from multiple local sources and respects Algerian law.",
+      "founder_note_text": "I built DzLeadsFinder because I saw how hard it is for Algerian businesses to find qualified leads. Our data is verified from multiple local sources and respects Algerian law.",
       "founder_note_link": "Read more about why I built this",
-      "preview": {
-        "results_count": "58 results",
-        "verified": "Verified",
-        "credit_hint": "1 credit to reveal",
-        "filter_1": "Importers",
-        "filter_2": "Algiers",
-        "filter_3": "Wholesale",
-        "company_name": "SARL Algerian Trade Co.",
-        "industry": "Import / Distribution · 11-50 employees",
-        "location": "Algiers, 16",
-        "phone": "+213 5__ __ __",
-        "email": "contact@______.dz"
+      "stats": {
+        "wilayas": "58 wilayas covered",
+        "industries": "35 industries",
+        "sources": "5 verified sources",
+        "credits": "200 credits/month"
       },
       "trust_title": "Built for Algerian businesses"
     }

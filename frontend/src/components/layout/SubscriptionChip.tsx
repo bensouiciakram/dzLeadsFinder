@@ -70,11 +70,30 @@ export function SubscriptionChip() {
   if (freeVariant) {
     label = t('chip.free')
   } else if (status === 'active') {
-    label = date !== null ? t.rich('chip.starter', date) : t('chip.starter')
+    label = (
+      <>
+        <span className="lg:hidden">{t('chip.starter_mobile')}</span>
+        <span className="hidden lg:inline">
+          {date !== null ? t.rich('chip.starter', date) : t('chip.starter')}
+        </span>
+      </>
+    )
   } else if (status === 'cancelled') {
-    label = date !== null ? t.rich('plan.cancelled_title', date) : t('plan.cancelled_title')
+    label = (
+      <>
+        <span className="lg:hidden">{t('chip.cancelled_mobile')}</span>
+        <span className="hidden lg:inline">
+          {date !== null ? t.rich('plan.cancelled_title', date) : t('plan.cancelled_title')}
+        </span>
+      </>
+    )
   } else if (status === 'failed_renewal') {
-    label = t('chip.failed')
+    label = (
+      <>
+        <span className="lg:hidden">{t('chip.failed_mobile')}</span>
+        <span className="hidden lg:inline">{t('chip.failed')}</span>
+      </>
+    )
     ariaLabel = t('chip.failed')
   } else {
     // Review P8: an unknown status renders nothing — never a mislabeled
@@ -84,7 +103,7 @@ export function SubscriptionChip() {
   }
 
   const base =
-    'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-small font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none md:h-7 md:min-h-7'
+    'inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-small font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none md:h-7 md:min-h-7'
 
   if (!buttonLike) {
     return (

@@ -26,8 +26,8 @@
 - **Team seats / shared workspaces** → V2.
 - **International / cross-border data (exporters)** → V3.
 - **Native mobile app** → V2+ (responsive web covers V1 mobile).
-- **CNRC data** → V2 pending legal opinion.
-- **LinkedIn scrape / scraped LinkedIn URLs** → never; publicly-published LinkedIn URLs only.
+- **CNRC data** → V2 pending legal opinion. **AMENDED 2026-08-13:** registry *verification* of records is in V1 (page positioning); bulk CNRC data ingestion remains V2.
+- **LinkedIn scrape / scraped LinkedIn URLs** → never; publicly-published LinkedIn URLs only. **AMENDED 2026-08-13:** LinkedIn is listed as a verification source limited to confirming publicly published information; scraping remains out of scope.
 - **Credit rollover** → V1.5 (~4–6 weeks post-V1 launch).
 - **Mid-tier (~5,000 DZD/mo, 750 credits) for heavier solo + light agencies** → V1.5.
 - **Three-tier subscription structure** → V1.5 (single Starter tier stays in V1).

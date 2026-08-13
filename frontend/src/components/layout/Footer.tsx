@@ -48,7 +48,7 @@ export function Footer() {
       </div>
       <div className="mx-auto mt-8 flex max-w-content-max-marketing flex-col items-center justify-between gap-4 border-t border-border pt-6 md:flex-row">
         <p className="text-small text-muted-foreground">
-          Made by Akram in Algiers
+          Made by Akram &amp; Sofiane in Algiers
         </p>
         <LocaleSwitcher />
       </div>

@@ -42,3 +42,7 @@ mypy_cache/
 
 # Docker
 *.pid
+
+# Local business notes (not source)
+rentabilisez_votre_logiciel.md
+/akram_photo.png

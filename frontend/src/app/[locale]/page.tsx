@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { buttonVariants } from '@/components/ui/button'
-import { LeadPreviewCard } from '@/components/marketing/LeadPreviewCard'
-import { MapPin, ShieldCheck, User, Search, Eye, FileDown, Check, ArrowRight } from 'lucide-react'
+import { MapPin, ShieldCheck, User, Search, Eye, FileDown, Check, ArrowRight, Building2, Coins } from 'lucide-react'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -26,7 +25,6 @@ export default async function Home({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations('trust.homepage')
-  const actions = await getTranslations('common.actions')
 
   return (
     <>
@@ -36,7 +34,7 @@ export default async function Home({ params }: Props) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'dzLeadsFinder',
+            name: 'DzLeadsFinder',
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             offers: {
@@ -74,21 +72,31 @@ export default async function Home({ params }: Props) {
               </div>
             </div>
 
-            <div className="w-full max-w-md lg:max-w-lg">
-              <LeadPreviewCard
-                resultsCount={t('preview.results_count')}
-                verifiedLabel={t('preview.verified')}
-                creditHint={t('preview.credit_hint')}
-                revealLabel={actions('reveal')}
-                filter1={t('preview.filter_1')}
-                filter2={t('preview.filter_2')}
-                filter3={t('preview.filter_3')}
-                companyName={t('preview.company_name')}
-                industry={t('preview.industry')}
-                location={t('preview.location')}
-                phone={t('preview.phone')}
-                email={t('preview.email')}
-              />
+            <div className="grid w-full max-w-md grid-cols-2 gap-4 lg:max-w-lg">
+              <div className="rounded-lg border border-border bg-card p-5 text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MapPin className="size-5" />
+                </div>
+                <p className="mt-3 text-title font-semibold">{t('stats.wilayas')}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-5 text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Building2 className="size-5" />
+                </div>
+                <p className="mt-3 text-title font-semibold">{t('stats.industries')}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-5 text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <ShieldCheck className="size-5" />
+                </div>
+                <p className="mt-3 text-title font-semibold">{t('stats.sources')}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-5 text-center">
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Coins className="size-5" />
+                </div>
+                <p className="mt-3 text-title font-semibold">{t('stats.credits')}</p>
+              </div>
             </div>
           </div>
         </section>

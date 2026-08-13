@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'dzLeadsFinder',
+  title: 'DzLeadsFinder',
   description: 'Algerian B2B Lead Generation Platform',
 }
 

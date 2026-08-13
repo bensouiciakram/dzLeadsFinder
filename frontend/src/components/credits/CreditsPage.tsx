@@ -196,7 +196,7 @@ export function CreditsPage() {
               proportionally and the /credits cells carry no horizontal padding,
               so compressed columns run together ("Balance afterReference" —
               deferred-work manual-testing finding). */}
-          <table data-testid="ledger-table" className="w-full table-fixed border-collapse text-small">
+          <table data-testid="ledger-table" className="w-full min-w-[640px] table-fixed border-collapse text-small">
             <thead>
               <tr className="text-small font-semibold text-muted-foreground">
                 <th scope="col" className="w-[30%] border-b border-border px-3 py-3 text-start font-semibold">

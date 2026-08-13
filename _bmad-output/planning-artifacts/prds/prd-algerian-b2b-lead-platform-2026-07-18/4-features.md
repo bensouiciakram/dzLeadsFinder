@@ -37,7 +37,7 @@ System-generated emails (signup confirm, payment receipt, credit-pack receipt, l
 The /about and /how-we-verify pages must be fully localized, including the founder narrative ("Made by Akram in Algiers") and the data-sourcing disclosure.
 
 **Consequences (testable):**
-- /about in AR includes the Arabic founder narrative; /how-we-verify in FR lists the V1 data sources (Google Places API, El Mouchir public pages, Pages Jaunes Algérie) and explicitly states CNRC and LinkedIn are not scraped.
+- /about in AR includes the Arabic founder narrative; /how-we-verify in FR lists the V1 data sources (Google Places API, El Mouchir public pages, Pages Jaunes Algérie, CNRC, LinkedIn) — amended 2026-08-13 (CNRC/LinkedIn now presented as verification sources; see §5/§11 amendments).
 
 ## 4.2 People + Company Dual Search
 
@@ -272,11 +272,11 @@ The header surfaces subscription state: "Starter — renouvelle le {date}" / "St
 
 ### FR-29: /how-we-verify public page
 
-A public, localized page that lists the V1 data sources and explicitly states which sources are NOT used. Required content: Google Places API, El Mouchir public pages, Pages Jaunes Algérie (rate-limited). Explicit non-use: CNRC, LinkedIn.
+A public, localized page that lists the V1 data sources. Required content: Google Places API, El Mouchir public pages, Pages Jaunes Algérie (rate-limited), CNRC, LinkedIn — the latter two presented as verification sources (amended 2026-08-13, superseding the earlier "explicit non-use" wording; see the dated amendments in §5 Non-Goals and §11 Constraints).
 
 **Consequences (testable):**
 - The page is reachable without authentication and is crawlable.
-- The localized page lists all three active sources; the FR page lists the two non-used sources as "non utilisées" with a one-sentence rationale each.
+- The localized page lists all five sources with a one-sentence description each; no "sources not used" section remains.
 
 ### FR-30: /about founder narrative page
 

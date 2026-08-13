@@ -83,3 +83,43 @@ describe('CheckboxGroup', () => {
     expect(screen.getByRole('button', { name: 'search.filters.select_all' })).toHaveClass('md:h-8')
   })
 })
+
+describe('CheckboxGroup collapse (maxVisible)', () => {
+  const MANY_OPTIONS = Array.from({ length: 10 }, (_, index) => ({
+    value: String(index),
+    label: `Option ${index}`,
+  }))
+
+  it('renders only the first maxVisible options plus a Show more toggle', () => {
+    renderGroup({ options: MANY_OPTIONS, maxVisible: 4 })
+
+    expect(screen.getByRole('checkbox', { name: 'Option 0' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Option 3' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Option 4' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'search.filters.show_more' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('keeps a selected option beyond the cutoff visible while collapsed', () => {
+    renderGroup({ options: MANY_OPTIONS, maxVisible: 4, selected: ['7'] })
+
+    expect(screen.getByRole('checkbox', { name: 'Option 7' })).toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: 'Option 8' })).not.toBeInTheDocument()
+  })
+
+  it('expands and collapses on the toggle', () => {
+    renderGroup({ options: MANY_OPTIONS, maxVisible: 4 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.show_more' }))
+    expect(screen.getByRole('checkbox', { name: 'Option 9' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'search.filters.show_less' })).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'search.filters.show_less' }))
+    expect(screen.queryByRole('checkbox', { name: 'Option 9' })).not.toBeInTheDocument()
+  })
+
+  it('hides the toggle when options fit within maxVisible', () => {
+    renderGroup({ maxVisible: 4 })
+
+    expect(screen.queryByRole('button', { name: 'search.filters.show_more' })).not.toBeInTheDocument()
+  })
+})

@@ -16,7 +16,7 @@ const COPY: Record<Locale, {
   ignore: string
 }> = {
   ar: {
-    preview: 'إعادة تعيين كلمة المرور — dzLeadsFinder',
+    preview: 'إعادة تعيين كلمة المرور — DzLeadsFinder',
     title: 'إعادة تعيين كلمة المرور',
     description:
       'لقد تلقينا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك. انقر على الرابط أدناه لتحديد كلمة مرور جديدة. هذا الرابط صالح لمدة ساعة واحدة فقط.',
@@ -24,7 +24,7 @@ const COPY: Record<Locale, {
     ignore: 'إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذا البريد بأمان.',
   },
   fr: {
-    preview: 'Réinitialisation du mot de passe — dzLeadsFinder',
+    preview: 'Réinitialisation du mot de passe — DzLeadsFinder',
     title: 'Réinitialisation du mot de passe',
     description:
       "Nous avons reçu une demande de réinitialisation du mot de passe de votre compte. Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe. Ce lien est valable 1 heure.",
@@ -32,7 +32,7 @@ const COPY: Record<Locale, {
     ignore: "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail en toute sécurité.",
   },
   en: {
-    preview: 'Reset your password — dzLeadsFinder',
+    preview: 'Reset your password — DzLeadsFinder',
     title: 'Reset your password',
     description:
       "We received a request to reset the password for your account. Click the link below to set a new password. This link is valid for 1 hour.",

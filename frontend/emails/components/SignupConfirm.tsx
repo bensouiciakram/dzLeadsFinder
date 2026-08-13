@@ -8,17 +8,17 @@ type Props = {
 
 export function SignupConfirm({ userName, verificationLink }: Props) {
   return (
-    <BaseEmail previewText="Verify your email — dzLeadsFinder">
+    <BaseEmail previewText="Verify your email — DzLeadsFinder">
       <Section>
-        <Text style={heading}>Welcome to dzLeadsFinder{userName ? `, ${userName}` : ''}</Text>
+        <Text style={heading}>Welcome to DzLeadsFinder{userName ? `, ${userName}` : ''}</Text>
         <Text style={paragraph}>
-          Please verify your email address to activate your account and start using dzLeadsFinder.
+          Please verify your email address to activate your account and start using DzLeadsFinder.
         </Text>
         <Link href={verificationLink} style={button}>
           Verify Email
         </Link>
         <Text style={paragraph}>
-          If you didn't sign up for dzLeadsFinder, you can safely ignore this email.
+          If you didn't sign up for DzLeadsFinder, you can safely ignore this email.
         </Text>
       </Section>
     </BaseEmail>

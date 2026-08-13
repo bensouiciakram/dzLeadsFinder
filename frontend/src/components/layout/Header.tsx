@@ -8,37 +8,51 @@ import { useSession } from '@/components/providers/SessionProvider'
 import { LocaleSwitcher } from '@/components/locale/LocaleSwitcher'
 import { CreditsPill } from '@/components/layout/CreditsPill'
 import { SubscriptionChip } from '@/components/layout/SubscriptionChip'
+import { UserMenu } from '@/components/layout/UserMenu'
 
 export function Header() {
   const { isAuthenticated, status, logout } = useSession()
   const t = useTranslations('common.nav')
   const [loggingOut, setLoggingOut] = useState(false)
 
+  const desktopLinkClass =
+    'text-small text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
+
   return (
-    <header dir="ltr" className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-gutter px-gutter-desktop">
-      <Link href="/" className="flex items-center gap-2 no-underline" aria-label="dzLeadsFinder">
+    <header
+      dir="ltr"
+      className="sticky top-0 z-50 flex h-14 items-center justify-between gap-2 border-b border-border bg-background px-gutter md:px-gutter-desktop"
+    >
+      <Link
+        href="/"
+        className="flex min-w-0 items-center gap-2 no-underline"
+        aria-label="DzLeadsFinder"
+      >
         <Image
           src="/dz-leads-finder-logo.png"
-          alt="dzLeadsFinder"
+          alt="DzLeadsFinder"
           width={59}
           height={32}
           unoptimized
-          className="h-8 w-auto"
+          className="h-8 w-auto shrink-0"
         />
-        <span className="text-title font-semibold text-foreground">dzLeadsFinder</span>
+        <span className="hidden text-title font-semibold text-foreground xl:inline">
+          DzLeadsFinder
+        </span>
       </Link>
-      <nav className="flex items-center gap-4">
+
+      <nav className="hidden items-center gap-4 lg:flex">
         {status === 'loading' ? null : isAuthenticated ? (
           <>
-            <Link href="/search" className="text-small text-muted-foreground hover:text-foreground">
+            <Link href="/search" className={desktopLinkClass}>
               {t('search')}
             </Link>
             <CreditsPill />
             <SubscriptionChip />
-            <Link href="/billing" className="text-small text-muted-foreground hover:text-foreground">
+            <Link href="/billing" className={desktopLinkClass}>
               {t('billing')}
             </Link>
-            <Link href="/settings" className="text-small text-muted-foreground hover:text-foreground">
+            <Link href="/settings" className={desktopLinkClass}>
               {t('settings')}
             </Link>
             <span className="text-small text-muted-foreground">|</span>
@@ -56,10 +70,7 @@ export function Header() {
           </>
         ) : (
           <>
-            <Link
-              href="/login"
-              className="text-small text-muted-foreground hover:text-foreground"
-            >
+            <Link href="/login" className={desktopLinkClass}>
               {t('login')}
             </Link>
             <Link
@@ -72,6 +83,19 @@ export function Header() {
         )}
         <LocaleSwitcher />
       </nav>
+
+      <div className="flex items-center gap-1.5 lg:hidden">
+        <CreditsPill />
+        <SubscriptionChip />
+        <LocaleSwitcher />
+        <UserMenu
+          isAuthenticated={isAuthenticated}
+          onLogout={() => {
+            setLoggingOut(true)
+            void logout()
+          }}
+        />
+      </div>
     </header>
   )
 }

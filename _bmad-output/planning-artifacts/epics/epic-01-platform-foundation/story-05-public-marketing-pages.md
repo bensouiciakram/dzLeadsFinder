@@ -37,9 +37,9 @@ So that **I can evaluate DZLeads' credibility before signing up**.
 
 **Given** a visitor navigates to `/how-we-verify`
 **When** the page loads
-**Then** it lists sources used: Google Places API, El Mouchir public pages, Pages Jaunes Algérie (with rate-limit note)
-**And** it lists sources NOT used: CNRC (with rationale), LinkedIn (with rationale)
+**Then** it lists sources used: Google Places API, El Mouchir public pages, Pages Jaunes Algérie, CNRC, LinkedIn (with rate-limit note)
 **And** each source card is localized
+**And** it lists no "sources not used" section — amended 2026-08-13: CNRC + LinkedIn are presented as verification sources (see the dated amendments in PRD non-goals/constraints)
 
 **Given** a visitor navigates to `/privacy`
 **When** the page loads
@@ -68,7 +68,7 @@ So that **I can evaluate DZLeads' credibility before signing up**.
 - [x] **T1: Add i18n messages** — Add marketing page message keys to en.json, fr.json, ar.json (homepage hero, trust, how-it-works, pricing, founder, about, how-we-verify, privacy, terms, refund, metadata)
 - [x] **T2: Homepage (/) page** — Server Component with hero section, trust strip, how-it-works (3 steps), pricing card, founder-note teaser with link to /about; localized; `generateMetadata()` per locale
 - [x] **T3: /about page** — Server Component with founder narrative, placeholder headshot block (`colors.muted`), contact email link; strings marked `[PENDING REVIEW]`
-- [x] **T4: /how-we-verify page** — Server Component listing sources used (Google Places API, El Mouchir, Pages Jaunes with rate-limit note) and sources NOT used (CNRC, LinkedIn with rationale); localized
+- [x] **T4: /how-we-verify page** — Server Component listing sources used (Google Places API, El Mouchir, Pages Jaunes, CNRC, LinkedIn with rate-limit note); no "sources not used" section (amended 2026-08-13 — see PRD amendments); localized
 - [x] **T5: /privacy page** — Server Component referencing Loi 18-07, data-subject request process, 30-day response, ANPDP declaration note, takedown contact
 - [x] **T6: /terms page** — Server Component stating subscription terms, add-on pack non-renewal, no-refund-by-default policy
 - [x] **T7: /refund-policy page** — Server Component documenting no-refund-by-default with documented-payment-error exception

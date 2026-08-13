@@ -19,8 +19,8 @@ type Copy = {
 
 const COPY: Record<Locale, Copy> = {
   en: {
-    preview: 'Payment received — dzLeadsFinder',
-    packPreview: 'Pack purchase confirmed — dzLeadsFinder',
+    preview: 'Payment received — DzLeadsFinder',
+    packPreview: 'Pack purchase confirmed — DzLeadsFinder',
     heading: 'Payment Received',
     thankYou: 'Thank you! Your payment has been processed successfully.',
     amountLabel: 'Amount',
@@ -33,8 +33,8 @@ const COPY: Record<Locale, Copy> = {
       'Your one-time pack of {n} credits has been added — pack credits never expire.',
   },
   fr: {
-    preview: 'Paiement reçu — dzLeadsFinder',
-    packPreview: 'Pack acheté confirmé — dzLeadsFinder',
+    preview: 'Paiement reçu — DzLeadsFinder',
+    packPreview: 'Pack acheté confirmé — DzLeadsFinder',
     heading: 'Paiement reçu',
     thankYou: 'Merci ! Votre paiement a été traité avec succès.',
     amountLabel: 'Montant',
@@ -48,8 +48,8 @@ const COPY: Record<Locale, Copy> = {
       "Votre pack ponctuel de {n} crédits a été ajouté — les crédits de pack n'expirent jamais.",
   },
   ar: {
-    preview: 'تم استلام الدفع — dzLeadsFinder',
-    packPreview: 'تم تأكيد شراء الحزمة — dzLeadsFinder',
+    preview: 'تم استلام الدفع — DzLeadsFinder',
+    packPreview: 'تم تأكيد شراء الحزمة — DzLeadsFinder',
     heading: 'تم استلام الدفع',
     thankYou: 'شكراً لك! تمت معالجة دفعتك بنجاح.',
     amountLabel: 'المبلغ',

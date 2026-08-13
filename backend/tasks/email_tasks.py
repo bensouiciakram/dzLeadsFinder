@@ -66,7 +66,7 @@ def send_verification_email(user_id: int) -> None:
         {'verificationLink': verification_link},
     )
     message = EmailMultiAlternatives(
-        subject='Verify your email — dzLeadsFinder',
+        subject='Verify your email — DzLeadsFinder',
         body=plain_text or html,
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
@@ -79,9 +79,9 @@ def send_verification_email(user_id: int) -> None:
 
 
 RESET_SUBJECTS = {
-    'ar': 'إعادة تعيين كلمة المرور — dzLeadsFinder',
-    'fr': 'Réinitialisation de votre mot de passe — dzLeadsFinder',
-    'en': 'Reset your password — dzLeadsFinder',
+    'ar': 'إعادة تعيين كلمة المرور — DzLeadsFinder',
+    'fr': 'Réinitialisation de votre mot de passe — DzLeadsFinder',
+    'en': 'Reset your password — DzLeadsFinder',
 }
 
 

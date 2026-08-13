@@ -9,7 +9,7 @@ type Props = {
 
 export function LowCredit({ userName, remainingCredits, topUpLink }: Props) {
   return (
-    <BaseEmail previewText="Low on credits — dzLeadsFinder">
+    <BaseEmail previewText="Low on credits — DzLeadsFinder">
       <Section>
         <Text style={heading}>Low on Credits</Text>
         <Text style={paragraph}>

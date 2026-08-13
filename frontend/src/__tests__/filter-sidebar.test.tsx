@@ -116,10 +116,18 @@ describe('FilterSidebar desktop', () => {
     expect(screen.queryAllByText('search.filters.include_unknown_size')).toHaveLength(0)
   })
 
-  it('lists all 35 industries with localized names', () => {
+  it('collapses the industry list to the first 8 with a Show more toggle', () => {
     renderSidebar()
 
     const industryGroup = groupOf('search.filters.industry')
+    expect(within(industryGroup).getAllByRole('checkbox')).toHaveLength(8)
+    expect(
+      within(industryGroup).getByRole('button', { name: 'search.filters.show_more' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      within(industryGroup).getByRole('button', { name: 'search.filters.show_more' }),
+    )
     expect(within(industryGroup).getAllByRole('checkbox')).toHaveLength(35)
     expect(within(industryGroup).getByRole('checkbox', { name: 'Construction' })).toBeInTheDocument()
   })

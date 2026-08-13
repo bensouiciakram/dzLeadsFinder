@@ -163,7 +163,7 @@ function PeopleCells({ row }: { row: PeopleResultRow }) {
       <TableCell>
         <WilayaCell code={row.wilaya_code} name={row.wilaya_name} />
       </TableCell>
-      <TableCell className="w-32">
+      <TableCell className="w-36">
         <RevealSlot tab="people" row={row} />
       </TableCell>
     </>

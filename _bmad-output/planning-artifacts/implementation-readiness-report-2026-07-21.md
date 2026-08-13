@@ -108,11 +108,11 @@ project: Algerian B2B Lead Generation Platform (dzLeadsFinder)
 
 From PRD §5 (Non-Goals), §6 (MVP Scope), §11 (Constraints):
 
-- **17 explicit non-goals** defining V1 boundaries (no CRM, no API, no mobile app, no CNRC/LinkedIn data, no credit rollover, no multi-currency, etc.)
+- **17 explicit non-goals** defining V1 boundaries (no CRM, no API, no mobile app, no CNRC/LinkedIn data, no credit rollover, no multi-currency, etc.) — **amended 2026-08-13:** /how-we-verify now lists CNRC + LinkedIn as verification sources (confirm-only, never scraped); the non-goal files carry dated amendments
 - **6 success metrics** (SM-1 through SM-6) with targets for post-launch validation
 - **10 open questions** flagged for PM confirmation (saved-search caps, seniority bands, drawdown order, etc.)
 - **Cost guardrails:** V1 is 3-4 week MVP; pack margins ≥60%; Google Places API monthly spend capped
-- **Compliance:** Loi 18-07 governs; no CNRC/LinkedIn scraped data; Chargily ToS binding
+- **Compliance:** Loi 18-07 governs; no CNRC/LinkedIn scraped data (both listed on /how-we-verify as confirm-only verification sources per the 2026-08-13 amendment); Chargily ToS binding
 
 ### PRD Completeness Assessment
 

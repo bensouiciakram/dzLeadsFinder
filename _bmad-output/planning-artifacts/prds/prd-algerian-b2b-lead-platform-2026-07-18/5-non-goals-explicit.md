@@ -11,8 +11,8 @@ V1 will **not** build, expose, or promise any of the following. These are not "l
 - **No team seats / shared workspaces.** V2 territory.
 - **No international / cross-border data.** V1 dataset is Algeria-only. V3 territory for exporters.
 - **No mobile app.** Web app is the V1 surface; responsive web covers mobile browsers.
-- **No CNRC-scraped data.** Deferred to V2 pending a legal opinion (see §10.3, §10.4).
-- **No LinkedIn-scraped data or scraped LinkedIn URLs.** Too risky for an MVP (see §10.3). Publicly published LinkedIn URLs (from a company's own website) are allowed.
+- **No CNRC-scraped data.** Deferred to V2 pending a legal opinion (see §10.3, §10.4). **AMENDED 2026-08-13:** the /how-we-verify page now lists CNRC as a verification source (records checked against the public registry); bulk scraping of CNRC remains out of V1 and still awaits the legal opinion.
+- **No LinkedIn-scraped data or scraped LinkedIn URLs.** Too risky for an MVP (see §10.3). Publicly published LinkedIn URLs (from a company's own website) are allowed. **AMENDED 2026-08-13:** the /how-we-verify page now lists LinkedIn as a verification source limited to confirming publicly published business information — never scraped profile data, per the original constraint.
 - **No credit rollover.** Unused monthly credits do not carry to the next cycle. V1.5 feature.
 - **No annual pricing.** V1 is monthly only. V2 may add annual pricing with a discount framing.
 - **No tiered pricing.** V1 has exactly one paid tier (Starter). Multi-tier is V1.5.

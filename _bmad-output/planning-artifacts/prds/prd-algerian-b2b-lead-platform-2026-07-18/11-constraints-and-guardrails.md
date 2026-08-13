@@ -8,7 +8,7 @@
 
 ## 11.2 Compliance and Regulatory
 - Algerian data-protection law (Loi 18-07) governs this product. V1 operates in Algeria on Algerian-resident personal data; no cross-border data transfer to non-Algerian jurisdictions is in scope (matches V1 non-goal: no international data).
-- No CNRC-scraped data and no LinkedIn-scraped data in V1 (per the data-sourcing legality brief). Public web-published LinkedIn URLs (where a company publishes them on its own site) are allowed; scraped LinkedIn URLs are not.
+- No CNRC-scraped data and no LinkedIn-scraped data in V1 (per the data-sourcing legality brief). Public web-published LinkedIn URLs (where a company publishes them on its own site) are allowed; scraped LinkedIn URLs are not. **AMENDED 2026-08-13:** the /how-we-verify page lists CNRC and LinkedIn as verification sources; this is limited to confirming publicly published information (registry lookups, company-published links) and does not license scraping either platform. The bulk-scraping prohibitions above remain binding.
 - The data-sourcing legality brief is explicitly NOT a legal opinion; a formal Algerian legal review is required before V2 adds CNRC data. Flagged in §8 Open Questions.
 - Chargily is a regulated PSP; its ToS and webhook format govern the integration. Refund handling (FR-26) and chargeback response follow Chargily's published policies.
 
