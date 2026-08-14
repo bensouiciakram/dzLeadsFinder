@@ -10,10 +10,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-# nft trace quirk: standalone node_modules gets @swc/helpers' package.json
-# but not the esm/ files the runtime requires — complete the package + fail
-# the build fast if the traced copy is ever incomplete again.
-RUN cp -a node_modules/@swc/helpers .next/standalone/node_modules/ \
+# nft trace quirk: the standalone node_modules gets @swc/helpers' package.json
+# (or nothing) but not the esm/_interop_require_default.js the next server
+# require-hook resolves at boot. Replace the traced copy with the full
+# package and fail the build fast if it is ever incomplete again.
+RUN set -ex \
+    && rm -rf .next/standalone/node_modules/@swc/helpers \
+    && mkdir -p .next/standalone/node_modules/@swc/helpers \
+    && cp -a node_modules/@swc/helpers/. .next/standalone/node_modules/@swc/helpers/ \
     && test -f .next/standalone/node_modules/@swc/helpers/esm/_interop_require_default.js
 
 FROM base AS runner
