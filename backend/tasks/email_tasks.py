@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Any, Dict, Tuple
 
 import requests
@@ -6,7 +7,7 @@ from celery import shared_task
 
 logger = logging.getLogger(__name__)
 
-NEXTJS_INTERNAL_URL = 'http://nextjs:3000'
+NEXTJS_INTERNAL_URL = os.environ.get('NEXTJS_INTERNAL_URL', 'http://nextjs:3004')
 
 
 def render_email(template: str, locale: str, context: Dict[str, Any]) -> Tuple[str, str]:
