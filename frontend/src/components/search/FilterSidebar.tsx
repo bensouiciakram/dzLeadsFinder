@@ -1,6 +1,6 @@
 'use client'
 
-import { SlidersHorizontalIcon, XIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
@@ -13,7 +13,6 @@ import { usePlan } from '@/hooks/usePlan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { INDUSTRIES, type Industry } from '@/data/industries'
 import {
   EMPTY_FILTERS,
@@ -114,7 +113,7 @@ export function FilterSidebar({
   const dispatchTier = plan?.tier ?? user?.tier
   const baseId = useId()
   const [draft, setDraft] = useState<StagedFilters>(() => applied ?? EMPTY_FILTERS)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const dirtyRef = useRef(false)
   const lastAppliedRef = useRef<StagedFilters | null>(null)
 
@@ -140,30 +139,6 @@ export function FilterSidebar({
     dirtyRef.current = false
     setDraft({ ...EMPTY_FILTERS })
   }, [clearNonce])
-
-  useEffect(() => {
-    if (sheetOpen) {
-      const frame = requestAnimationFrame(() => {
-        document
-          .querySelector<HTMLElement>(
-            '[data-slot="drawer-popup"] [data-slot="drawer-close"]',
-          )
-          ?.focus()
-      })
-      return () => cancelAnimationFrame(frame)
-    }
-  }, [sheetOpen])
-
-  useEffect(() => {
-    if (!sheetOpen) return
-    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null
-    if (!media) return
-    const onResize = () => {
-      if (media.matches) setSheetOpen(false)
-    }
-    media.addEventListener('change', onResize)
-    return () => media.removeEventListener('change', onResize)
-  }, [sheetOpen])
 
   const badgeCount = countActiveFilters({ ...draft, wilayas: [] }) + wilayaCount
 
@@ -191,11 +166,11 @@ export function FilterSidebar({
       // 5,000/24h limit (FR-20) is tier-independent and stays the
       // come-back-tomorrow message — never a dialog.
       //
-      // Review P4 (5.7 full review): the mobile drawer path must close the
-      // drawer FIRST — the success path does setSheetOpen(false), the
+      // Review P4 (5.7 full review): the mobile filters panel must close
+      // FIRST — the success path does setFiltersOpen(false), the
       // rate-limited path previously didn't (two stacked modals — the
       // stack-depth-1 rule).
-      setSheetOpen(false)
+      setFiltersOpen(false)
       if (dispatchTier === 'free') {
         openUpgradeDialog()
       }
@@ -203,7 +178,9 @@ export function FilterSidebar({
     }
     dirtyRef.current = false
     onSubmit({ ...draft })
-    setSheetOpen(false)
+    // Close the mobile panel so the results get full width right after the
+    // search runs. On md+ the aside stays as the user left it.
+    setFiltersOpen(false)
   }
 
   const handleClearAll = () => {
@@ -357,41 +334,67 @@ export function FilterSidebar({
         </div>
       </aside>
 
-      <Drawer swipeDirection="down" showSwipeHandle open={sheetOpen} onOpenChange={setSheetOpen}>
-        <DrawerTrigger className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-small font-medium md:hidden">
-          <SlidersHorizontalIcon className="size-4" />
-          <span>{t('search.filters.title')}</span>
-          <Badge variant="default" className="rounded-full">
-            {badgeCount}
-          </Badge>
-        </DrawerTrigger>
+      <div className="md:hidden">
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls={`${baseId}-mobile-panel`}
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 text-small font-medium md:hidden"
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontalIcon className="size-4" />
+            <span>{t('search.filters.title')}</span>
+          </span>
+          <span className="flex items-center gap-2">
+            <Badge variant="default" className="rounded-full">
+              {badgeCount}
+            </Badge>
+            {filtersOpen ? (
+              <ChevronUpIcon className="size-4 text-muted-foreground" />
+            ) : (
+              <ChevronDownIcon className="size-4 text-muted-foreground" />
+            )}
+          </span>
+        </button>
         <span className="sr-only" role="status">
           {t('search.filters.badge', { count: String(badgeCount) })}
         </span>
-        <DrawerContent>
-        <DrawerHeader className="relative border-b border-border">
-          <DrawerTitle>{t('search.filters.title')}</DrawerTitle>
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="absolute end-14 top-3 min-h-11 cursor-pointer rounded-md text-caption text-primary hover:text-primary-hover md:h-8"
+        {filtersOpen && (
+          <section
+            id={`${baseId}-mobile-panel`}
+            aria-label={t('search.filters.title')}
+            data-testid="mobile-filter-panel"
+            className="mt-2 overflow-hidden rounded-lg border border-border bg-card"
           >
-            {t('search.filters.clear')}
-          </button>
-          <DrawerClose
-            aria-label={t('common.actions.close')}
-            className="absolute end-4 top-3 inline-flex size-11 items-center justify-center rounded-lg hover:bg-muted md:size-8"
-          >
-            <XIcon />
-          </DrawerClose>
-        </DrawerHeader>
-          <div className="grow overflow-y-auto p-4">
-            {renderGroups('drawer')}
-            {savedSearchesSlot}
-          </div>
-          <DrawerFooter className="border-t border-border">{renderApply('drawer')}</DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <h2 className="text-title text-foreground">{t('search.filters.title')}</h2>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="min-h-11 cursor-pointer rounded-md px-2 text-caption text-primary hover:text-primary-hover"
+                >
+                  {t('search.filters.clear')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label={t('common.actions.close')}
+                  className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <XIcon />
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[60dvh] overflow-y-auto px-4 py-4">
+              {renderGroups('mobile')}
+              {savedSearchesSlot}
+            </div>
+            <div className="border-t border-border">{renderApply('mobile')}</div>
+          </section>
+        )}
+      </div>
     </>
   )
 }

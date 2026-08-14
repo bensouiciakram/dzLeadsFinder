@@ -270,7 +270,7 @@ export function SearchPage({ tab }: SearchPageProps) {
       : ((query.data?.results ?? []) as CompanyResultRow[])
 
   return (
-    <div className="mx-auto flex max-w-content-max-app">
+    <div className="mx-auto flex max-w-content-max-app flex-col md:flex-row">
       <a
         href="#results"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:z-50 focus:bg-card focus:px-4 focus:py-2 focus:text-small focus:text-primary"

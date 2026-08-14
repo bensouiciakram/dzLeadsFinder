@@ -583,12 +583,12 @@ describe('SearchPage', () => {
     expect(within(badgeTrigger).queryByText('1')).toBeNull()
   })
 
-  it('shares one combobox query between the aside and drawer instances', async () => {
+  it('shares one combobox query between the aside and mobile panel instances', async () => {
     hoisted.searchPeople.mockResolvedValue(RESULT)
     renderPage(<SearchPage tab="people" />)
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    await screen.findByRole('dialog')
+    await screen.findByTestId('mobile-filter-panel')
 
     const inputs = Array.from(document.querySelectorAll('input[role="combobox"]'))
     expect(inputs.length).toBe(2)

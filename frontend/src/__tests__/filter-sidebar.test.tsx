@@ -409,141 +409,78 @@ describe('FilterSidebar mobile trigger and badge', () => {
     expect(screen.getByRole('button', { name: 'search.filters.apply' })).toHaveClass('rounded-md')
   })
 
-  it('gives the drawer close button a 44px touch target on mobile', async () => {
+  it('gives the mobile panel close button a 44px touch target', async () => {
     renderSidebar()
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    await screen.findByRole('dialog', { name: 'search.filters.title' })
+    const panel = await screen.findByTestId('mobile-filter-panel')
 
-    expect(screen.getByRole('button', { name: 'common.actions.close' })).toHaveClass('size-11')
+    expect(within(panel).getByRole('button', { name: 'common.actions.close' })).toHaveClass('size-11')
   })
 
-  it('uses distinct ids for the aside and drawer group controls', async () => {
+  it('uses distinct ids for the aside and mobile panel group controls', async () => {
     renderSidebar()
 
     const asideInput = screen.getByLabelText('search.filters.keyword')
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
-    const drawerInput = within(dialog).getByLabelText('search.filters.keyword')
+    const panel = await screen.findByTestId('mobile-filter-panel')
+    const mobileInput = within(panel).getByLabelText('search.filters.keyword')
 
-    expect(asideInput.id).not.toBe(drawerInput.id)
+    expect(asideInput.id).not.toBe(mobileInput.id)
     expect(asideInput.id).not.toBe('')
   })
 })
 
-describe('FilterSidebar mobile drawer', () => {
-  it('opens a bottom sheet labelled by the filters title with a visible close button', async () => {
+describe('FilterSidebar mobile panel', () => {
+  it('opens an inline panel labelled by the filters title with a visible close button', async () => {
     renderSidebar()
 
-    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
-    expect(within(dialog).getByRole('button', { name: 'common.actions.close' })).toBeInTheDocument()
-    expect(within(dialog).getAllByTestId('filter-group').length).toBeGreaterThan(0)
-  })
-
-  it('gives initial focus to the close button on open', async () => {
-    renderSidebar()
-
-    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
-    await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'common.actions.close' })).toHaveFocus()
-    })
-  })
-
-  it('closes via the close button and returns focus to the trigger', async () => {
-    renderSidebar()
     const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(trigger)
-    await screen.findByRole('dialog', { name: 'search.filters.title' })
-    fireEvent.click(screen.getByRole('button', { name: 'common.actions.close' }))
+    const panel = await screen.findByTestId('mobile-filter-panel')
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(document.activeElement).toBe(trigger)
-    })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(within(panel).getByRole('button', { name: 'common.actions.close' })).toBeInTheDocument()
+    expect(within(panel).getAllByTestId('filter-group').length).toBeGreaterThan(0)
   })
 
-  it('closes via the Esc key and returns focus to the trigger', async () => {
-    renderSidebar()
-    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
-
-    fireEvent.click(trigger)
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
-    fireEvent.keyDown(dialog, { key: 'Escape' })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(document.activeElement).toBe(trigger)
-    })
-  })
-
-  it('closes via scrim tap', async () => {
+  it('closes via the close button', async () => {
     renderSidebar()
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    await screen.findByRole('dialog', { name: 'search.filters.title' })
-
-    const overlay = document.querySelector('[data-slot="drawer-overlay"]')
-    expect(overlay).not.toBeNull()
-    fireEvent.click(overlay as Element)
+    const panel = await screen.findByTestId('mobile-filter-panel')
+    fireEvent.click(within(panel).getByRole('button', { name: 'common.actions.close' }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('mobile-filter-panel')).not.toBeInTheDocument()
     })
   })
 
-  it('closes via swipe-down past the threshold', async () => {
-    renderSidebar()
-
-    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
-
-    fireEvent.pointerDown(dialog, { pointerId: 1, clientX: 200, clientY: 80, buttons: 1 })
-    fireEvent.pointerMove(dialog, { pointerId: 1, clientX: 200, clientY: 160, buttons: 1 })
-    fireEvent.pointerMove(dialog, { pointerId: 1, clientX: 200, clientY: 320, buttons: 1 })
-    fireEvent.pointerUp(dialog, { pointerId: 1, clientX: 200, clientY: 320, buttons: 1 })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-  })
-
-  it('applies from the sheet: exactly one submit and the sheet closes', async () => {
+  it('applies from the panel: exactly one submit and the panel closes', async () => {
     const { props } = renderSidebar()
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    const panel = await screen.findByTestId('mobile-filter-panel')
 
-    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Construction' }))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'search.filters.apply' }))
+    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Construction' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'search.filters.apply' }))
 
     expect(props.onSubmit).toHaveBeenCalledTimes(1)
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('mobile-filter-panel')).not.toBeInTheDocument()
     })
   })
 
-  it('renders the swipe handle for the sheet', async () => {
-    renderSidebar()
-
-    fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    await screen.findByRole('dialog', { name: 'search.filters.title' })
-
-    expect(document.querySelector('[data-slot="drawer-swipe-handle"]')).not.toBeNull()
-  })
-
-  it('offers Clear All inside the drawer and forwards it to the page', async () => {
+  it('offers Clear All inside the panel and forwards it to the page', async () => {
     const onClearAllRequest = vi.fn()
     renderSidebar({ wilayaCount: 2, onClearAllRequest })
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    const dialog = await screen.findByRole('dialog', { name: 'search.filters.title' })
+    const panel = await screen.findByTestId('mobile-filter-panel')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'search.filters.clear' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'search.filters.clear' }))
     expect(onClearAllRequest).toHaveBeenCalledTimes(1)
   })
 })
@@ -562,12 +499,12 @@ describe('FilterSidebar saved-searches slot', () => {
     expect(aside.contains(slot)).toBe(true)
   })
 
-  it('renders the slot inside the mobile drawer below the groups', async () => {
+  it('renders the slot inside the mobile panel below the groups', async () => {
     renderSidebar({ savedSearchesSlot: <div data-testid="saved-slot" /> })
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
-    const drawer = await screen.findByRole('dialog', { name: 'search.filters.title' })
-    const slot = within(drawer).getByTestId('saved-slot')
-    const groups = within(drawer).getAllByTestId('filter-group')
+    const panel = await screen.findByTestId('mobile-filter-panel')
+    const slot = within(panel).getByTestId('saved-slot')
+    const groups = within(panel).getAllByTestId('filter-group')
     const lastGroup = groups.at(-1)
     expect(lastGroup).toBeDefined()
     expect(

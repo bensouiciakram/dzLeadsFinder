@@ -27,7 +27,7 @@ const SAFE_URL = /^https?:\/\//i
 
 function Field({ labelKey, children }: { labelKey: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex min-w-0 gap-2">
       <dt className="w-28 shrink-0 text-muted-foreground">{labelKey}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
