@@ -9,7 +9,6 @@ from apps.billing.chargily import (
     CHECKOUTS_API_BASE,
     CHECKOUTS_TEST_BASE,
     ChargilyError,
-    create_checkout,
     create_checkout_details,
     verify_webhook_signature,
 )
@@ -41,11 +40,11 @@ class TestCreateCheckout:
             return FakeResponse()
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        checkout_url = create_checkout(
+        details = create_checkout_details(
             {'user_id': 42, 'type': 'subscription', 'amount': 1500}
         )
 
-        assert checkout_url == 'https://pay.chargily.com/checkout/abc'
+        assert details.checkout_url == 'https://pay.chargily.com/checkout/abc'
         assert captured['url'] == CHECKOUTS_API_URL
         headers = captured['kwargs']['headers']
         assert headers['Authorization'] == f'Bearer {settings.CHARGILY_API_KEY}'
@@ -87,7 +86,7 @@ class TestCreateCheckout:
 
         settings.CHARGILY_MODE = 'live'
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        create_checkout({'user_id': 42, 'type': 'subscription', 'amount': 1500})
+        create_checkout_details({'user_id': 42, 'type': 'subscription', 'amount': 1500})
         assert captured['url'] == f'{CHECKOUTS_API_BASE}/checkouts'
 
     def test_pack_checkout_uses_pack_type(self, monkeypatch: Any) -> None:
@@ -108,7 +107,7 @@ class TestCreateCheckout:
             return FakeResponse()
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        create_checkout({'user_id': 7, 'type': 'pack', 'amount': 500})
+        create_checkout_details({'user_id': 7, 'type': 'pack', 'amount': 500})
         assert captured['kwargs']['json']['metadata'] == [
             {'user_id': 7, 'type': 'pack', 'amount': 500}
         ]
@@ -132,7 +131,7 @@ class TestCreateCheckout:
             return FakeResponse()
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        create_checkout(
+        create_checkout_details(
             {
                 'user_id': 42,
                 'type': 'subscription',
@@ -164,7 +163,7 @@ class TestCreateCheckout:
             return FakeResponse()
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        create_checkout(
+        create_checkout_details(
             {
                 'user_id': 7,
                 'type': 'pack',
@@ -195,7 +194,7 @@ class TestCreateCheckout:
             return FakeResponse()
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', fake_post)
-        create_checkout({'user_id': 7, 'type': 'pack', 'amount': 500})
+        create_checkout_details({'user_id': 7, 'type': 'pack', 'amount': 500})
         assert 'description' not in captured['kwargs']['json']
 
     def test_raises_on_http_error(self, monkeypatch: Any) -> None:
@@ -209,7 +208,7 @@ class TestCreateCheckout:
             'apps.billing.chargily.requests.post', lambda *a, **k: FailingResponse()
         )
         with pytest.raises(ChargilyError):
-            create_checkout({'user_id': 42, 'type': 'pack', 'amount': 500})
+            create_checkout_details({'user_id': 42, 'type': 'pack', 'amount': 500})
 
     def test_raises_on_timeout(self, monkeypatch: Any) -> None:
         import requests
@@ -219,7 +218,7 @@ class TestCreateCheckout:
 
         monkeypatch.setattr('apps.billing.chargily.requests.post', boom)
         with pytest.raises(ChargilyError):
-            create_checkout({'user_id': 42, 'type': 'pack', 'amount': 500})
+            create_checkout_details({'user_id': 42, 'type': 'pack', 'amount': 500})
 
     def test_raises_when_checkout_url_missing(self, monkeypatch: Any) -> None:
         class NoUrlResponse:
@@ -233,7 +232,7 @@ class TestCreateCheckout:
             'apps.billing.chargily.requests.post', lambda *a, **k: NoUrlResponse()
         )
         with pytest.raises(ChargilyError):
-            create_checkout({'user_id': 42, 'type': 'pack', 'amount': 500})
+            create_checkout_details({'user_id': 42, 'type': 'pack', 'amount': 500})
 
     def test_create_checkout_details_returns_url_and_id(self, monkeypatch: Any) -> None:
         class FakeResponse:

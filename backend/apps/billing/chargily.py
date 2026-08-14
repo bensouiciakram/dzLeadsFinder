@@ -97,15 +97,6 @@ def _create_checkout(plan_data: Dict[str, Any]) -> Dict[str, str]:
     return {'checkout_url': checkout_url, 'checkout_id': checkout_id}
 
 
-def create_checkout(plan_data: Dict[str, Any]) -> str:
-    """Create a Chargily checkout session and return the redirect URL (AC 5.2).
-
-    ``plan_data`` keys: ``user_id``, ``type`` (``'subscription'`` | ``'pack'``),
-    ``amount`` (int, DZD).
-    """
-    return _create_checkout(plan_data)['checkout_url']
-
-
 def create_checkout_details(plan_data: Dict[str, Any]) -> CheckoutDetails:
     """Create a Chargily checkout and return the redirect URL + checkout id.
 
