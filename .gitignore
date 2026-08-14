@@ -38,6 +38,7 @@ _bmad-output/planning-artifacts/**/*.pdf
 *.egg-info/
 mypy_cache/
 .ruff_cache/
+.coverage
 
 # opencode tooling
 .opencode/commands/

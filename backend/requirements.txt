@@ -14,3 +14,4 @@ mypy>=1.9,<1.12
 pytest-django>=4.8,<4.10
 pytest>=8.2,<8.4
 pytest-cov>=5.0,<7.0
+coverage>=7.5,<8

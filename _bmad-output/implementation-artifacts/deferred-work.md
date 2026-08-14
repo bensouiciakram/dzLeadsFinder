@@ -1,4 +1,13 @@
 
+## Deferred from: dead-code-removal spec (2026-08-14)
+
+- **Frontend (Next.js) dead code removal pass**: split from the backend-only cleanup goal on human request (start with backend); same prompt rules apply, run as a follow-up Quick Dev pass on `frontend/src/*` + `middleware.ts` — map the rules to Next.js surfaces (app-router routes, middleware config, i18n keys, package.json) and vitest/eslint/tsc gates before the pass. [spec-dead-code-removal.md]
+
+## Deferred from: dead-code-removal review (2026-08-14)
+
+- **requirements-dev.txt split**: dev tooling (pytest, pytest-cov, coverage, ruff, mypy) ships in the production Docker image because `backend/requirements.txt` is installed in both builder and runtime stages; split dev-only deps into a separate manifest. [backend/Dockerfile, backend/requirements.txt]
+- **AST dead-code scan traceability + `getattr` dispatch guard**: the audit's AST zero-reference scan left no script/artifact and cannot see `getattr(email_tasks, task_name)` / `getattr(wilaya, f'name_{locale}')` string dispatch — save the scan tooling and extend it to string-literal dispatch + beat/settings dict literals before the frontend pass trusts it. [backend/tasks/email_tasks.py, backend/apps/search/views.py]
+
 ## Manual UI review of Epic 5 (in progress, 2026-08-11)
 
 > Findings collected during the human-led manual UI walkthrough of Epic 5. Fix after the manual review completes.
@@ -151,3 +160,4 @@
 - "7 days" deletion grace hardcoded in frozen-account copy; backend has no shared grace constant. Story 2.6 owns the deletion-grace flow (recover action + constant). [frontend/messages/en.json]
 - SessionUser cast blindly from /api/auth/me/ response; a backend field change would silently corrupt the Header. Adopt zod response parsing (AD-18 pattern) in a later story touching session data. [frontend/src/lib/api/auth-service.ts:22]
 - /frozen renders the guest header (Login/Sign up links) since the probe degrades to guest there. Story 2.6 refines the frozen surface. [frontend/src/components/layout/Header.tsx:18]
+
