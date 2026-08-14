@@ -89,6 +89,7 @@ context:
 ## Spec Change Log
 
 - **2026-08-14 — finding: frozen intent self-contradiction (Edge Case Hunter).** The Never-list's "Strictly ignore ... requirements.txt" contradicted the execution task adding pytest-cov to it. Amended: the Always list now carries a human-renegotiated exception permitting `requirements.txt` edits ONLY for the dev-tooling lines authorized in Tasks. Avoids: ambiguous rules inherited by the follow-up frontend pass. KEEP: the exception's narrow scope (only pytest-cov/coverage lines); the frozen section remains human-owned.
+- **2026-08-14 — finding: verification loop too slow (human).** Seven full-suite runs (~3:40 each serial) dominated pass time. Amended: Verification section now prescribes targeted per-batch runs + `pytest -n auto` (pytest-xdist, verified 963 passed / 39.9s) for baseline+final only, coverage never per-batch. Avoids: ~15-25 min of redundant serial test time per pass. KEEP: the full-suite + coverage gate at baseline and end; the targeted-batch pattern for the frontend pass.
 
 ## Final Report (2026-08-14)
 
@@ -157,10 +158,11 @@ All commits local; **no push occurred**. Post-pass `git status`: `deferred-work.
 ## Verification
 
 **Commands:**
-- `pytest` (workdir `backend/`) -- expected: all tests pass
-- `ruff check .` (workdir `backend/`) -- expected: no violations
-- `mypy .` (workdir `backend/`) -- expected: no errors
-- `pytest --cov=config --cov=apps --cov=tasks --cov=scrapers --cov=conftest.py --cov-report=term-missing` (workdir `backend/`) -- expected: coverage >= baseline, no unexpected drops
+- Per-batch (targeted): `pytest apps/<affected-app>` (workdir `backend/`) -- expected: affected module tests pass
+- Per-batch (targeted): `ruff check .` + `mypy .` (workdir `backend/`) -- expected: no violations / no errors
+- Full gate, baseline + final only: `pytest -n auto` (workdir `backend/`) -- expected: all tests pass (~40s vs ~3:40 serial)
+- Full gate, baseline + final only: `pytest --cov=config --cov=apps --cov=tasks --cov=scrapers --cov=conftest.py -n auto --cov-report=term-missing` (workdir `backend/`) -- expected: coverage >= baseline, no unexpected drops
+- Note: coverage NEVER runs per-batch; full suite runs only at baseline and at the end (verified 2026-08-14: `-n auto` = 963 passed in 39.9s; with coverage 52.0s, coverage identical at 99%)
 
 ## Suggested Review Order
 

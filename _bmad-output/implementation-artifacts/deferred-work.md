@@ -1,7 +1,7 @@
 
 ## Deferred from: dead-code-removal spec (2026-08-14)
 
-- **Frontend (Next.js) dead code removal pass**: split from the backend-only cleanup goal on human request (start with backend); same prompt rules apply, run as a follow-up Quick Dev pass on `frontend/src/*` + `middleware.ts` — map the rules to Next.js surfaces (app-router routes, middleware config, i18n keys, package.json) and vitest/eslint/tsc gates before the pass. [spec-dead-code-removal.md]
+- **Frontend (Next.js) dead code removal pass**: split from the backend-only cleanup goal on human request (start with backend); same prompt rules apply, run as a follow-up Quick Dev pass on `frontend/src/*` + `middleware.ts` — map the rules to Next.js surfaces (app-router routes, middleware config, i18n keys, package.json) and vitest/eslint/tsc gates before the pass. Verification pattern (from the backend pass): targeted per-batch runs (vitest on affected files + `tsc --noEmit` + lint), full `npm run test` + `npm run build` only at baseline and end. [spec-dead-code-removal.md]
 
 ## Deferred from: dead-code-removal review (2026-08-14)
 
