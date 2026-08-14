@@ -203,7 +203,7 @@ export function ExportModal({
         if (!next) onOpenChange(false)
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-[560px]">
+      <DialogContent className="max-h-[calc(100dvh-1rem)] gap-3 overflow-y-auto overflow-x-hidden p-3 sm:max-w-[620px] sm:p-4">
         <DialogHeader>
           <DialogTitle className="text-title">
             {t(freeTier ? 'export.modal.title_free' : 'export.modal.title')}
@@ -241,45 +241,36 @@ export function ExportModal({
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-border pb-1.5">
               <span className="text-small text-muted-foreground">
                 {t(freeTier ? 'export.modal.rows_capped' : 'export.modal.rows')}
               </span>
               <span className="text-data tabular-nums">
                 {isCollecting || preview === null ? '…' : String(preview.totalRows)}
               </span>
-            </div>
-
-            <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
-              {isCollecting || preview === null ? (
-                <>
-                  <span className="text-small text-muted-foreground">
-                    {t('export.modal.calculating')}
-                  </span>
-                  <span className="text-data tabular-nums">…</span>
-                </>
-              ) : (
-                <p className="text-data tabular-nums">
-                  {t('export.modal.cost_breakdown', {
-                    revealed: String(preview.revealedCount),
-                    unrevealed: String(includeUnrevealed ? preview.unrevealedCount : 0),
-                    total: String(cost),
-                  })}
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2">
               <span className="text-small text-muted-foreground">
                 {t('export.modal.balance_after')}
               </span>
               <span className="text-data tabular-nums">
                 {balanceAfter === null ? '—' : String(balanceAfter)}
               </span>
+              {isCollecting || preview === null ? (
+                <span className="w-full text-caption text-muted-foreground">
+                  {t('export.modal.calculating')}
+                </span>
+              ) : (
+                <span className="w-full text-caption tabular-nums text-muted-foreground">
+                  {t('export.modal.cost_breakdown', {
+                    revealed: String(preview.revealedCount),
+                    unrevealed: String(includeUnrevealed ? preview.unrevealedCount : 0),
+                    total: String(cost),
+                  })}
+                </span>
+              )}
             </div>
 
-            <label className="flex min-h-11 items-center gap-2 text-small md:min-h-10">
+            <label className="flex min-h-10 items-center gap-2 text-small">
               <input
                 type="checkbox"
                 checked={includeUnrevealed}
@@ -290,19 +281,19 @@ export function ExportModal({
             </label>
 
             <div className="flex flex-col gap-2">
-              <p className="text-small text-muted-foreground">
-                {t('export.modal.preview_notice')}
-              </p>
               <div
                 dir="ltr"
                 role="group"
                 aria-label={t('export.modal.preview_label')}
-                className="max-h-40 overflow-y-auto rounded-md bg-muted p-3 text-small leading-6 text-muted-strong"
+                className="max-h-56 overflow-y-auto overflow-x-hidden rounded-md bg-muted p-3 text-small leading-5 text-muted-strong"
               >
+                <p className="mb-1 border-b border-border/60 pb-1 text-caption text-muted-foreground">
+                  {t('export.modal.preview_notice')}
+                </p>
                 {freeTier && <p className="font-semibold text-danger">{t('export.watermark')}</p>}
-                <p>{previewLines?.header}</p>
+                <p className="break-words">{previewLines?.header}</p>
                 {previewLines?.body.map((line) => (
-                  <p key={line.key} className="truncate">
+                  <p key={line.key} className="break-words">
                     {line.text}
                   </p>
                 ))}
@@ -311,13 +302,13 @@ export function ExportModal({
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <div className="flex gap-3">
                 <button
                   type="button"
                   aria-pressed={format === 'csv'}
                   onClick={() => handleFormatClick('csv')}
-                  className={`min-h-11 flex-1 rounded-md border px-4 text-small font-medium md:min-h-10 ${
+                  className={`min-h-10 flex-1 rounded-md border px-4 text-small font-medium ${
                     format === 'csv'
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border bg-card text-muted-foreground'
@@ -331,7 +322,7 @@ export function ExportModal({
                   aria-disabled={freeTier || undefined}
                   aria-describedby={freeTier ? 'xlsx-upgrade-note' : undefined}
                   onClick={() => handleFormatClick('xlsx')}
-                  className={`min-h-11 flex-1 rounded-md border px-4 text-small font-medium md:min-h-10 ${
+                  className={`min-h-10 flex-1 rounded-md border px-4 text-small font-medium ${
                     format === 'xlsx' && !freeTier
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border bg-muted text-muted-strong'
@@ -368,7 +359,7 @@ export function ExportModal({
                     : undefined
                 }
                 onClick={handleConfirm}
-                className={`min-h-11 w-full min-w-[10rem] rounded-md px-4 text-small font-semibold md:min-h-10 ${
+                className={`min-h-10 w-full min-w-[10rem] rounded-md px-4 text-small font-semibold ${
                   insufficient ||
                   balance === null ||
                   preview === null ||

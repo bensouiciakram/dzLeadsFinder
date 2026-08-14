@@ -100,6 +100,15 @@
     @apply font-sans;
   }
 
+  /* Kill stray horizontal page scrollbars in all cases. `clip` (unlike
+     `hidden`) does not create a scroll container, so the sticky header keeps
+     sticking. Components that legitimately scroll horizontally (results
+     table) keep their own overflow-x-auto wrapper. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
