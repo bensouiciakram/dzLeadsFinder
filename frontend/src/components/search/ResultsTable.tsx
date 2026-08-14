@@ -203,7 +203,7 @@ function CompanyCells({ row }: { row: CompanyResultRow }) {
   )
 }
 
-export type ResultsTableProps = {
+type ResultsTableProps = {
   tab: SearchTab
   rows: PeopleResultRow[] | CompanyResultRow[]
   sort: SortState | null

@@ -21,7 +21,7 @@ import { numerals } from '@/lib/api/billing-service'
 //
 // Sally M1: ZERO new message keys — title = billing.packs.title, pack
 // cards reuse packs.* + common.actions.buy + common.actions.close.
-export type RecoveryDialogContextValue = {
+type RecoveryDialogContextValue = {
   open: () => void
   close: () => void
   isOpen: boolean

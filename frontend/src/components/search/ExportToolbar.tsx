@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import type { SearchSubmitted } from '@/hooks/useSearchResults'
 import type { SearchTab } from '@/lib/api/search-service'
 
-export type ExportToolbarProps = {
+type ExportToolbarProps = {
   tab: SearchTab
   submitted: SearchSubmitted | null
   nonce: number

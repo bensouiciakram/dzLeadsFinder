@@ -69,7 +69,7 @@ export function removeFacetValue(
   }
 }
 
-export type FilterSidebarProps = {
+type FilterSidebarProps = {
   tab: SearchTab
   applied?: StagedFilters
   busy?: boolean

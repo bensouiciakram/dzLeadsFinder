@@ -80,7 +80,7 @@ function CompanyFields({ contact }: { contact: CompanyContact }) {
   )
 }
 
-export type RevealState = {
+type RevealState = {
   recordType: 'people' | 'company'
   userKey: string
   rowId: string

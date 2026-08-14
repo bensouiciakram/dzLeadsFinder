@@ -61,7 +61,7 @@ function sortParamFor(sort: SortState | null): string {
   return sort !== null && sort.dir !== null ? `${sort.field}:${sort.dir}` : 'name:asc'
 }
 
-export type SearchPageProps = {
+type SearchPageProps = {
   tab: SearchTab
 }
 

@@ -34,7 +34,7 @@ function MaybeArabic({ text }: { text: string }) {
   )
 }
 
-export type ActiveFilterChipsProps = {
+type ActiveFilterChipsProps = {
   filters: StagedFilters
   onRemove: (facet: ChipsFacet, value: number | string | boolean) => void
 }

@@ -44,7 +44,7 @@ export function filterWilayas(wilayas: Wilaya[], query: string): Wilaya[] {
   )
 }
 
-export type WilayaComboboxProps = {
+type WilayaComboboxProps = {
   value: number[]
   onChange: (codes: number[]) => void
   inputValue?: string

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-export type TeamCarouselSlide = {
+type TeamCarouselSlide = {
   name: string
   role: string
   alt: string

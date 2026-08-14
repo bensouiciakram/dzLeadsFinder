@@ -29,9 +29,9 @@ import { SUBSCRIPTION_PRICE_DZD } from '@/lib/api/billing-service'
 // chip — it calls open('reactivate') and the title reads the existing
 // `plan.reactivate` string ("Reactivate" ×3) instead of "Upgrade to
 // Starter" (zero new i18n keys — Sally's reuse-first discipline).
-export type UpgradeIntent = 'upgrade' | 'reactivate'
+type UpgradeIntent = 'upgrade' | 'reactivate'
 
-export type UpgradeDialogContextValue = {
+type UpgradeDialogContextValue = {
   open: (intent?: UpgradeIntent) => void
   close: () => void
   isOpen: boolean

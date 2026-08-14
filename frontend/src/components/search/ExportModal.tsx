@@ -13,7 +13,7 @@ import type { ExportFormat } from '@/lib/api/export-service'
 import { navigator } from '@/lib/api/http-client'
 import type { SearchTab } from '@/lib/api/search-service'
 
-export type ExportModalProps = {
+type ExportModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   tab: SearchTab

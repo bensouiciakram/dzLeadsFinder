@@ -40,7 +40,7 @@ export type SavedSearchSnapshot = {
   sort: SavedSearchSort | null
 }
 
-export type SavedSearchesListProps = {
+type SavedSearchesListProps = {
   tab: SearchTab
   activeSearchId: string | null
   activeSearch: SavedSearchSnapshot | null

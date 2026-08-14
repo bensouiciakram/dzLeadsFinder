@@ -10,7 +10,7 @@ type CheckboxGroupOption = {
   label: string
 }
 
-export type CheckboxGroupProps = {
+type CheckboxGroupProps = {
   id: string
   labelKey: string
   options: CheckboxGroupOption[]

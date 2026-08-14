@@ -16,7 +16,7 @@ const STEPS: readonly { step: ChecklistStep; labelKey: string }[] = [
   { step: 'export', labelKey: 'search.checklist.step_export' },
 ]
 
-export type ChecklistCardProps = {
+type ChecklistCardProps = {
   onStepComplete?: (step: ChecklistStep) => void
 }
 

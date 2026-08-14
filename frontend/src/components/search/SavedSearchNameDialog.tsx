@@ -17,7 +17,7 @@ import {
 import { isSavedSearchLimitError } from '@/lib/api/saved-search-service'
 import { savedSearchNameSchema, type SavedSearchNameForm } from '@/lib/validation/saved-search'
 
-export type SavedSearchNameDialogProps = {
+type SavedSearchNameDialogProps = {
   open: boolean
   mode: 'create' | 'rename'
   initialName?: string

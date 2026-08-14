@@ -118,7 +118,7 @@ function Card({
   )
 }
 
-export type ResultsTableStackedRowProps = {
+type ResultsTableStackedRowProps = {
   tab: SearchTab
   rows: PeopleResultRow[] | CompanyResultRow[]
 }
