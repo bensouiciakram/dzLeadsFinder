@@ -17,7 +17,7 @@ import { searchKeys } from '@/lib/queryKeys/search'
 const PAGE_SIZE = SEARCH_PAGE_SIZE
 const MAX_PAGES = SEARCH_MAX_NAVIGABLE_PAGES
 
-export type ExportPreviewRow = {
+type ExportPreviewRow = {
   id: string
   name: string
   role: string | null
@@ -37,7 +37,7 @@ export type ExportPreview = {
   totalRows: number
 }
 
-export type UseExportPreviewArgs = {
+type UseExportPreviewArgs = {
   open: boolean
   tab: SearchTab
   filtersJson: string

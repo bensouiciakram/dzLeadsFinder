@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { checklistService, type ChecklistState } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 
-export type UseChecklistMutationsResult = {
+type UseChecklistMutationsResult = {
   dismiss: {
     mutate: () => void
     mutateAsync: () => Promise<ChecklistState>

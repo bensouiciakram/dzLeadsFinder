@@ -6,9 +6,9 @@ import { billingService, type PacksResult } from '@/lib/api/billing-service'
 import { billingKeys } from '@/lib/queryKeys/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type PacksPhase = 'idle' | 'loading' | 'error' | 'success'
+type PacksPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UsePacksResult = {
+type UsePacksResult = {
   packs: PacksResult | null
   phase: PacksPhase
 }

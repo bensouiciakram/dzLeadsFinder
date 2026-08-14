@@ -6,7 +6,7 @@ import { billingService, type CheckoutType } from '@/lib/api/billing-service'
 import { navigator } from '@/lib/api/http-client'
 import { clearPendingCheckout, stashPendingCheckout } from '@/lib/billing/checkoutStorage'
 
-export type UseCheckoutRedirectResult = {
+type UseCheckoutRedirectResult = {
   redirecting: boolean
   error: boolean
   redirect: (type: CheckoutType, amount: number) => Promise<void>

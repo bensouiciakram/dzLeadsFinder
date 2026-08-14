@@ -14,7 +14,7 @@ import type { SessionUser } from '@/lib/api/auth-service'
 
 export type BillingPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UseBillingResult = {
+type UseBillingResult = {
   plan: PlanResult | null
   packs: PacksResult | null
   history: HistoryResult | null

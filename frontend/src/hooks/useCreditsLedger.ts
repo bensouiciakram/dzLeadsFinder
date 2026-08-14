@@ -8,9 +8,9 @@ import type { LedgerRow } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type CreditsLedgerPhase = 'idle' | 'loading' | 'error' | 'success'
+type CreditsLedgerPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UseCreditsLedgerResult = {
+type UseCreditsLedgerResult = {
   rows: LedgerRow[]
   total: number
   page: number

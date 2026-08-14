@@ -12,9 +12,9 @@ import {
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type ChecklistPhase = 'idle' | 'loading' | 'error' | 'success'
+type ChecklistPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UseChecklistResult = {
+type UseChecklistResult = {
   state: ChecklistState | null
   phase: ChecklistPhase
   isFetching: boolean

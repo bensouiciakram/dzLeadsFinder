@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/saved-search-service'
 import { savedSearchesKeys } from '@/lib/queryKeys/savedSearches'
 
-export type UseSavedSearchMutationsResult = {
+type UseSavedSearchMutationsResult = {
   create: {
     mutate: (payload: SavedSearchPayload) => void
     mutateAsync: (payload: SavedSearchPayload) => Promise<SavedSearchRow>

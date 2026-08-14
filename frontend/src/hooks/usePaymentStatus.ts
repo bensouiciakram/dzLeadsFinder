@@ -21,9 +21,9 @@ export type PendingCheckout = {
   started_at: string
 }
 
-export type PaymentCardState = 'polling' | 'success' | 'timeout' | 'failed'
+type PaymentCardState = 'polling' | 'success' | 'timeout' | 'failed'
 
-export type UsePaymentStatusResult = {
+type UsePaymentStatusResult = {
   state: PaymentCardState
   cardType: string | null
   creditsGranted: number | null

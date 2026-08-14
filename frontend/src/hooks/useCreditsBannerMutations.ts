@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { creditsService, type CreditsBannerState } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 
-export type UseCreditsBannerMutationsResult = {
+type UseCreditsBannerMutationsResult = {
   dismiss: {
     mutate: () => void
     mutateAsync: () => Promise<CreditsBannerState>

@@ -16,7 +16,7 @@ import {
 import { isInsufficientCreditsError } from '@/lib/api/reveal-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 
-export type ExportPayload = {
+type ExportPayload = {
   record_ids: string[]
   format: ExportFormat
   include_unrevealed: boolean

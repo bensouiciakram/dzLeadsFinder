@@ -6,9 +6,9 @@ import { creditsService } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type CreditsBannerPhase = 'idle' | 'loading' | 'error' | 'success'
+type CreditsBannerPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UseCreditsBannerResult = {
+type UseCreditsBannerResult = {
   dismissed: boolean
   phase: CreditsBannerPhase
   refetch: () => void

@@ -10,7 +10,7 @@ import { checklistKeys } from '@/lib/queryKeys/checklist'
 import { revealKeys } from '@/lib/queryKeys/reveal'
 import { searchKeys } from '@/lib/queryKeys/search'
 
-export type RevealVariables = {
+type RevealVariables = {
   type: 'people' | 'company'
   id: string
 }

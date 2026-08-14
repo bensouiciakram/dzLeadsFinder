@@ -7,9 +7,9 @@ import { savedSearchService, type SavedSearchRow } from '@/lib/api/saved-search-
 import { savedSearchesKeys } from '@/lib/queryKeys/savedSearches'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type SavedSearchesPhase = 'idle' | 'loading' | 'error' | 'success'
+type SavedSearchesPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UseSavedSearchesResult = {
+type UseSavedSearchesResult = {
   savedSearches: SavedSearchRow[]
   phase: SavedSearchesPhase
   isFetching: boolean

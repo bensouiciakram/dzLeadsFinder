@@ -6,9 +6,9 @@ import { billingService, type PlanResult } from '@/lib/api/billing-service'
 import { billingKeys } from '@/lib/queryKeys/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 
-export type PlanPhase = 'idle' | 'loading' | 'error' | 'success'
+type PlanPhase = 'idle' | 'loading' | 'error' | 'success'
 
-export type UsePlanResult = {
+type UsePlanResult = {
   plan: PlanResult | null
   phase: PlanPhase
 }
