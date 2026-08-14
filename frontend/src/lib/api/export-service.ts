@@ -16,7 +16,7 @@ export type CreateExportResponse = {
   balances: CreditBalances
 }
 
-export type ExportApiError = {
+type ExportApiError = {
   response?: { status?: number; data?: { code?: string } }
 }
 

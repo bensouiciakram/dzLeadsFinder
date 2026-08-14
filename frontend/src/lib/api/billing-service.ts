@@ -79,7 +79,7 @@ export const PAYMENT_POLL_INTERVAL_MS = 5_000
 // alarm, 5.3 D5). Same value as apps/billing/pricing.py SUBSCRIPTION_PRICE_DZD.
 export const SUBSCRIPTION_PRICE_DZD = 1500
 
-export type BillingApiError = {
+type BillingApiError = {
   response?: { status?: number; data?: { code?: string } }
 }
 

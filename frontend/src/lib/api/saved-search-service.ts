@@ -32,7 +32,7 @@ export type SavedSearchPayload = {
   sort: SavedSearchSort | null
 }
 
-export type SavedSearchApiError = {
+type SavedSearchApiError = {
   response?: {
     status?: number
     data?: { detail?: string; code?: string; limit?: number }

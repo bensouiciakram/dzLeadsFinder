@@ -111,7 +111,7 @@ export type SearchResult<T> = {
   refine_prompt: string | null
 }
 
-export type SearchApiError = {
+type SearchApiError = {
   response?: {
     status?: number
     data?: { detail?: string }

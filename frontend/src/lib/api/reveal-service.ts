@@ -21,7 +21,7 @@ export type CompanyContact = {
   size_band: string | null
 }
 
-export type RevealedContact = PeopleContact | CompanyContact
+type RevealedContact = PeopleContact | CompanyContact
 
 export type CreditBalances = {
   subscription_balance: number
@@ -34,7 +34,7 @@ export type RevealResult = {
   balances: CreditBalances
 }
 
-export type RevealApiError = {
+type RevealApiError = {
   response?: { status?: number; data?: { code?: string } }
 }
 

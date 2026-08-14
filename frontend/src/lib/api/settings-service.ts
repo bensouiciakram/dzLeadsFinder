@@ -1,6 +1,6 @@
 import { HttpClient } from './http-client'
 
-export type DeletionSchedule = {
+type DeletionSchedule = {
   deletion_scheduled_at: string
 }
 
@@ -9,7 +9,7 @@ export type FrozenStatus = {
   days_left: number
 }
 
-export class SettingsService extends HttpClient {
+class SettingsService extends HttpClient {
   async deleteAccount(): Promise<DeletionSchedule> {
     const { data } = await this.client.post<DeletionSchedule>('/settings/delete/')
     return data
