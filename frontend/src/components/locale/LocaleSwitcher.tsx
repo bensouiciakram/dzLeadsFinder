@@ -42,7 +42,7 @@ export function LocaleSwitcher() {
           aria-label="Switch language"
         >
           <Globe className="size-4 shrink-0" />
-          <span>{localeNames[locale]}</span>
+          <span className="hidden sm:inline">{localeNames[locale]}</span>
         </SelectTrigger>
         <SelectContent>
           {LOCALES.map((l) => (

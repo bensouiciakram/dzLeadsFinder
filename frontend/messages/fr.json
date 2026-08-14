@@ -624,5 +624,23 @@
       "header_people_count": "Effectif"
     },
     "watermark": "DZLeads Free \u2014 passez \u00e0 Starter pour retirer le filigrane"
+  },
+  "footer": {
+    "made_by": "Créé par Akram & Sofiane à Alger",
+    "columns": {
+      "product": "Produit",
+      "trust": "Confiance",
+      "legal": "Mentions légales"
+    },
+    "links": {
+      "search": "Recherche",
+      "pricing": "Tarifs",
+      "wilayas": "Wilayas",
+      "how_we_verify": "Comment nous vérifions",
+      "about": "À propos",
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation",
+      "refund_policy": "Politique de remboursement"
+    }
   }
 }

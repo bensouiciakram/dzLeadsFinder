@@ -51,7 +51,7 @@ export function PaymentHistoryTable({ history, phase }: Props) {
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card">
-          <table className="table-fixed w-full border-collapse text-small">
+          <table className="table-fixed w-full min-w-[640px] border-collapse text-small">
             <thead>
               <tr className="text-small font-semibold text-muted-foreground">
                 <th scope="col" className="w-[24%] border-b border-border px-3 py-3 text-start">

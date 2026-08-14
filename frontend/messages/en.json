@@ -624,5 +624,23 @@
       "header_people_count": "People count"
     },
     "watermark": "DZLeads Free — upgrade to remove"
+  },
+  "footer": {
+    "made_by": "Made by Akram & Sofiane in Algiers",
+    "columns": {
+      "product": "Product",
+      "trust": "Trust",
+      "legal": "Legal"
+    },
+    "links": {
+      "search": "Search",
+      "pricing": "Pricing",
+      "wilayas": "Wilayas",
+      "how_we_verify": "How we verify",
+      "about": "About",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "refund_policy": "Refund policy"
+    }
   }
 }

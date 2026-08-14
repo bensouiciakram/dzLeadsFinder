@@ -104,7 +104,7 @@ describe('PackCards', () => {
     expect(screen.getByRole('heading', { name: 'Add-on Credit Packs' })).toBeInTheDocument()
     expect(container.querySelector('div.grid')).not.toBeNull()
 
-    const cards = container.querySelectorAll('div.relative')
+    const cards = container.querySelectorAll('div.rounded-lg')
     expect(cards).toHaveLength(2)
 
     expect(screen.getByText('75')).toBeInTheDocument()
@@ -120,8 +120,8 @@ describe('PackCards', () => {
     renderCards(PACKS, 'success')
     const badges = screen.getAllByText('Best value')
     expect(badges).toHaveLength(1)
-    expect(badges[0].closest('div.relative')).toHaveTextContent('250')
-    expect(badges[0].closest('div.relative')).not.toHaveTextContent('75')
+    expect(badges[0].closest('div.rounded-lg')).toHaveTextContent('250')
+    expect(badges[0].closest('div.rounded-lg')).not.toHaveTextContent('75')
   })
 
   it('renders the never-expires check icon as aria-hidden', () => {

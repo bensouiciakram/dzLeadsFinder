@@ -42,10 +42,10 @@ export function PackCards({ packs, phase }: Props) {
             {packs.packs.map((pack) => (
               <div
                 key={pack.amount}
-                className="relative rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary md:p-8"
+                className="rounded-lg border border-border bg-card p-6 transition-colors hover:border-primary md:p-8"
               >
                 {pack.best_value ? (
-                  <span className="absolute top-4 end-4 rounded-full bg-primary px-3 py-1 text-caption font-medium text-primary-foreground">
+                  <span className="mb-4 inline-flex w-fit rounded-full bg-primary px-3 py-1 text-caption font-medium text-primary-foreground">
                     {t('packs.best_value')}
                   </span>
                 ) : null}

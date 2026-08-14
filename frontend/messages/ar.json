@@ -624,5 +624,23 @@
       "header_people_count": "عدد الأشخاص"
     },
     "watermark": "DZLeads Free — قم بالترقية لإزالة العلامة المائية"
+  },
+  "footer": {
+    "made_by": "صُنع بواسطة أكرم وسفيان في الجزائر العاصمة",
+    "columns": {
+      "product": "المنتجات",
+      "trust": "الثقة",
+      "legal": "القانوني"
+    },
+    "links": {
+      "search": "البحث",
+      "pricing": "الأسعار",
+      "wilayas": "الولايات",
+      "how_we_verify": "كيف نتحقق",
+      "about": "من نحن",
+      "privacy": "سياسة الخصوصية",
+      "terms": "شروط الاستخدام",
+      "refund_policy": "سياسة الاسترداد"
+    }
   }
 }

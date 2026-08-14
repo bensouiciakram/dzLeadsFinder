@@ -82,6 +82,8 @@ export type FilterSidebarProps = {
   clearNonce?: number
   onClearAllRequest?: () => void
   savedSearchesSlot?: ReactNode
+  collapsed?: boolean
+  onCollapseRequest?: () => void
   onSubmit: (filters: StagedFilters) => void
 }
 
@@ -97,6 +99,8 @@ export function FilterSidebar({
   clearNonce = 0,
   onClearAllRequest,
   savedSearchesSlot,
+  collapsed = false,
+  onCollapseRequest,
   onSubmit,
 }: FilterSidebarProps) {
   const t = useTranslations()
@@ -320,17 +324,29 @@ export function FilterSidebar({
     <>
       <aside
         data-testid="filter-sidebar"
-        className="hidden w-sidebar-width shrink-0 flex-col border-inline-end border-border bg-card md:flex"
+        className={`w-sidebar-width shrink-0 flex-col border-inline-end border-border bg-card ${
+          collapsed ? 'hidden' : 'hidden md:flex'
+        }`}
       >
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="text-title text-foreground">{t('search.filters.title')}</h2>
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="min-h-11 cursor-pointer text-caption text-primary hover:text-primary-hover md:h-8"
-          >
-            {t('search.filters.clear')}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="min-h-11 cursor-pointer text-caption text-primary hover:text-primary-hover md:h-8"
+            >
+              {t('search.filters.clear')}
+            </button>
+            <button
+              type="button"
+              onClick={onCollapseRequest}
+              aria-label={t('common.actions.close')}
+              className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:size-8"
+            >
+              <XIcon />
+            </button>
+          </div>
         </div>
         <div className="grow overflow-y-auto px-4 pb-4">
           {renderGroups('aside')}

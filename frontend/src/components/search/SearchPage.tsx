@@ -1,7 +1,7 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, SlidersHorizontalIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -79,6 +79,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
   const [clearNonce, setClearNonce] = useState(0)
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const savedTargetRef = useRef<string | null>(null)
 
   const onSuccess = useCallback((filters: StagedFilters) => {
@@ -303,6 +304,8 @@ export function SearchPage({ tab }: SearchPageProps) {
           />
         }
         onSubmit={(filters) => void runSearch({ ...filters, wilayas })}
+        collapsed={!sidebarOpen}
+        onCollapseRequest={() => setSidebarOpen(false)}
       />
       <main className="min-w-0 grow px-gutter py-6 md:px-gutter-desktop">
         <h1 className="sr-only">{t('search.title')}</h1>
@@ -329,6 +332,16 @@ export function SearchPage({ tab }: SearchPageProps) {
           >
             {t('search.companies_tab')}
           </Link>
+          {!sidebarOpen && (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="hidden min-h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-small font-medium text-foreground hover:bg-muted md:inline-flex"
+            >
+              <SlidersHorizontalIcon className="size-4" />
+              {t('search.filters.title')}
+            </button>
+          )}
         </nav>
 
         <section id="results" data-testid="results" className="mt-6">

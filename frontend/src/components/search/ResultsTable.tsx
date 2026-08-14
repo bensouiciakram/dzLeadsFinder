@@ -24,6 +24,7 @@ import type {
   PeopleResultRow,
   SearchTab,
 } from '@/lib/api/search-service'
+import { cn } from '@/lib/utils'
 
 export type SortField =
   | 'name'
@@ -42,22 +43,23 @@ export type SortState = {
 type Column = {
   field: SortField | null
   headerKey: string
+  widthClass?: string
 }
 
 const PEOPLE_COLUMNS: Column[] = [
-  { field: 'name', headerKey: 'search.sort.name' },
-  { field: 'role', headerKey: 'search.results.columns.role' },
-  { field: 'company_name', headerKey: 'search.results.columns.company' },
-  { field: 'wilaya_code', headerKey: 'search.sort.wilaya' },
-  { field: null, headerKey: 'common.actions.reveal' },
+  { field: 'name', headerKey: 'search.sort.name', widthClass: 'w-[20%]' },
+  { field: 'role', headerKey: 'search.results.columns.role', widthClass: 'w-[15%]' },
+  { field: 'company_name', headerKey: 'search.results.columns.company', widthClass: 'w-[22%]' },
+  { field: 'wilaya_code', headerKey: 'search.sort.wilaya', widthClass: 'w-[13%]' },
+  { field: null, headerKey: 'common.actions.reveal', widthClass: 'w-[30%]' },
 ]
 
 const COMPANY_COLUMNS: Column[] = [
-  { field: 'name', headerKey: 'search.sort.name' },
-  { field: 'industry', headerKey: 'search.filters.industry' },
-  { field: 'wilaya_code', headerKey: 'search.sort.wilaya' },
-  { field: 'size_band', headerKey: 'search.filters.size' },
-  { field: 'people_count', headerKey: 'search.results.columns.people_count' },
+  { field: 'name', headerKey: 'search.sort.name', widthClass: 'w-[25%]' },
+  { field: 'industry', headerKey: 'search.filters.industry', widthClass: 'w-[25%]' },
+  { field: 'wilaya_code', headerKey: 'search.sort.wilaya', widthClass: 'w-[20%]' },
+  { field: 'size_band', headerKey: 'search.filters.size', widthClass: 'w-[15%]' },
+  { field: 'people_count', headerKey: 'search.results.columns.people_count', widthClass: 'w-[15%]' },
 ]
 
 export function sortCycle(field: SortField, current: SortState | null): SortState {
@@ -142,7 +144,7 @@ function PeopleExpansionRow({ row }: { row: PeopleResultRow }) {
   if (!state.showRegion) return null
   return (
     <TableRow className="hover:bg-muted">
-      <TableCell colSpan={PEOPLE_COLUMNS.length} className="px-2 py-3 align-top">
+      <TableCell colSpan={PEOPLE_COLUMNS.length} className="whitespace-normal px-2 py-3 align-top">
         <RevealContent state={state} />
       </TableCell>
     </TableRow>
@@ -153,17 +155,19 @@ function PeopleCells({ row }: { row: PeopleResultRow }) {
   const t = useTranslations()
   return (
     <>
-      <TableCell className="font-medium text-foreground">
+      <TableCell className="whitespace-normal break-words font-medium text-foreground">
         <MaybeArabic text={row.name} />
       </TableCell>
-      <TableCell>{row.role === null ? <EmDash /> : <MaybeArabic text={row.role} />}</TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal break-words">
+        {row.role === null ? <EmDash /> : <MaybeArabic text={row.role} />}
+      </TableCell>
+      <TableCell className="whitespace-normal break-words">
         <CompanyLink name={row.company_name} companyId={row.company_id} />
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal break-words">
         <WilayaCell code={row.wilaya_code} name={row.wilaya_name} />
       </TableCell>
-      <TableCell className="w-36">
+      <TableCell>
         <RevealSlot tab="people" row={row} />
       </TableCell>
     </>
@@ -174,16 +178,16 @@ function CompanyCells({ row }: { row: CompanyResultRow }) {
   const t = useTranslations()
   return (
     <>
-      <TableCell className="font-medium text-foreground">
+      <TableCell className="whitespace-normal break-words font-medium text-foreground">
         <CompanyLink name={row.name} companyId={row.id} />
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal break-words">
         {row.industry === null ? <EmDash /> : <MaybeArabic text={row.industry} />}
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal break-words">
         <WilayaCell code={row.wilaya_code} name={row.wilaya_name} />
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal break-words">
         {row.size_band === null ? (
           <EmDash />
         ) : (
@@ -194,7 +198,7 @@ function CompanyCells({ row }: { row: CompanyResultRow }) {
           </span>
         )}
       </TableCell>
-      <TableCell className="tabular-nums">{String(row.people_count)}</TableCell>
+      <TableCell className="whitespace-normal tabular-nums">{String(row.people_count)}</TableCell>
     </>
   )
 }
@@ -217,7 +221,7 @@ export function ResultsTable({ tab, rows, sort, onSortChange, skeleton = false }
 
   return (
     <div data-testid="results-table" className="hidden md:block">
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow className="h-12">
             {columns.map((column) => {
@@ -227,7 +231,10 @@ export function ResultsTable({ tab, rows, sort, onSortChange, skeleton = false }
                 <TableHead
                   key={column.headerKey}
                   aria-sort={ariaSort}
-                  className="h-8 px-2 text-start font-semibold text-muted-foreground"
+                  className={cn(
+                    'h-8 whitespace-normal px-2 text-start font-semibold text-muted-foreground',
+                    column.widthClass,
+                  )}
                 >
                   {column.field === null ? (
                     <span data-slot="sort-label" className="text-small">

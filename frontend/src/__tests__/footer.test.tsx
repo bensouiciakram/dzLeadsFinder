@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/Footer'
+
+vi.mock('next-intl', async () => {
+  const mock = await import('@/test/next-intl-mock')
+  return mock.buildNextIntlMock()
+})
 
 describe('Footer', () => {
   it('renders three link columns', () => {
