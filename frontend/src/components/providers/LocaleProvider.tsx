@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, type ReactNode } from 'react'
 
 type LocaleContextValue = {
   locale: string
@@ -9,10 +9,6 @@ type LocaleContextValue = {
 const LocaleContext = createContext<LocaleContextValue>({
   locale: 'fr',
 })
-
-export function useLocaleContext() {
-  return useContext(LocaleContext)
-}
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   return (

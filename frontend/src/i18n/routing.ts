@@ -11,9 +11,7 @@ export const routing = defineRouting({
   },
 })
 
-export type Locale = (typeof routing.locales)[number]
 export const LOCALES = routing.locales
-export const DEFAULT_LOCALE = routing.defaultLocale
 
 export function getDir(locale: string): 'rtl' | 'ltr' {
   return locale === 'ar' ? 'rtl' : 'ltr'

@@ -1,7 +1,6 @@
 // Key factory discipline (AD-21) — the 5.6 polling success invalidates the
 // plan/packs/history keys on the /billing page.
 export const billingKeys = {
-  all: ['billing'] as const,
   plan: (userKey: string) => ['billing', 'plan', userKey] as const,
   packs: (userKey: string) => ['billing', 'packs', userKey] as const,
   history: (userKey: string) => ['billing', 'history', userKey] as const,
