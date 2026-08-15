@@ -261,6 +261,10 @@
       "banner_welcome": "{count} credits left"
     },
     "errors": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred on this page. Please try again.",
+      "try_again": "Try again",
+      "go_home": "Go to home page",
       "required": "This field is required",
       "invalid_email": "Please enter a valid email address",
       "invalid_password": "Password must be at least 8 characters",
