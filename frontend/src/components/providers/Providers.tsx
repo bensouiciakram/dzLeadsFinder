@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { SessionProvider } from './SessionProvider'
-import { LocaleProvider } from './LocaleProvider'
 import { CreditProvider } from './CreditProvider'
 import { ToastProvider } from './ToastProvider'
 import { UpgradeDialogProvider } from './UpgradeDialogProvider'
@@ -22,15 +21,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <LocaleProvider>
-          <ToastProvider>
-            <UpgradeDialogProvider>
-              <RecoveryDialogProvider>
-                <CreditProvider>{children}</CreditProvider>
-              </RecoveryDialogProvider>
-            </UpgradeDialogProvider>
-          </ToastProvider>
-        </LocaleProvider>
+        <ToastProvider>
+          <UpgradeDialogProvider>
+            <RecoveryDialogProvider>
+              <CreditProvider>{children}</CreditProvider>
+            </RecoveryDialogProvider>
+          </UpgradeDialogProvider>
+        </ToastProvider>
       </SessionProvider>
     </QueryClientProvider>
   )

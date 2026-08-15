@@ -1,4 +1,6 @@
-'use client'
+// 'use client' removed (M14-era cleanup): a pure storage module with its
+// own window guards — the directive only forced client bundling. Safe from
+// server components too: every accessor short-circuits without window.
 
 // M9: the stash shape lives with the storage module — the storage layer
 // must not depend on the hook layer (usePaymentStatus imports it from
