@@ -29,6 +29,11 @@ export function ExportToolbar({
   const t = useTranslations()
   const { balance } = useCredits()
   const [open, setOpen] = useState(false)
+  // M12: the remount key — every open increments the session, so the modal
+  // mounts FRESH each time (AC-pinned defaults + clean mutation state)
+  // WITHOUT cutting the close animation (the key stays put while closing,
+  // unlike a `key={open}` flip).
+  const [openSession, setOpenSession] = useState(0)
 
   if (submitted === null || total <= 0) return null
 
@@ -38,13 +43,17 @@ export function ExportToolbar({
         variant="outline"
         aria-disabled={isFetching || undefined}
         onClick={() => {
-          if (!isFetching) setOpen(true)
+          if (!isFetching) {
+            setOpen(true)
+            setOpenSession((current) => current + 1)
+          }
         }}
         className="min-h-11 md:min-h-10"
       >
         {t('common.actions.export')}
       </Button>
       <ExportModal
+        key={openSession}
         open={open}
         onOpenChange={setOpen}
         tab={tab}

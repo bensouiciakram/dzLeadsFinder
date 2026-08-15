@@ -10,6 +10,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormErrorSummary } from './FormErrorSummary'
 import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth'
+import { authService } from '@/lib/api/auth-service'
+import { isAxiosError } from 'axios'
 
 type Props = { token: string }
 
@@ -40,26 +42,24 @@ export function VerifyLinkHandler({ token }: Props) {
 
     async function verify() {
       try {
-        const response = await fetch(`/api/auth/verify-email/${encodeURIComponent(token)}/`)
+        const data = await authService.verifyEmail(token)
         if (cancelled) return
-        if (response.status === 200) {
-          const data = (await response.json()) as { code?: string }
-          setState(data.code === 'already_verified' ? { kind: 'already' } : { kind: 'success' })
-          return
-        }
-        if (response.status === 400 || response.status === 404) {
-          setState({ kind: 'expired' })
-          return
-        }
-        if (response.status === 410) {
-          setState((prev) =>
-            prev.kind === 'success' || prev.kind === 'already' ? prev : { kind: 'used' },
-          )
-          return
+        setState(data.code === 'already_verified' ? { kind: 'already' } : { kind: 'success' })
+      } catch (error) {
+        if (cancelled) return
+        if (isAxiosError(error) && error.response) {
+          if (error.response.status === 400 || error.response.status === 404) {
+            setState({ kind: 'expired' })
+            return
+          }
+          if (error.response.status === 410) {
+            setState((prev) =>
+              prev.kind === 'success' || prev.kind === 'already' ? prev : { kind: 'used' },
+            )
+            return
+          }
         }
         setState({ kind: 'error' })
-      } catch {
-        if (!cancelled) setState({ kind: 'error' })
       }
     }
 
@@ -72,12 +72,8 @@ export function VerifyLinkHandler({ token }: Props) {
   async function handleResend(values: VerifyEmailValues) {
     setResendState('sending')
     try {
-      const response = await fetch('/api/auth/resend-verification/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email }),
-      })
-      setResendState(response.ok ? 'sent' : 'error')
+      await authService.resendVerification(values.email)
+      setResendState('sent')
     } catch {
       setResendState('error')
     }

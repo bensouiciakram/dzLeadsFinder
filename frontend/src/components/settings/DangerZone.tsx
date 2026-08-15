@@ -7,7 +7,7 @@ import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/components/providers/SessionProvider'
-import { settingsService } from '@/lib/api/settings-service'
+import { useDeleteAccount } from '@/hooks/useAccountMutations'
 
 export function DangerZone() {
   const t = useTranslations()
@@ -15,9 +15,9 @@ export function DangerZone() {
   const { status: sessionStatus, logout } = useSession()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(false)
   const [scheduledDate, setScheduledDate] = useState<string | null>(null)
+  const deleteAccount = useDeleteAccount()
 
   if (sessionStatus === 'loading') {
     return null
@@ -59,24 +59,21 @@ export function DangerZone() {
     )
   }
 
-  async function confirmDeletion() {
-    if (submitting) return
-    setSubmitting(true)
+  function confirmDeletion() {
+    if (deleteAccount.isPending) return
     setError(false)
-    try {
-      const data = await settingsService.deleteAccount()
-      setScheduledDate(
-        new Intl.DateTimeFormat(locale, {
-          dateStyle: 'medium',
-          numberingSystem: 'latn',
-        }).format(new Date(data.deletion_scheduled_at)),
-      )
-      setOpen(false)
-    } catch {
-      setError(true)
-    } finally {
-      setSubmitting(false)
-    }
+    deleteAccount.mutate(undefined, {
+      onSuccess: (data) => {
+        setScheduledDate(
+          new Intl.DateTimeFormat(locale, {
+            dateStyle: 'medium',
+            numberingSystem: 'latn',
+          }).format(new Date(data.deletion_scheduled_at)),
+        )
+        setOpen(false)
+      },
+      onError: () => setError(true),
+    })
   }
 
   function handleOpenChange(next: boolean) {
@@ -152,10 +149,12 @@ export function DangerZone() {
                       type="button"
                       variant="destructive"
                       className="w-full px-5 sm:w-auto"
-                      disabled={submitting}
-                      onClick={() => void confirmDeletion()}
+                      disabled={deleteAccount.isPending}
+                      onClick={confirmDeletion}
                     >
-                      {submitting ? t('settings.dzone.confirming') : t('settings.dzone.confirm')}
+                      {deleteAccount.isPending
+                        ? t('settings.dzone.confirming')
+                        : t('settings.dzone.confirm')}
                     </Button>
                   </div>
                 </>

@@ -93,4 +93,37 @@ describe('completedSteps', () => {
       completedSteps({ step_search: true, step_reveal: false, step_export: false, dismissed: true }),
     ).toEqual(['search'])
   })
+
+  it('keeps the SAME reference until the completed set changes (M6 memo)', () => {
+    const first = completedSteps({
+      step_search: true,
+      step_reveal: false,
+      step_export: false,
+      dismissed: false,
+    })
+    const sameContentDifferentObject = completedSteps({
+      step_search: true,
+      step_reveal: false,
+      step_export: false,
+      dismissed: true,
+    })
+    expect(sameContentDifferentObject).toBe(first)
+    const changed = completedSteps({
+      step_search: true,
+      step_reveal: true,
+      step_export: false,
+      dismissed: false,
+    })
+    expect(changed).not.toBe(first)
+    expect(changed).toEqual(['search', 'reveal'])
+    const back = completedSteps({
+      step_search: true,
+      step_reveal: false,
+      step_export: false,
+      dismissed: false,
+    })
+    expect(back).not.toBe(changed)
+    expect(back).toEqual(['search'])
+    expect(completedSteps(null)).toEqual([])
+  })
 })

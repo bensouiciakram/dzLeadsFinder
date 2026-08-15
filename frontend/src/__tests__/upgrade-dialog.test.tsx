@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -174,5 +175,27 @@ describe('UpgradeDialog — the single shared conversion surface (5.7 AC)', () =
     // new i18n keys); the default intent still shows "Upgrade to Starter".
     expect(screen.getByText('Reactivate')).toBeInTheDocument()
     expect(screen.queryByText('Upgrade to Starter')).toBeNull()
+  })
+
+  it('keeps open/close identity STABLE across open/close cycles (M7)', () => {
+    const { result } = renderHook(() => useUpgradeDialog(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <UpgradeDialogProvider>{children}</UpgradeDialogProvider>
+      ),
+    })
+    const firstOpen = result.current.open
+    const firstClose = result.current.close
+    act(() => result.current.open('reactivate'))
+    expect(result.current.isOpen).toBe(true)
+    expect(result.current.intent).toBe('reactivate')
+    act(() => result.current.close())
+    expect(result.current.isOpen).toBe(false)
+    act(() => result.current.open())
+    expect(result.current.open).toBe(firstOpen)
+    expect(result.current.close).toBe(firstClose)
+    expect(result.current.intent).toBe('upgrade')
+    // The double-click guard survives the identity stabilization.
+    act(() => result.current.open('reactivate'))
+    expect(result.current.intent).toBe('upgrade')
   })
 })

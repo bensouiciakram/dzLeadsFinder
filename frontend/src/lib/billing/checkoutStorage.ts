@@ -1,8 +1,15 @@
 'use client'
 
-import type { PendingCheckout } from '@/hooks/usePaymentStatus'
-
-export type { PendingCheckout }
+// M9: the stash shape lives with the storage module — the storage layer
+// must not depend on the hook layer (usePaymentStatus imports it from
+// here, not the other way around).
+export type PendingCheckout = {
+  checkout_id: string
+  // The server-issued checkout start (create-checkout started_at) — the
+  // exact since-bound AND the 60s deadline anchor (AC ≤60s; the FE owns the
+  // window per the spine L631 polling bridge).
+  started_at: string
+}
 
 // The 5.6 pending-checkout bridge (John V3): the entry the StatusCard
 // consumes on the /billing return — stashed by useCheckoutRedirect before

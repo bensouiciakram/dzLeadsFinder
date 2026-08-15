@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DangerZone } from '@/components/settings/DangerZone'
@@ -55,9 +56,11 @@ const CONSEQUENCES = [
 
 function renderDangerZone() {
   return render(
-    <SessionProvider>
-      <DangerZone />
-    </SessionProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <SessionProvider>
+        <DangerZone />
+      </SessionProvider>
+    </QueryClientProvider>,
   )
 }
 

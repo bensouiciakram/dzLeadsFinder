@@ -64,7 +64,7 @@ export function ExportModal({
     total,
     tier,
   })
-  const { create, isPending, error: mutationError, reset } = useExport({
+  const { create, isPending, error: mutationError } = useExport({
     onSuccess: (result) => {
       onOpenChange(false)
       navigator.assign(`/api/export/${result.id}/download/`)
@@ -79,28 +79,23 @@ export function ExportModal({
     // Sally M4: host modal then dialog). The 4.5 upgrade_stub toast is
     // gone (John V6 — the key dies with the re-pointing).
     //
-    // Review P3 (5.7 full review): the effect must gate on the modal's
-    // `open` prop — the provider's open() identity changes on every
-    // dialog isOpen flip, so an ungated effect would re-fire when the
-    // user closes the dialog and reopen it (the reopen loop — the tests'
-    // identity-stable mock masked it). The modal-open gate makes the
-    // effect fire exactly once per error.
+    // Review P3 (5.7 full review) + M7: the effect must gate on the modal's
+    // `open` prop — the provider's open() identity is now stable (M7: the
+    // ref-mirror guard removed the isOpen dep), but a closed modal must
+    // never hijack into the dialog (the error belongs to the modal's own
+    // mutation lifecycle; a stale 'starter' must not re-open a dialog the
+    // user closed).
     if (mutationError === 'starter' && open) {
       onOpenChange(false)
       openUpgradeDialog()
     }
   }, [mutationError, onOpenChange, openUpgradeDialog, open])
 
-  // On every open the form returns to its AC-pinned defaults and the mutation
-  // error state is cleared — a 429 from yesterday must not block today's
-  // attempt, and a 409/402 user must never be stuck (review patches H-A3/L8).
-  useEffect(() => {
-    if (open) {
-      setIncludeUnrevealed(true)
-      setFormat('csv')
-      reset()
-    }
-  }, [open, reset])
+  // M12: the reset-on-open effect is GONE — ExportToolbar remounts this
+  // modal on every open (key = open session), so the AC-pinned defaults
+  // (include-unrevealed on, CSV) and a clean mutation state are inherent to
+  // a fresh mount. No effect, no extra render pass, no stale-429 recovery
+  // logic to maintain.
 
   const ids = useMemo(() => {
     if (preview === null) return []

@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormErrorSummary } from './FormErrorSummary'
 import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth'
+import { authService } from '@/lib/api/auth-service'
 
 export function VerifyEmailGate() {
   const t = useTranslations()
@@ -27,12 +28,8 @@ export function VerifyEmailGate() {
   async function onSubmit(values: VerifyEmailValues) {
     setState('sending')
     try {
-      const response = await fetch('/api/auth/resend-verification/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email }),
-      })
-      setState(response.ok ? 'sent' : 'error')
+      await authService.resendVerification(values.email)
+      setState('sent')
     } catch {
       setState('error')
     }

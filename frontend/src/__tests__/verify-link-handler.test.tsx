@@ -1,10 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { VerifyLinkHandler } from '@/components/auth/VerifyLinkHandler'
 
-const fetchMock = vi.hoisted(() => vi.fn())
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
+
+const authServiceMock = vi.hoisted(() => ({
+  login: vi.fn(),
+  logout: vi.fn(),
+  me: vi.fn(),
+  refresh: vi.fn(),
+  signup: vi.fn(),
+  resendVerification: vi.fn(),
+  verifyEmail: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  validatePasswordResetToken: vi.fn(),
+  confirmPasswordReset: vi.fn(),
+}))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: pushMock }),
@@ -12,12 +25,17 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-function jsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
+vi.mock('@/lib/api/auth-service', () => ({
+  authService: authServiceMock,
+}))
+
+function axiosError(status: number, data: unknown): AxiosError {
+  return new AxiosError('Request failed with status code ' + status, 'ERR_BAD_REQUEST', undefined, undefined, {
     status,
-    json: () => Promise.resolve(body),
-  } as Response
+    data,
+    headers: {},
+    config: { headers: {} },
+  } as AxiosResponse)
 }
 
 const EMAIL_LABEL = 'auth.verify.email_label'
@@ -25,13 +43,13 @@ const RESEND = 'auth.verify.resend'
 
 describe('VerifyLinkHandler', () => {
   beforeEach(() => {
-    fetchMock.mockReset()
+    authServiceMock.verifyEmail.mockReset()
+    authServiceMock.resendVerification.mockReset()
     pushMock.mockClear()
-    vi.stubGlobal('fetch', fetchMock)
   })
 
   it('shows welcome banner and start-search CTA on verified', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'verified' }))
+    authServiceMock.verifyEmail.mockResolvedValue({ code: 'verified' })
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.welcome_title')).toBeInTheDocument()
     expect(screen.getByText('auth.verify.welcome_description')).toBeInTheDocument()
@@ -40,18 +58,18 @@ describe('VerifyLinkHandler', () => {
   })
 
   it('shows already-verified message when code is already_verified', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'already_verified' }))
+    authServiceMock.verifyEmail.mockResolvedValue({ code: 'already_verified' })
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.already_verified')).toBeInTheDocument()
     expect(screen.queryByText('auth.verify.welcome_title')).not.toBeInTheDocument()
   })
 
   it('shows expired screen with resend form on 400', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_expired' }, 400))
+    authServiceMock.verifyEmail.mockRejectedValue(axiosError(400, { code: 'token_expired' }))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
     expect(screen.getByLabelText(EMAIL_LABEL)).toBeInTheDocument()
-    fetchMock.mockResolvedValue(jsonResponse({ detail: 'ok' }))
+    authServiceMock.resendVerification.mockResolvedValue(undefined)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'me@example.com' },
     })
@@ -60,22 +78,22 @@ describe('VerifyLinkHandler', () => {
   })
 
   it('validates the resend email on the expired screen', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_expired' }, 400))
+    authServiceMock.verifyEmail.mockRejectedValue(axiosError(400, { code: 'token_expired' }))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
     fireEvent.click(screen.getByText(RESEND))
     expect((await screen.findAllByText('common.errors.required')).length).toBeGreaterThanOrEqual(2)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(authServiceMock.resendVerification).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'bad' },
     })
     fireEvent.click(screen.getByText(RESEND))
     expect((await screen.findAllByText('common.errors.invalid_email')).length).toBeGreaterThanOrEqual(2)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(authServiceMock.resendVerification).not.toHaveBeenCalled()
   })
 
   it('shows a form-level error summary on the expired resend form', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_expired' }, 400))
+    authServiceMock.verifyEmail.mockRejectedValue(axiosError(400, { code: 'token_expired' }))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
     fireEvent.click(screen.getByText(RESEND))
@@ -87,13 +105,13 @@ describe('VerifyLinkHandler', () => {
   })
 
   it('shows expired screen on 404', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_not_found' }, 404))
+    authServiceMock.verifyEmail.mockRejectedValue(axiosError(404, { code: 'token_not_found' }))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.expired_title')).toBeInTheDocument()
   })
 
   it('shows used screen with sign-in link on 410', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'token_used' }, 410))
+    authServiceMock.verifyEmail.mockRejectedValue(axiosError(410, { code: 'token_used' }))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('auth.verify.used_title')).toBeInTheDocument()
     expect(screen.getByText('auth.verify.used_description')).toBeInTheDocument()
@@ -102,16 +120,16 @@ describe('VerifyLinkHandler', () => {
   })
 
   it('shows generic error on network failure', async () => {
-    fetchMock.mockRejectedValue(new Error('offline'))
+    authServiceMock.verifyEmail.mockRejectedValue(new Error('offline'))
     render(<VerifyLinkHandler token="abc" />)
     expect(await screen.findByText('common.states.error')).toBeInTheDocument()
   })
 
   it('calls the verify endpoint with the token', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ code: 'verified' }))
+    authServiceMock.verifyEmail.mockResolvedValue({ code: 'verified' })
     render(<VerifyLinkHandler token="tok-123" />)
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/auth/verify-email/tok-123/')
+      expect(authServiceMock.verifyEmail).toHaveBeenCalledWith('tok-123')
     })
   })
 })

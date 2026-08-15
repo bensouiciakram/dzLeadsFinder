@@ -595,43 +595,22 @@ describe('ExportModal — error states map to the modal own localized copy', () 
     expect(within(previewBox).queryByText('…')).not.toBeInTheDocument()
   })
 
-  it('resets the form defaults and the mutation error on every open', () => {
+  it('mounts fresh with AC-pinned defaults on every open (M12 remount contract)', () => {
     const reset = vi.fn()
     vi.mocked(useExport).mockReturnValue({ create: vi.fn(), isPending: false, error: undefined, reset })
-    const { rerender } = renderModal(freshClient())
-    expect(reset).toHaveBeenCalled()
-    rerender(
-      <QueryClientProvider client={freshClient()}>
-        <ExportModal
-          open={false}
-          onOpenChange={vi.fn()}
-          tab="people"
-          filtersJson="{}"
-          sort="name:asc"
-          nonce={1}
-          total={3}
-          tier="starter"
-          balance={15}
-        />
-      </QueryClientProvider>,
-    )
-    expect(reset).toHaveBeenCalledTimes(1)
-    rerender(
-      <QueryClientProvider client={freshClient()}>
-        <ExportModal
-          open
-          onOpenChange={vi.fn()}
-          tab="people"
-          filtersJson="{}"
-          sort="name:asc"
-          nonce={1}
-          total={3}
-          tier="starter"
-          balance={15}
-        />
-      </QueryClientProvider>,
-    )
-    expect(reset).toHaveBeenCalledTimes(2)
+    const first = renderModal(freshClient())
+    // A fresh mount renders the AC-pinned defaults by construction.
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'CSV' })).toHaveAttribute('aria-pressed', 'true')
+    // The modal itself never calls reset — ExportToolbar's open-session key
+    // remount is the reset mechanism (unmount kills mutation + form state).
+    expect(reset).not.toHaveBeenCalled()
+    first.unmount()
+    // The next open is a fresh mount again: defaults, not last session's state.
+    renderModal(freshClient())
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'CSV' })).toHaveAttribute('aria-pressed', 'true')
+    expect(reset).not.toHaveBeenCalled()
   })
 })
 

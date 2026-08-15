@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FrozenAccountPanel } from '@/components/auth/FrozenAccountPanel'
@@ -43,9 +44,11 @@ const RECOVERABLE = {
 
 function renderPanel() {
   return render(
-    <SessionProvider>
-      <FrozenAccountPanel />
-    </SessionProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <SessionProvider>
+        <FrozenAccountPanel />
+      </SessionProvider>
+    </QueryClientProvider>,
   )
 }
 

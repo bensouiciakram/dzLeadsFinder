@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 import { ExportToolbar } from '@/components/search/ExportToolbar'
+import { useExport } from '@/hooks/useExport'
 
 const toastMock = vi.hoisted(() => vi.fn())
 vi.mock('@/components/providers/ToastProvider', () => ({
@@ -122,5 +123,31 @@ describe('ExportToolbar', () => {
     renderToolbar()
     fireEvent.click(screen.getByRole('button', { name: 'common.actions.export' }))
     expect(await screen.findByText('export.modal.title')).toBeInTheDocument()
+  })
+
+  it('remounts the modal fresh on every open (M12 open-session key)', async () => {
+    const create = vi.fn()
+    vi.mocked(useExport).mockReturnValue({
+      create,
+      isPending: false,
+      error: undefined,
+      reset: vi.fn(),
+    })
+    const { unmount } = renderToolbar()
+    const trigger = screen.getByRole('button', { name: 'common.actions.export' })
+    fireEvent.click(trigger)
+    expect(await screen.findByText('export.modal.title')).toBeInTheDocument()
+    // Dirty the form state inside the open modal.
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+    // Close, then reopen — the reopen must mount a FRESH instance with the
+    // AC-pinned defaults (the toolbar's keyed remount, not a reset effect).
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByText('export.modal.title')).not.toBeInTheDocument())
+    fireEvent.click(trigger)
+    expect(await screen.findByText('export.modal.title')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'CSV' })).toHaveAttribute('aria-pressed', 'true')
+    unmount()
   })
 })

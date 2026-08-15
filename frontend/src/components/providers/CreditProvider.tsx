@@ -3,7 +3,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -42,9 +41,19 @@ export function CreditProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance] = useState<number | null>(user?.credits_balance ?? null)
   const [baselineNonce, setBaselineNonce] = useState(0)
 
-  useEffect(() => {
+  // M12: the old useEffect synced the server balance AFTER render — every
+  // session change rendered once with a stale balance, then re-rendered
+  // after the effect (a flash + an extra pass). The React-endorsed
+  // "adjusting state during render" pattern (stored previous user) applies
+  // the reset on the SAME render as the session change — the balance and
+  // the user never disagree in a committed frame. Semantics are unchanged:
+  // a user change re-bases on the server value (any in-flight local delta
+  // is superseded, exactly like the effect did).
+  const [prevUser, setPrevUser] = useState(user)
+  if (user !== prevUser) {
+    setPrevUser(user)
     setBalance(user?.credits_balance ?? null)
-  }, [user])
+  }
 
   const value = useMemo<CreditContextValue>(
     () => ({

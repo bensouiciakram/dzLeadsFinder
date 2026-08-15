@@ -3,8 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { VerifyEmailGate } from '@/components/auth/VerifyEmailGate'
 
-const fetchMock = vi.hoisted(() => vi.fn())
 const useSearchParamsSpy = vi.hoisted(() => vi.fn(() => new URLSearchParams()))
+
+const authServiceMock = vi.hoisted(() => ({
+  login: vi.fn(),
+  logout: vi.fn(),
+  me: vi.fn(),
+  refresh: vi.fn(),
+  signup: vi.fn(),
+  resendVerification: vi.fn(),
+  verifyEmail: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  validatePasswordResetToken: vi.fn(),
+  confirmPasswordReset: vi.fn(),
+}))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
@@ -12,23 +24,18 @@ vi.mock('next/navigation', () => ({
   useSearchParams: useSearchParamsSpy,
 }))
 
-function jsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-  } as Response
-}
+vi.mock('@/lib/api/auth-service', () => ({
+  authService: authServiceMock,
+}))
 
 const EMAIL_LABEL = 'auth.verify.email_label'
 const RESEND = 'auth.verify.resend'
 
 describe('VerifyEmailGate', () => {
   beforeEach(() => {
-    fetchMock.mockReset()
+    authServiceMock.resendVerification.mockReset()
     useSearchParamsSpy.mockReset()
     useSearchParamsSpy.mockImplementation(() => new URLSearchParams())
-    vi.stubGlobal('fetch', fetchMock)
   })
 
   it('renders gate message, expiry note and resend button', () => {
@@ -52,7 +59,7 @@ describe('VerifyEmailGate', () => {
       expect(screen.getByLabelText(EMAIL_LABEL)).toHaveAttribute('aria-invalid', 'true'),
     )
     expect(screen.getAllByText('common.errors.required').length).toBeGreaterThanOrEqual(2)
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(authServiceMock.resendVerification).not.toHaveBeenCalled()
   })
 
   it('shows invalid email error for a malformed email', async () => {
@@ -64,7 +71,7 @@ describe('VerifyEmailGate', () => {
     expect(
       (await screen.findAllByText('common.errors.invalid_email')).length,
     ).toBeGreaterThanOrEqual(2)
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(authServiceMock.resendVerification).not.toHaveBeenCalled()
   })
 
   it('renders the resend control as a submit button with the localized link text', () => {
@@ -102,7 +109,7 @@ describe('VerifyEmailGate', () => {
   })
 
   it('shows success message after resend succeeds', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ detail: 'ok' }))
+    authServiceMock.resendVerification.mockResolvedValue(undefined)
     render(<VerifyEmailGate />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'me@example.com' },
@@ -112,7 +119,7 @@ describe('VerifyEmailGate', () => {
   })
 
   it('shows error message when resend fails', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ detail: 'oops' }, 500))
+    authServiceMock.resendVerification.mockRejectedValue(new Error('oops'))
     render(<VerifyEmailGate />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'me@example.com' },

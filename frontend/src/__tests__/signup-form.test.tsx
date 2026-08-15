@@ -1,10 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SignupForm } from '@/components/auth/SignupForm'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
-const fetchMock = vi.hoisted(() => vi.fn())
+
+const authServiceMock = vi.hoisted(() => ({
+  login: vi.fn(),
+  logout: vi.fn(),
+  me: vi.fn(),
+  refresh: vi.fn(),
+  signup: vi.fn(),
+  resendVerification: vi.fn(),
+  verifyEmail: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  validatePasswordResetToken: vi.fn(),
+  confirmPasswordReset: vi.fn(),
+}))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: pushMock }),
@@ -12,12 +25,17 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-function jsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
+vi.mock('@/lib/api/auth-service', () => ({
+  authService: authServiceMock,
+}))
+
+function axiosError(status: number, data: unknown): AxiosError {
+  return new AxiosError('Request failed with status code ' + status, 'ERR_BAD_REQUEST', undefined, undefined, {
     status,
-    json: () => Promise.resolve(body),
-  } as Response
+    data,
+    headers: {},
+    config: { headers: {} },
+  } as AxiosResponse)
 }
 
 const EMAIL_LABEL = 'auth.signup.email_label'
@@ -37,8 +55,7 @@ function expectSummaryMatchesInlineErrors() {
 describe('SignupForm', () => {
   beforeEach(() => {
     pushMock.mockClear()
-    fetchMock.mockReset()
-    vi.stubGlobal('fetch', fetchMock)
+    authServiceMock.signup.mockReset()
   })
 
   it('renders exactly two fields and the no-card note', () => {
@@ -91,7 +108,7 @@ describe('SignupForm', () => {
   })
 
   it('redirects to verify-email with email on success', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ detail: 'ok' }, 201))
+    authServiceMock.signup.mockResolvedValue(undefined)
     render(<SignupForm />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'User@Example.com' },
@@ -101,23 +118,17 @@ describe('SignupForm', () => {
     })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/auth/signup/',
-        expect.objectContaining({ method: 'POST' }),
-      )
+      expect(authServiceMock.signup).toHaveBeenCalledWith('User@Example.com', 'SecurePass123!')
     })
     expect(pushMock).toHaveBeenCalledWith('/verify-email?email=User%40Example.com')
   })
 
   it('shows email taken error for duplicate email', async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse(
-        {
-          email: ['A user with this email address already exists.'],
-          code: { email: ['email_taken'] },
-        },
-        400,
-      ),
+    authServiceMock.signup.mockRejectedValue(
+      axiosError(400, {
+        email: ['A user with this email address already exists.'],
+        code: { email: ['email_taken'] },
+      }),
     )
     render(<SignupForm />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
@@ -131,8 +142,8 @@ describe('SignupForm', () => {
   })
 
   it('shows weak password error from server', async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({ password: ['This password is too short.'] }, 400),
+    authServiceMock.signup.mockRejectedValue(
+      axiosError(400, { password: ['This password is too short.'] }),
     )
     render(<SignupForm />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
@@ -145,8 +156,8 @@ describe('SignupForm', () => {
     expect((await screen.findAllByText('auth.signup.error_weak_password')).length).toBeGreaterThanOrEqual(2)
   })
 
-  it('shows network error when fetch fails', async () => {
-    fetchMock.mockRejectedValue(new Error('offline'))
+  it('shows network error when the request fails', async () => {
+    authServiceMock.signup.mockRejectedValue(new Error('offline'))
     render(<SignupForm />)
     fireEvent.change(screen.getByLabelText(EMAIL_LABEL), {
       target: { value: 'user@example.com' },
@@ -219,10 +230,10 @@ describe('SignupForm', () => {
   })
 
   it('ignores a second submit while a request is in flight', async () => {
-    let resolveFetch: (value: Response) => void
-    fetchMock.mockReturnValue(
-      new Promise<Response>((resolve) => {
-        resolveFetch = resolve
+    let resolveSignup: (value: void) => void
+    authServiceMock.signup.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSignup = resolve
       }),
     )
     render(<SignupForm />)
@@ -234,10 +245,10 @@ describe('SignupForm', () => {
     })
     fireEvent.click(screen.getByText(SUBMIT))
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(authServiceMock.signup).toHaveBeenCalledTimes(1)
     })
     fireEvent.click(screen.getByText(SUBMIT))
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    resolveFetch!(jsonResponse({ detail: 'ok' }, 201))
+    expect(authServiceMock.signup).toHaveBeenCalledTimes(1)
+    resolveSignup!()
   })
 })

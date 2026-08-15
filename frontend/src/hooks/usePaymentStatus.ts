@@ -13,14 +13,7 @@ import {
 import { userKey } from '@/lib/user-key'
 import { billingKeys } from '@/lib/queryKeys/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
-
-export type PendingCheckout = {
-  checkout_id: string
-  // The server-issued checkout start (create-checkout started_at) — the
-  // exact since-bound AND the 60s deadline anchor (AC ≤60s; the FE owns the
-  // window per the spine L631 polling bridge).
-  started_at: string
-}
+import type { PendingCheckout } from '@/lib/billing/checkoutStorage'
 
 type PaymentCardState = 'polling' | 'success' | 'timeout' | 'failed'
 

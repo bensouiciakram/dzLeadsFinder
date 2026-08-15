@@ -50,22 +50,33 @@ export function UpgradeDialogProvider({ children }: { children: React.ReactNode 
   // on close in the correct internal ordering (rAF-scheduled — the
   // DangerZone precedent).
   const lastFocusRef = useRef<HTMLElement | null>(null)
+  // M7: the double-click guard must NOT read the state in the callback's
+  // closure — `[isOpen]` in the deps made open() a NEW identity on every
+  // dialog flip, so every consumer effect depending on it (ExportModal's
+  // upgrade re-point) re-fired when the user closed and reopened the
+  // dialog. The ref mirrors the state one-way (set in the only two places
+  // that transition it), keeping the guard AND a stable identity (deps []).
+  const isOpenRef = useRef(false)
 
   const open = useCallback(
     (nextIntent: UpgradeIntent = 'upgrade') => {
-      if (isOpen) {
+      if (isOpenRef.current) {
         // open() while open is a no-op (double-click guard — Winston Q4).
         return
       }
+      isOpenRef.current = true
       lastFocusRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
       setIntent(nextIntent)
       setIsOpen(true)
     },
-    [isOpen],
+    [],
   )
 
-  const close = useCallback(() => setIsOpen(false), [])
+  const close = useCallback(() => {
+    isOpenRef.current = false
+    setIsOpen(false)
+  }, [])
 
   const value = useMemo(
     () => ({ open, close, isOpen, intent }),

@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { settingsService, type FrozenStatus } from '@/lib/api/settings-service'
+import { useUndeleteAccount } from '@/hooks/useAccountMutations'
 import { FrozenLogout } from './FrozenLogout'
 
 type PanelPhase = 'loading' | 'ready' | 'irreversible' | 'error'
@@ -26,8 +27,8 @@ export function FrozenAccountPanel() {
   routerRef.current = router
   const [phase, setPhase] = useState<PanelPhase>('loading')
   const [status, setStatus] = useState<FrozenStatus | null>(null)
-  const [recovering, setRecovering] = useState(false)
   const [recoverError, setRecoverError] = useState(false)
+  const recover = useUndeleteAccount()
 
   const load = useCallback(async () => {
     setPhase('loading')
@@ -48,25 +49,22 @@ export function FrozenAccountPanel() {
     void load()
   }, [load])
 
-  async function recover() {
-    if (recovering) return
-    setRecovering(true)
+  function recoverAccount() {
+    if (recover.isPending) return
     setRecoverError(false)
-    try {
-      await settingsService.undelete()
-      routerRef.current.push('/search')
-    } catch (error) {
-      const code = errorCodeOf(error)
-      if (code === 'irreversible') {
-        setPhase('irreversible')
-      } else if (code === 'not_frozen') {
-        routerRef.current.push('/search')
-      } else {
-        setRecoverError(true)
-      }
-    } finally {
-      setRecovering(false)
-    }
+    recover.mutate(undefined, {
+      onSuccess: () => routerRef.current.push('/search'),
+      onError: (error) => {
+        const code = errorCodeOf(error)
+        if (code === 'irreversible') {
+          setPhase('irreversible')
+        } else if (code === 'not_frozen') {
+          routerRef.current.push('/search')
+        } else {
+          setRecoverError(true)
+        }
+      },
+    })
   }
 
   const scheduledDate =
@@ -123,10 +121,10 @@ export function FrozenAccountPanel() {
             <Button
               type="button"
               className="px-5"
-              disabled={recovering}
-              onClick={() => void recover()}
+              disabled={recover.isPending}
+              onClick={recoverAccount}
             >
-              {recovering ? t('auth.frozen.recovering') : t('auth.frozen.recover')}
+              {recover.isPending ? t('auth.frozen.recovering') : t('auth.frozen.recover')}
             </Button>
             <FrozenLogout />
           </div>

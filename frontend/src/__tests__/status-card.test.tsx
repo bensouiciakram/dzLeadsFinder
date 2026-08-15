@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 
 import { StatusCard } from '@/components/billing/StatusCard'
-import type { PendingCheckout } from '@/hooks/usePaymentStatus'
+import type { PendingCheckout } from '@/lib/billing/checkoutStorage'
 import { PENDING_CHECKOUT_KEY } from '@/lib/billing/checkoutStorage'
 
 const hoisted = vi.hoisted(() => ({

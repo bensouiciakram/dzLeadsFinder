@@ -9,12 +9,8 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { FormErrorSummary } from './FormErrorSummary'
 import { signupSchema, type SignupValues } from '@/lib/validation/auth'
-
-type ServerErrorBody = {
-  email?: string[]
-  password?: string[]
-  code?: { email?: string[] }
-}
+import { authService, type SignupErrorBody } from '@/lib/api/auth-service'
+import { isAxiosError } from 'axios'
 
 export function SignupForm() {
   const t = useTranslations()
@@ -32,42 +28,35 @@ export function SignupForm() {
   async function onSubmit(values: SignupValues) {
     if (isSubmitting) return
     try {
-      const response = await fetch('/api/auth/signup/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: values.email, password: values.password }),
-      })
-      if (response.ok) {
-        router.push(`/verify-email?email=${encodeURIComponent(values.email)}`)
-        return
-      }
-      if (response.status === 400) {
-        let data: ServerErrorBody = {}
-        try {
-          data = (await response.json()) as ServerErrorBody
-        } catch {
-          setError('root', { message: 'auth.signup.error_generic' })
+      await authService.signup(values.email, values.password)
+      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`)
+    } catch (error) {
+      if (isAxiosError(error) && error.response) {
+        if (error.response.status === 400) {
+          const data = error.response.data as SignupErrorBody
+          if (data.email && data.email.length > 0) {
+            setError('email', {
+              type: 'server',
+              message:
+                data.code?.email?.[0] === 'email_taken'
+                  ? 'auth.signup.error_email_taken'
+                  : 'common.errors.invalid_email',
+            })
+          }
+          if (data.password && data.password.length > 0) {
+            setError('password', { type: 'server', message: 'auth.signup.error_weak_password' })
+          }
+          if (
+            !(data.email && data.email.length > 0) &&
+            !(data.password && data.password.length > 0)
+          ) {
+            setError('root', { message: 'auth.signup.error_generic' })
+          }
           return
         }
-        if (data.email && data.email.length > 0) {
-          setError('email', {
-            type: 'server',
-            message:
-              data.code?.email?.[0] === 'email_taken'
-                ? 'auth.signup.error_email_taken'
-                : 'common.errors.invalid_email',
-          })
-        }
-        if (data.password && data.password.length > 0) {
-          setError('password', { type: 'server', message: 'auth.signup.error_weak_password' })
-        }
-        if (!(data.email && data.email.length > 0) && !(data.password && data.password.length > 0)) {
-          setError('root', { message: 'auth.signup.error_generic' })
-        }
+        setError('root', { message: 'auth.signup.error_generic' })
         return
       }
-      setError('root', { message: 'auth.signup.error_generic' })
-    } catch {
       setError('root', { message: 'common.errors.network' })
     }
   }

@@ -15,9 +15,29 @@ const STEP_FIELDS: readonly [ChecklistStep, keyof ChecklistState][] = [
   ['export', 'step_export'],
 ]
 
+// M6: content-keyed memo — a fresh filter/map array on every render would
+// re-trigger ChecklistCard's announcement effect on every render even when
+// nothing completed (its deps diff by reference). The memo returns the SAME
+// reference until the completed-set actually changes.
+const EMPTY_STEPS: ChecklistStep[] = []
+
+let lastStepsSignature: string | null = null
+let lastSteps: ChecklistStep[] = EMPTY_STEPS
+
 export function completedSteps(state: ChecklistState | null): ChecklistStep[] {
-  if (state === null) return []
-  return STEP_FIELDS.filter(([, field]) => state[field]).map(([step]) => step)
+  if (state === null) {
+    if (lastStepsSignature !== null) {
+      lastStepsSignature = null
+      lastSteps = EMPTY_STEPS
+    }
+    return EMPTY_STEPS
+  }
+  const signature = `${state.step_search}|${state.step_reveal}|${state.step_export}`
+  if (signature !== lastStepsSignature) {
+    lastStepsSignature = signature
+    lastSteps = STEP_FIELDS.filter(([, field]) => state[field]).map(([step]) => step)
+  }
+  return lastSteps
 }
 
 export class ChecklistService extends HttpClient {
