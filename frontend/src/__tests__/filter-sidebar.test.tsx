@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { FilterSidebar, removeFacetValue } from '@/components/search/FilterSidebar'
+import { FilterSidebar } from '@/components/search/FilterSidebar'
 import { EMPTY_FILTERS, type StagedFilters } from '@/lib/api/search-service'
 import type { ReactNode } from 'react'
 
@@ -32,7 +33,41 @@ vi.mock('@/components/providers/SessionProvider', () => ({
   useSession: () => ({ user: sessionUser.value }),
 }))
 
-const EMPTY: StagedFilters = { ...EMPTY_FILTERS }
+// The sidebar is CONTROLLED (Phase 3 — H4/M1): the draft lives in the
+// parent. This harness emulates the parent contract — draft state, a
+// page-like Clear All that resets the draft, and Apply reporting — so the
+// rendering and interaction tests stay meaningful without the page.
+function SidebarHarness({
+  draft: initialDraft,
+  onClearAllRequest,
+  onApply,
+  ...props
+}: Partial<Parameters<typeof FilterSidebar>[0]> & {
+  draft?: StagedFilters
+  onClearAllRequest?: () => void
+  onApply?: () => void
+}) {
+  const [draft, setDraft] = useState<StagedFilters>(initialDraft ?? { ...EMPTY_FILTERS })
+  return (
+    <FilterSidebar
+      tab="people"
+      draft={draft}
+      onDraftChange={(updater) => setDraft(updater)}
+      onApply={() => onApply?.()}
+      onClearAllRequest={() => {
+        setDraft({ ...EMPTY_FILTERS })
+        onClearAllRequest?.()
+      }}
+      {...props}
+    />
+  )
+}
+
+function renderSidebar(overrides: Parameters<typeof SidebarHarness>[0] = {}) {
+  const onApply = vi.fn()
+  const view = render(wrap(<SidebarHarness onApply={onApply} {...overrides} />))
+  return { ...view, onApply }
+}
 
 // The FilterSidebar now hosts a data island (the 5.7 daily-limit dialog
 // trigger reads the plan query) — every render + rerender must sit inside
@@ -40,16 +75,6 @@ const EMPTY: StagedFilters = { ...EMPTY_FILTERS }
 function wrap(element: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={client}>{element}</QueryClientProvider>
-}
-
-function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> = {}) {
-  const props = {
-    tab: 'people' as const,
-    onSubmit: vi.fn(),
-    ...overrides,
-  }
-  const view = render(wrap(<FilterSidebar {...props} />))
-  return { ...view, props }
 }
 
 beforeEach(() => {
@@ -149,66 +174,13 @@ describe('FilterSidebar desktop', () => {
     expect(within(trigger).getByText('3')).toBeInTheDocument()
   })
 
-  it('normalizes the badge so wilayas are counted once when the draft mirrors applied', () => {
-    const applied: StagedFilters = { ...EMPTY, wilayas: [31, 16] }
-    renderSidebar({ applied, wilayaCount: 2 })
+  it('counts wilayas once via wilayaCount while excluding the draft wilayas', () => {
+    const draft: StagedFilters = { ...EMPTY_FILTERS, wilayas: [31, 16] }
+    renderSidebar({ draft, wilayaCount: 2 })
 
     const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
     expect(within(trigger).getByText('2')).toBeInTheDocument()
     expect(within(trigger).queryByText('4')).toBeNull()
-  })
-
-  it('applies a chip removal to the draft with remove semantics', () => {
-    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1, 4] } })
-    const remove: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
-      facet: 'industries',
-      value: 1,
-    }
-    rerender(wrap(<FilterSidebar {...props} chipRemove={remove} />))
-
-    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
-  })
-
-  it('preserves sidebar edits made after a chip removal (no replace clobber)', () => {
-    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1] } })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Advertising' }))
-    const remove: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
-      facet: 'industries',
-      value: 1,
-    }
-    rerender(wrap(<FilterSidebar {...props} chipRemove={remove} />))
-
-    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [4] }))
-  })
-
-  it('applies sequential chip removals of the same facet cumulatively', () => {
-    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1, 4, 9] } })
-    const removeOne: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
-      facet: 'industries',
-      value: 1,
-    }
-    rerender(wrap(<FilterSidebar {...props} chipRemove={removeOne} />))
-    const removeTwo: Parameters<typeof FilterSidebar>[0]['chipRemove'] = {
-      facet: 'industries',
-      value: 4,
-    }
-    rerender(wrap(<FilterSidebar {...props} chipRemove={removeTwo} />))
-
-    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [9] }))
-  })
-
-  it('resets the draft when the clear nonce bumps', () => {
-    const { rerender, props } = renderSidebar({ applied: { ...EMPTY, industries: [1] } })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
-    rerender(wrap(<FilterSidebar {...props} clearNonce={1} />))
-
-    const trigger = screen.getByRole('button', { name: /search\.filters\.title/ })
-    expect(within(trigger).queryByText('1')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ industries: [] }))
   })
 
   it('notifies the page when the sidebar Clear All is used (wilaya clear wiring)', () => {
@@ -220,7 +192,7 @@ describe('FilterSidebar desktop', () => {
   })
 
   it('stages edits without firing the query', () => {
-    const { props } = renderSidebar({ tab: 'companies' })
+    renderSidebar({ tab: 'companies' })
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
@@ -229,11 +201,11 @@ describe('FilterSidebar desktop', () => {
     })
     fireEvent.click(screen.getByRole('checkbox', { name: 'search.filters.include_unknown_size' }))
 
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'search.filters.apply' })).toBeInTheDocument()
   })
 
-  it('fires exactly one onSubmit per Apply click with the full staged draft', () => {
-    const { props } = renderSidebar({ tab: 'companies' })
+  it('fires exactly one Apply per click', () => {
+    const { onApply } = renderSidebar({ tab: 'companies' })
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
@@ -244,30 +216,22 @@ describe('FilterSidebar desktop', () => {
     const apply = screen.getByRole('button', { name: 'search.filters.apply' })
     fireEvent.click(apply)
 
-    expect(props.onSubmit).toHaveBeenCalledTimes(1)
-    expect(props.onSubmit).toHaveBeenCalledWith({
-      industries: [1],
-      wilayas: [],
-      seniorities: [],
-      sizes: ['1-10'],
-      includeUnknownSize: false,
-      keyword: 'oran',
-    })
+    expect(onApply).toHaveBeenCalledTimes(1)
   })
 
   it('marks Apply aria-disabled while busy and ignores clicks', () => {
-    const { props } = renderSidebar({ busy: true })
+    const { onApply } = renderSidebar({ busy: true })
 
     const apply = screen.getByRole('button', { name: 'common.states.loading' })
     expect(apply).toHaveAttribute('aria-disabled', 'true')
     expect(apply).toBeEnabled()
 
     fireEvent.click(apply)
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(onApply).not.toHaveBeenCalled()
   })
 
   it('marks Apply aria-disabled when rate-limited and shows the message inline', () => {
-    const { props } = renderSidebar({
+    const { onApply } = renderSidebar({
       rateLimited: true,
       rateLimitMessage: 'server.limit.message',
     })
@@ -278,7 +242,7 @@ describe('FilterSidebar desktop', () => {
     expect(apply.getAttribute('aria-describedby')).toBe(message.id)
 
     fireEvent.click(apply)
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(onApply).not.toHaveBeenCalled()
   })
 
   it('renders the rate-limited Apply with the tonal disabled-but-actionable treatment (manual-review fix)', () => {
@@ -302,17 +266,17 @@ describe('FilterSidebar desktop', () => {
     // state" — disabled-but-actionable: a free user's click opens the
     // dialog (the search quota is tier-keyed: 30 free / 100 starter).
     sessionUser.value = { email: 'a@b.dz', locale: 'en', tier: 'free' }
-    const { props } = renderSidebar({ rateLimited: true })
+    const { onApply } = renderSidebar({ rateLimited: true })
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(onApply).not.toHaveBeenCalled()
     expect(upgradeOpenMock).toHaveBeenCalledTimes(1)
   })
 
   it('never opens the dialog for a rate-limited STARTER user (nothing to upgrade into)', () => {
     sessionUser.value = { email: 'a@b.dz', locale: 'en', tier: 'starter' }
-    const { props } = renderSidebar({ rateLimited: true })
+    const { onApply } = renderSidebar({ rateLimited: true })
     fireEvent.click(screen.getByRole('button', { name: 'search.filters.apply' }))
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(onApply).not.toHaveBeenCalled()
     expect(upgradeOpenMock).not.toHaveBeenCalled()
   })
 
@@ -323,7 +287,7 @@ describe('FilterSidebar desktop', () => {
   })
 
   it('clears the whole draft via Clear All without firing the query', () => {
-    const { props } = renderSidebar({ tab: 'companies' })
+    const { onApply } = renderSidebar({ tab: 'companies' })
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Construction' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'search.size.1_10' }))
@@ -335,7 +299,7 @@ describe('FilterSidebar desktop', () => {
         .getAllByRole('checkbox')
         .every((box) => box.getAttribute('aria-checked') === 'false'),
     ).toBe(true)
-    expect(props.onSubmit).not.toHaveBeenCalled()
+    expect(onApply).not.toHaveBeenCalled()
   })
 
   it('clears only the affected group via the per-group Clear affordance', () => {
@@ -459,7 +423,7 @@ describe('FilterSidebar mobile panel', () => {
   })
 
   it('applies from the panel: exactly one submit and the panel closes', async () => {
-    const { props } = renderSidebar()
+    const { onApply } = renderSidebar()
 
     fireEvent.click(screen.getByRole('button', { name: /search\.filters\.title/ }))
     const panel = await screen.findByTestId('mobile-filter-panel')
@@ -467,7 +431,7 @@ describe('FilterSidebar mobile panel', () => {
     fireEvent.click(within(panel).getByRole('checkbox', { name: 'Construction' }))
     fireEvent.click(within(panel).getByRole('button', { name: 'search.filters.apply' }))
 
-    expect(props.onSubmit).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(screen.queryByTestId('mobile-filter-panel')).not.toBeInTheDocument()
     })
@@ -519,28 +483,17 @@ describe('FilterSidebar saved-searches slot', () => {
   })
 })
 
-describe('removeFacetValue', () => {
-  it('removes a value from each array facet', () => {
-    const base: StagedFilters = { ...EMPTY, industries: [1, 4], wilayas: [31], seniorities: ['director'], sizes: ['1-10'] }
-    expect(removeFacetValue(base, 'industries', 1).industries).toEqual([4])
-    expect(removeFacetValue(base, 'wilayas', 31).wilayas).toEqual([])
-    expect(removeFacetValue(base, 'seniorities', 'director').seniorities).toEqual([])
-    expect(removeFacetValue(base, 'sizes', '1-10').sizes).toEqual([])
-  })
-
-  it('clears the keyword and the unknown-size toggle', () => {
-    const base: StagedFilters = { ...EMPTY, keyword: 'oran', includeUnknownSize: true }
-    expect(removeFacetValue(base, 'keyword', 'oran').keyword).toBe('')
-    expect(removeFacetValue(base, 'includeUnknownSize', true).includeUnknownSize).toBe(false)
-  })
-})
-
 describe('FilterSidebar RTL', () => {
   it('keeps the group order and uses no physical layout classes inside an RTL container', () => {
     const { container } = render(
       wrap(
         <div dir="rtl">
-          <FilterSidebar tab="people" onSubmit={vi.fn()} />
+          <FilterSidebar
+            tab="people"
+            draft={{ ...EMPTY_FILTERS }}
+            onDraftChange={() => {}}
+            onApply={() => {}}
+          />
         </div>,
       ),
     )

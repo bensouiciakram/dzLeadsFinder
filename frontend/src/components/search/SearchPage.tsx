@@ -10,12 +10,11 @@ import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFi
 import { ChecklistCard } from '@/components/search/ChecklistCard'
 import { CreditsWelcomeBanner } from '@/components/search/CreditsWelcomeBanner'
 import { ExportToolbar } from '@/components/search/ExportToolbar'
-import { FilterSidebar, type ChipRemoveEvent } from '@/components/search/FilterSidebar'
+import { FilterSidebar } from '@/components/search/FilterSidebar'
 import { useSession } from '@/components/providers/SessionProvider'
 import {
   ResultsTable,
   columnLabelKey,
-  type SortField,
   type SortState,
 } from '@/components/search/ResultsTable'
 import { ResultsTableStackedRow } from '@/components/search/ResultsTableStackedRow'
@@ -26,7 +25,8 @@ import {
 import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useSearchResults, type SearchSubmitted } from '@/hooks/useSearchResults'
+import { useSearchResults } from '@/hooks/useSearchResults'
+import { useSearchForm } from '@/hooks/useSearchForm'
 import {
   buildFiltersPayload,
   filtersPayloadToStaged,
@@ -37,29 +37,16 @@ import {
   type SearchTab,
   type StagedFilters,
 } from '@/lib/api/search-service'
-import type { SavedSearchRow, SavedSearchSort, SavedSearchType } from '@/lib/api/saved-search-service'
+import type { SavedSearchRow, SavedSearchSort } from '@/lib/api/saved-search-service'
 import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
 import type { ChecklistStep } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import { useChecklist } from '@/hooks/useChecklist'
+import { SORT_FIELDS } from '@/lib/search/search-params'
 
 const PAGE_SIZE = SEARCH_PAGE_SIZE
 const MAX_NAVIGABLE_PAGES = SEARCH_MAX_NAVIGABLE_PAGES
 const SKELETON_CARDS = 3
-
-const SORT_FIELDS: readonly SortField[] = [
-  'name',
-  'role',
-  'company_name',
-  'wilaya_code',
-  'industry',
-  'size_band',
-  'people_count',
-]
-
-function sortParamFor(sort: SortState | null): string {
-  return sort !== null && sort.dir !== null ? `${sort.field}:${sort.dir}` : 'name:asc'
-}
 
 type SearchPageProps = {
   tab: SearchTab
@@ -70,20 +57,23 @@ export function SearchPage({ tab }: SearchPageProps) {
   const queryClient = useQueryClient()
   const { user } = useSession()
   const checklist = useChecklist({ user })
-  const [submitted, setSubmitted] = useState<SearchSubmitted | null>(null)
-  const [applied, setApplied] = useState<StagedFilters | null>(null)
-  const [sort, setSort] = useState<SortState | null>(null)
+  const {
+    submitted,
+    draft,
+    sort,
+    commit,
+    updateDraft,
+    removeChip,
+    clearAll,
+  } = useSearchForm({ tab })
   const [announcement, setAnnouncement] = useState<string | null>(null)
   const [wilayas, setWilayas] = useState<number[]>([])
   const [wilayaQuery, setWilayaQuery] = useState('')
-  const [chipRemove, setChipRemove] = useState<ChipRemoveEvent | null>(null)
-  const [clearNonce, setClearNonce] = useState(0)
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const savedTargetRef = useRef<string | null>(null)
 
   const onSuccess = useCallback((filters: StagedFilters) => {
-    setApplied(filters)
     // The active indicator tracks the LAST RE-RUN only: a success without a
     // pending target clears the highlight (the results no longer match the
     // row — e.g. after a manual Apply or sort change); a failed re-run
@@ -173,31 +163,27 @@ export function SearchPage({ tab }: SearchPageProps) {
     setAnnouncement((current) => (current === null ? t(announcementKey) : current))
   }
 
+  // Every user search action: cancel any in-flight query, bump the submit
+  // nonce (fresh export-preview keys), clear the feedback announcement, and
+  // let the URL push drive the committed state.
   const startSearch = () => {
     beginSearch()
-    setChipRemove(null)
     setAnnouncement(null)
   }
 
-  const submitSearch = (filters: StagedFilters, sortState: SortState | null) => {
+  const handleApply = () => {
     startSearch()
-    setSubmitted({
-      filters,
-      filtersJson: JSON.stringify(buildFiltersPayload(filters, tab)),
-      page: 1,
-      sort: sortParamFor(sortState),
-    })
-  }
-
-  const runSearch = (filters: StagedFilters) => {
-    submitSearch(filters, sort)
+    // The combobox's selection is deliberately lifted (the dual-combobox
+    // sync contract) — merge it into the committed filters, exactly like
+    // the old runSearch({ ...filters, wilayas }).
+    commit({ ...draft, wilayas }, sort)
   }
 
   const handleRerun = (row: SavedSearchRow) => {
     const rowTab: SearchTab = savedTypeToTab(row.type)
     const staged = filtersPayloadToStaged(row.filters, rowTab)
-    const sortField = SORT_FIELDS.includes(row.sort?.field as SortField)
-      ? (row.sort?.field as SortField)
+    const sortField = SORT_FIELDS.includes(row.sort?.field as (typeof SORT_FIELDS)[number])
+      ? (row.sort?.field as (typeof SORT_FIELDS)[number])
       : null
     const sortDir = row.sort?.dir
     const nextSort: SortState | null =
@@ -207,13 +193,12 @@ export function SearchPage({ tab }: SearchPageProps) {
     savedTargetRef.current = row.id
     setWilayas(staged.wilayas)
     setWilayaQuery('')
-    setSort(nextSort)
-    submitSearch(staged, nextSort)
+    startSearch()
+    commit(staged, nextSort)
   }
 
   const handleSortChange = (next: SortState) => {
     if (submitted === null) return
-    setSort(next)
     startSearch()
     const announcementKey =
       next.dir === null
@@ -223,9 +208,7 @@ export function SearchPage({ tab }: SearchPageProps) {
           : 'search.results.sort_desc'
     const columnKey = next.dir === null ? columnLabelKey('name') : columnLabelKey(next.field)
     setAnnouncement(t(announcementKey, { column: t(columnKey) }))
-    setSubmitted((current) =>
-      current === null ? null : { ...current, page: 1, sort: sortParamFor(next) },
-    )
+    commit(submitted.filters, next)
   }
 
   const handlePage = (next: number) => {
@@ -237,7 +220,7 @@ export function SearchPage({ tab }: SearchPageProps) {
         total: String(totalPages(query.data.total)),
       }),
     )
-    setSubmitted((current) => (current === null ? null : { ...current, page: next }))
+    commit(submitted.filters, sort, next)
   }
 
   const handleRetry = () => {
@@ -245,20 +228,16 @@ export function SearchPage({ tab }: SearchPageProps) {
   }
 
   const handleClearAll = () => {
-    setClearNonce((nonce) => nonce + 1)
     setWilayas([])
     setWilayaQuery('')
-    setChipRemove(null)
-    setApplied(null)
-    setSubmitted(null)
-    setSort(null)
     setAnnouncement(null)
     setActiveSavedId(null)
     savedTargetRef.current = null
+    clearAll()
   }
 
   const handleChipRemove = (facet: ChipsFacet, value: number | string | boolean) => {
-    setChipRemove({ facet, value })
+    removeChip(facet, value)
     if (facet === 'wilayas' && typeof value === 'number') {
       setWilayas((current) => current.filter((code) => code !== value))
     }
@@ -279,7 +258,8 @@ export function SearchPage({ tab }: SearchPageProps) {
       </a>
       <FilterSidebar
         tab={tab}
-        applied={applied ?? undefined}
+        draft={draft}
+        onDraftChange={updateDraft}
         busy={phase === 'loading'}
         rateLimited={phase === 'rate_limited'}
         rateLimitMessage={rateLimitMessage}
@@ -292,8 +272,6 @@ export function SearchPage({ tab }: SearchPageProps) {
           />
         }
         wilayaCount={wilayas.length}
-        chipRemove={chipRemove ?? undefined}
-        clearNonce={clearNonce}
         onClearAllRequest={handleClearAll}
         savedSearchesSlot={
           <SavedSearchesList
@@ -303,7 +281,7 @@ export function SearchPage({ tab }: SearchPageProps) {
             onRerun={handleRerun}
           />
         }
-        onSubmit={(filters) => void runSearch({ ...filters, wilayas })}
+        onApply={handleApply}
         collapsed={!sidebarOpen}
         onCollapseRequest={() => setSidebarOpen(false)}
       />
@@ -432,8 +410,8 @@ export function SearchPage({ tab }: SearchPageProps) {
                     isFetching={query.isFetching}
                     tier={user?.tier === 'starter' ? 'starter' : 'free'}
                   />
-                  {applied !== null && (
-                    <ActiveFilterChips filters={applied} onRemove={handleChipRemove} />
+                  {submitted !== null && (
+                    <ActiveFilterChips filters={submitted.filters} onRemove={handleChipRemove} />
                   )}
                   <div data-testid="results-slot" className="mt-4">
                     <ResultsTable tab={tab} rows={rows} sort={sort} onSortChange={handleSortChange} />

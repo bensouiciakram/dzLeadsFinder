@@ -8,6 +8,42 @@ import { SearchPage } from '@/components/search/SearchPage'
 import { buildFiltersPayload, type SearchResult } from '@/lib/api/search-service'
 import type { ChecklistState } from '@/lib/api/checklist-service'
 
+// The committed search lives in the URL (Phase 3 — H3): the mock keeps a
+// reactive URLSearchParams store — useSearchParams subscribes through
+// useSyncExternalStore, and push() rewrites the params and notifies.
+const navMock = vi.hoisted(() => {
+  let params = new URLSearchParams()
+  const listeners = new Set<() => void>()
+  const push = vi.fn((url: string) => {
+    const search = url.includes('?') ? url.slice(url.indexOf('?') + 1) : ''
+    params = new URLSearchParams(search)
+    for (const listener of listeners) listener()
+  })
+  return {
+    push,
+    pathname: '/search',
+    getParams: () => params,
+    setParams: (next: URLSearchParams) => {
+      params = next
+      for (const listener of listeners) listener()
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+  }
+})
+
+vi.mock('next/navigation', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    useRouter: () => ({ push: navMock.push, replace: navMock.push }),
+    usePathname: () => navMock.pathname,
+    useSearchParams: () =>
+      useSyncExternalStore(navMock.subscribe, navMock.getParams, navMock.getParams),
+  }
+})
+
 const hoisted = vi.hoisted(() => ({
   searchPeople: vi.fn(),
   searchCompanies: vi.fn(),
@@ -121,6 +157,8 @@ function renderPage(element: ReactElement) {
 }
 
 beforeEach(() => {
+  navMock.push.mockClear()
+  navMock.setParams(new URLSearchParams())
   hoisted.searchPeople.mockReset()
   hoisted.searchCompanies.mockReset()
   hoisted.checklistGet.mockReset()

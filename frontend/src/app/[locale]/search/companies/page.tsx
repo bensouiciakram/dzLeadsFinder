@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { SearchPage } from '@/components/search/SearchPage'
@@ -18,5 +19,9 @@ export default async function SearchCompaniesPageRoute({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  return <SearchPage tab="companies" />
+  return (
+    <Suspense>
+      <SearchPage tab="companies" />
+    </Suspense>
+  )
 }

@@ -2,11 +2,10 @@
 
 import { ChevronDownIcon, ChevronUpIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { CheckboxGroup } from '@/components/search/CheckboxGroup'
 import { KeywordField } from '@/components/search/KeywordField'
-import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
 import { usePlan } from '@/hooks/usePlan'
@@ -15,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { INDUSTRIES, type Industry } from '@/data/industries'
 import {
-  EMPTY_FILTERS,
   countActiveFilters,
   type SearchTab,
   type StagedFilters,
@@ -43,64 +41,40 @@ function industryName(industry: Industry, locale: string): string {
   return industry.name_en
 }
 
-export type ChipRemoveEvent = {
-  facet: ChipsFacet
-  value: number | string | boolean
-}
-
-export function removeFacetValue(
-  filters: StagedFilters,
-  facet: ChipsFacet,
-  value: number | string | boolean,
-): StagedFilters {
-  switch (facet) {
-    case 'industries':
-      return { ...filters, industries: filters.industries.filter((item) => item !== value) }
-    case 'wilayas':
-      return { ...filters, wilayas: filters.wilayas.filter((item) => item !== value) }
-    case 'seniorities':
-      return { ...filters, seniorities: filters.seniorities.filter((item) => item !== value) }
-    case 'sizes':
-      return { ...filters, sizes: filters.sizes.filter((item) => item !== value) }
-    case 'keyword':
-      return { ...filters, keyword: '' }
-    case 'includeUnknownSize':
-      return { ...filters, includeUnknownSize: false }
-  }
-}
-
+// A controlled sidebar (Phase 3 — H4/M1): the draft lives in the parent
+// (useSearchForm's reducer); the old command props (chipRemove, clearNonce,
+// applied-sync effects) and the onSubmit copy were removed. Edits flow up
+// through onDraftChange; Apply reports through onApply.
 type FilterSidebarProps = {
   tab: SearchTab
-  applied?: StagedFilters
+  draft: StagedFilters
+  onDraftChange: (updater: (current: StagedFilters) => StagedFilters) => void
+  onApply: () => void
+  onClearAllRequest?: () => void
   busy?: boolean
   rateLimited?: boolean
   rateLimitMessage?: string
   wilayaField?: ReactNode
   wilayaCount?: number
-  chipRemove?: ChipRemoveEvent
-  clearNonce?: number
-  onClearAllRequest?: () => void
   savedSearchesSlot?: ReactNode
   collapsed?: boolean
   onCollapseRequest?: () => void
-  onSubmit: (filters: StagedFilters) => void
 }
 
 export function FilterSidebar({
   tab,
-  applied,
+  draft,
+  onDraftChange,
+  onApply,
+  onClearAllRequest,
   busy = false,
   rateLimited = false,
   rateLimitMessage,
   wilayaField,
   wilayaCount = 0,
-  chipRemove,
-  clearNonce = 0,
-  onClearAllRequest,
   savedSearchesSlot,
   collapsed = false,
   onCollapseRequest,
-  onSubmit,
 }: FilterSidebarProps) {
   const t = useTranslations()
   const locale = useLocale()
@@ -112,33 +86,7 @@ export function FilterSidebar({
   const { plan } = usePlan({ user })
   const dispatchTier = plan?.tier ?? user?.tier
   const baseId = useId()
-  const [draft, setDraft] = useState<StagedFilters>(() => applied ?? EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const dirtyRef = useRef(false)
-  const lastAppliedRef = useRef<StagedFilters | null>(null)
-
-  const updateDraft = (updater: (current: StagedFilters) => StagedFilters) => {
-    dirtyRef.current = true
-    setDraft(updater)
-  }
-
-  useEffect(() => {
-    if (applied === undefined || applied === lastAppliedRef.current) return
-    lastAppliedRef.current = applied
-    if (!dirtyRef.current) setDraft(applied)
-  }, [applied])
-
-  useEffect(() => {
-    if (chipRemove === undefined) return
-    dirtyRef.current = true
-    setDraft((current) => removeFacetValue(current, chipRemove.facet, chipRemove.value))
-  }, [chipRemove])
-
-  useEffect(() => {
-    if (clearNonce === 0) return
-    dirtyRef.current = false
-    setDraft({ ...EMPTY_FILTERS })
-  }, [clearNonce])
 
   const badgeCount = countActiveFilters({ ...draft, wilayas: [] }) + wilayaCount
 
@@ -147,7 +95,7 @@ export function FilterSidebar({
 
   const toggleIndustries = (value: string) => {
     const id = Number(value)
-    updateDraft((current) => ({
+    onDraftChange((current) => ({
       ...current,
       industries: current.industries.includes(id)
         ? current.industries.filter((item) => item !== id)
@@ -176,16 +124,13 @@ export function FilterSidebar({
       }
       return
     }
-    dirtyRef.current = false
-    onSubmit({ ...draft })
+    onApply()
     // Close the mobile panel so the results get full width right after the
     // search runs. On md+ the aside stays as the user left it.
     setFiltersOpen(false)
   }
 
   const handleClearAll = () => {
-    dirtyRef.current = false
-    setDraft({ ...EMPTY_FILTERS })
     onClearAllRequest?.()
   }
 
@@ -215,8 +160,8 @@ export function FilterSidebar({
             options={industryOptions}
             selected={draft.industries.map(String)}
             onToggle={toggleIndustries}
-            onSelectAll={() => updateDraft((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
-            onClear={() => updateDraft((current) => ({ ...current, industries: [] }))}
+            onSelectAll={() => onDraftChange((current) => ({ ...current, industries: INDUSTRIES.map((industry) => industry.id) }))}
+            onClear={() => onDraftChange((current) => ({ ...current, industries: [] }))}
             maxVisible={8}
           />
         </section>
@@ -233,9 +178,9 @@ export function FilterSidebar({
               labelKey="search.filters.seniority"
               options={seniorityOptions}
               selected={draft.seniorities}
-              onToggle={(value) => updateDraft((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
-              onSelectAll={() => updateDraft((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
-              onClear={() => updateDraft((current) => ({ ...current, seniorities: [] }))}
+              onToggle={(value) => onDraftChange((current) => ({ ...current, seniorities: toggleInList(current.seniorities, value) }))}
+              onSelectAll={() => onDraftChange((current) => ({ ...current, seniorities: SENIORITY_OPTIONS.map((option) => option.value) }))}
+              onClear={() => onDraftChange((current) => ({ ...current, seniorities: [] }))}
             />
           </section>
         )}
@@ -247,9 +192,9 @@ export function FilterSidebar({
               labelKey="search.filters.size"
               options={sizeOptions}
               selected={draft.sizes}
-              onToggle={(value) => updateDraft((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
-              onSelectAll={() => updateDraft((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
-              onClear={() => updateDraft((current) => ({ ...current, sizes: [] }))}
+              onToggle={(value) => onDraftChange((current) => ({ ...current, sizes: toggleInList(current.sizes, value) }))}
+              onSelectAll={() => onDraftChange((current) => ({ ...current, sizes: SIZE_OPTIONS.map((option) => option.value) }))}
+              onClear={() => onDraftChange((current) => ({ ...current, sizes: [] }))}
             />
             <label
               htmlFor={groupId('unknown-size')}
@@ -258,7 +203,7 @@ export function FilterSidebar({
               <Checkbox
                 id={groupId('unknown-size')}
                 checked={draft.includeUnknownSize}
-                onCheckedChange={() => updateDraft((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
+                onCheckedChange={() => onDraftChange((current) => ({ ...current, includeUnknownSize: !current.includeUnknownSize }))}
               />
               <span className="text-small">{t('search.filters.include_unknown_size')}</span>
             </label>
@@ -269,7 +214,7 @@ export function FilterSidebar({
           <KeywordField
             id={groupId('keyword')}
             value={draft.keyword}
-            onChange={(value) => updateDraft((current) => ({ ...current, keyword: value }))}
+            onChange={(value) => onDraftChange((current) => ({ ...current, keyword: value }))}
           />
         </section>
       </div>
