@@ -9,42 +9,30 @@ import { revealService } from '@/lib/api/reveal-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import { revealKeys } from '@/lib/queryKeys/reveal'
 import { searchKeys } from '@/lib/queryKeys/search'
-
-type RevealVariables = {
-  type: 'people' | 'company'
-  id: string
-}
-
-export type RevealInFlight = (RevealVariables & { userKey: string }) | null
-
-type SearchCacheRow = {
-  id: string
-  revealed: boolean
-}
-
-function isSearchCache(value: unknown): value is { results: SearchCacheRow[] } {
-  if (typeof value !== 'object' || value === null) return false
-  const data = value as { results?: unknown }
-  return Array.isArray(data.results)
-}
+import {
+  updateSearchResultsWithReveal,
+  type RevealInFlight,
+  type RevealVariables,
+} from '@/lib/reveal/reveal-cache'
+import { userKey } from '@/lib/user-key'
 
 export function useReveal() {
   const queryClient = useQueryClient()
   const { user, refresh } = useSession()
   const { applyCreditDelta, applyConfirmedBalance } = useCredits()
-  const userKey = user?.email ?? 'guest'
-  const sessionKeyRef = useRef(userKey)
+  const sessionKey = userKey(user)
+  const sessionKeyRef = useRef(sessionKey)
 
   useEffect(() => {
-    sessionKeyRef.current = userKey
-  }, [userKey])
+    sessionKeyRef.current = sessionKey
+  }, [sessionKey])
 
   const reveal = useMutation({
     mutationFn: ({ type, id }: RevealVariables) => revealService.reveal(type, id),
     onMutate: (variables) => {
       queryClient.setQueryData(revealKeys.inFlight, {
         ...variables,
-        userKey,
+        userKey: sessionKey,
       } satisfies RevealInFlight)
       applyCreditDelta(-1)
     },
@@ -59,16 +47,10 @@ export function useReveal() {
       if (result.balances !== undefined && result.balances !== null) {
         applyConfirmedBalance(result.balances)
       }
-      queryClient.setQueryData(revealKeys.contact(userKey, type, id), result)
-      queryClient.setQueriesData({ queryKey: searchKeys.all }, (old: unknown) => {
-        if (!isSearchCache(old)) return old
-        return {
-          ...old,
-          results: old.results.map((row) =>
-            row.id === id ? { ...row, revealed: true } : row,
-          ),
-        }
-      })
+      queryClient.setQueryData(revealKeys.contact(sessionKey, type, id), result)
+      queryClient.setQueriesData({ queryKey: searchKeys.all }, (old: unknown) =>
+        updateSearchResultsWithReveal(old, id),
+      )
       void queryClient.invalidateQueries({ queryKey: checklistKeys.all })
     },
     onError: () => {

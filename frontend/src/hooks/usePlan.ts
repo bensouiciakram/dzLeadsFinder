@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query'
 
-import { billingService, type PlanResult } from '@/lib/api/billing-service'
-import { billingKeys } from '@/lib/queryKeys/billing'
+import type { PlanResult } from '@/lib/api/billing-service'
+import { planQueryOptions } from '@/lib/queryOptions/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 
 type PlanPhase = 'idle' | 'loading' | 'error' | 'success'
@@ -26,17 +26,12 @@ type UsePlanResult = {
 //   refetch is the prompt-clear mechanism.
 // - NO refetchInterval — polling is the StatusCard's job (AD-5 ≤60s).
 //
-// The userKey derivation MUST stay identical to the 5.5 useBilling
-// (user?.email ?? 'guest') — the Header, the banner and /billing all
-// observe ONE shared billingKeys.plan cache entry (a mismatch would split
-// the FE cache).
+// The query options come from the shared planQueryOptions factory (M8) —
+// one key derivation (userKey) for the Header, the banner and /billing
+// (a split would split the FE cache).
 export function usePlan({ user }: { user: SessionUser | null }): UsePlanResult {
-  const userKey = user?.email ?? 'guest'
-
   const query = useQuery({
-    queryKey: billingKeys.plan(userKey),
-    queryFn: (): Promise<PlanResult> => billingService.plan(),
-    enabled: user !== null,
+    ...planQueryOptions(user),
     refetchOnWindowFocus: true,
   })
 

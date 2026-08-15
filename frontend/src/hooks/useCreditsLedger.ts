@@ -7,6 +7,7 @@ import { creditsService, type LedgerResult } from '@/lib/api/credits-service'
 import type { LedgerRow } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { userKey } from '@/lib/user-key'
 
 type CreditsLedgerPhase = 'idle' | 'loading' | 'error' | 'success'
 
@@ -27,11 +28,11 @@ export function useCreditsLedger({
   user: SessionUser | null
   page: number
 }): UseCreditsLedgerResult {
-  const userKey = user?.email ?? 'guest'
+  const key = userKey(user)
   const query = useQuery({
     // The page is part of the key: navigating the ledger pages refetches,
     // never serves another page's rows (AD-21 key-factory discipline).
-    queryKey: creditsKeys.ledger(userKey, page),
+    queryKey: creditsKeys.ledger(key, page),
     queryFn: (): Promise<LedgerResult> => creditsService.ledger(page),
     enabled: user !== null,
   })

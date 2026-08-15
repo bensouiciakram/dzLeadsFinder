@@ -12,6 +12,7 @@ import {
   numerals,
   SUPPORT_EMAIL,
 } from '@/lib/api/billing-service'
+import { userKey } from '@/lib/user-key'
 import { billingKeys } from '@/lib/queryKeys/billing'
 import { usePaymentStatus, type PendingCheckout } from '@/hooks/usePaymentStatus'
 import { clearPendingCheckout } from '@/lib/billing/checkoutStorage'
@@ -45,7 +46,7 @@ export function StatusCard({
   const { state, cardType, creditsGranted } = usePaymentStatus({ user, checkout })
   const handledRef = useRef(false)
 
-  const userKey = user?.email ?? 'guest'
+  const key = userKey(user)
 
   useEffect(() => {
     if (checkout === null || handledRef.current) return
@@ -74,9 +75,9 @@ export function StatusCard({
     resetBaseline()
     // The plan/packs/history sections refetch with the grant landed; the
     // session probe refreshes the header pill + tier.
-    void queryClient.invalidateQueries({ queryKey: billingKeys.plan(userKey) })
-    void queryClient.invalidateQueries({ queryKey: billingKeys.packs(userKey) })
-    void queryClient.invalidateQueries({ queryKey: billingKeys.history(userKey) })
+    void queryClient.invalidateQueries({ queryKey: billingKeys.plan(key) })
+    void queryClient.invalidateQueries({ queryKey: billingKeys.packs(key) })
+    void queryClient.invalidateQueries({ queryKey: billingKeys.history(key) })
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, creditsGranted, cardType])

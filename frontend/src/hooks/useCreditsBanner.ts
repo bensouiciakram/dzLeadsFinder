@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { creditsService } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { userKey } from '@/lib/user-key'
 
 type CreditsBannerPhase = 'idle' | 'loading' | 'error' | 'success'
 
@@ -19,9 +20,9 @@ export function useCreditsBanner({
 }: {
   user: SessionUser | null
 }): UseCreditsBannerResult {
-  const userKey = user?.email ?? 'guest'
+  const key = userKey(user)
   const query = useQuery({
-    queryKey: creditsKeys.banner(userKey),
+    queryKey: creditsKeys.banner(key),
     queryFn: () => creditsService.getBanner(),
     // Free users are the only audience for the welcome banner — Starter
     // users never see it, so their visits must not pay the request.

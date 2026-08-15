@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query'
 
-import { billingService, type PacksResult } from '@/lib/api/billing-service'
-import { billingKeys } from '@/lib/queryKeys/billing'
+import type { PacksResult } from '@/lib/api/billing-service'
+import { packsQueryOptions } from '@/lib/queryOptions/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 
 type PacksPhase = 'idle' | 'loading' | 'error' | 'success'
@@ -14,9 +14,9 @@ type UsePacksResult = {
 }
 
 // The RecoveryDialog's pack-table source (5.7 Task 6) — shares the
-// billingKeys.packs cache entry with the /billing page (the 5.5 useBilling
-// derivation; the same no-split-brain discipline as usePlan). The pack
-// table is static server data.
+// billingKeys.packs cache entry with the /billing page (the same
+// no-split-brain discipline as usePlan, now via the shared factory — M8).
+// The pack table is static server data.
 //
 // Review P6 (5.7 full review): the query is gated on the dialog being
 // OPEN — the provider body mounts on every authenticated page, and an
@@ -31,13 +31,7 @@ export function usePacks({
   user: SessionUser | null
   isOpen: boolean
 }): UsePacksResult {
-  const userKey = user?.email ?? 'guest'
-
-  const query = useQuery({
-    queryKey: billingKeys.packs(userKey),
-    queryFn: (): Promise<PacksResult> => billingService.packs(),
-    enabled: user !== null && isOpen,
-  })
+  const query = useQuery(packsQueryOptions(user, isOpen))
 
   const phase: PacksPhase =
     user === null || !isOpen

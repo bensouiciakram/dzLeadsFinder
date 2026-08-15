@@ -11,7 +11,9 @@ import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
 import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider'
 import { usePlan } from '@/hooks/usePlan'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useReveal, type RevealInFlight } from '@/hooks/useReveal'
+import { useReveal } from '@/hooks/useReveal'
+import type { RevealInFlight } from '@/lib/reveal/reveal-cache'
+import { userKey } from '@/lib/user-key'
 import type {
   CompanyContact,
   PeopleContact,
@@ -82,7 +84,7 @@ function CompanyFields({ contact }: { contact: CompanyContact }) {
 
 type RevealState = {
   recordType: 'people' | 'company'
-  userKey: string
+  key: string
   rowId: string
   regionId: string
   contactData: RevealResult | undefined
@@ -105,15 +107,15 @@ export function useRevealState({
   const queryClient = useQueryClient()
 
   const recordType: 'people' | 'company' = tab === 'people' ? 'people' : 'company'
-  const userKey = user?.email ?? 'guest'
+  const key = userKey(user)
   const rowId = row.id
   const regionId = `reveal-content-${rowId}`
 
   const cached = queryClient.getQueryData<RevealResult>(
-    revealKeys.contact(userKey, recordType, rowId),
+    revealKeys.contact(key, recordType, rowId),
   )
   const contactQuery = useQuery({
-    queryKey: revealKeys.contact(userKey, recordType, rowId),
+    queryKey: revealKeys.contact(key, recordType, rowId),
     queryFn: () => revealService.reveal(recordType, rowId),
     enabled: row.revealed && cached === undefined,
   })
@@ -134,7 +136,7 @@ export function useRevealState({
 
   return {
     recordType,
-    userKey,
+    key,
     rowId,
     regionId,
     contactData,

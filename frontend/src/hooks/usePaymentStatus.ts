@@ -10,6 +10,7 @@ import {
   TERMINAL_PAYMENT_STATUSES,
   type StatusResult,
 } from '@/lib/api/billing-service'
+import { userKey } from '@/lib/user-key'
 import { billingKeys } from '@/lib/queryKeys/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 
@@ -42,7 +43,7 @@ export function usePaymentStatus({
   user: SessionUser | null
   checkout: PendingCheckout | null
 }): UsePaymentStatusResult {
-  const userKey = user?.email ?? 'guest'
+  const key = userKey(user)
   const txnId = checkout?.checkout_id ?? null
   const since = checkout?.started_at ?? null
   const deadlineMs = checkout
@@ -64,7 +65,7 @@ export function usePaymentStatus({
   }, [deadlineMs, txnId])
 
   const query = useQuery<StatusResult>({
-    queryKey: billingKeys.status(userKey, txnId ?? 'none'),
+    queryKey: billingKeys.status(key, txnId ?? 'none'),
     queryFn: () => billingService.status(txnId as string, since as string),
     enabled: user !== null && txnId !== null && since !== null,
     retry: false,
