@@ -21,7 +21,7 @@ import { revealService } from '@/lib/api/reveal-service'
 import { revealKeys } from '@/lib/queryKeys/reveal'
 import { cn } from '@/lib/utils'
 import type { CompanyResultRow, PeopleResultRow, SearchTab } from '@/lib/api/search-service'
-import { bandLabelKey } from './ResultsTable'
+import { bandLabelKey } from '@/components/search/results-format'
 
 const SAFE_URL = /^https?:\/\//i
 

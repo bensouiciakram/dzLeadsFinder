@@ -17,32 +17,15 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox'
 import { WILAYAS, type Wilaya } from '@/data/wilayas'
+import {
+  filterWilayas,
+  wilayaDisplayLabel,
+  wilayaDisplayName,
+} from '@/components/search/results-format'
 
 const CHIP_LIMIT = 3
 
 const ARABIC_SCRIPT_RE = /[\u0600-\u06FF]/
-
-export function wilayaDisplayName(wilaya: Wilaya, locale: string): string {
-  if (locale === 'ar') return wilaya.name_ar
-  if (locale === 'fr') return wilaya.name_fr || wilaya.name_ar
-  return wilaya.name_en || wilaya.name_ar
-}
-
-export function wilayaDisplayLabel(wilaya: Wilaya, locale: string): string {
-  return `${wilaya.code} — ${wilayaDisplayName(wilaya, locale)}`
-}
-
-export function filterWilayas(wilayas: Wilaya[], query: string): Wilaya[] {
-  const q = query.trim().toLowerCase().replace(/^0+(?=\d)/, '')
-  if (!q) return wilayas
-  return wilayas.filter(
-    (wilaya) =>
-      String(wilaya.code).startsWith(q) ||
-      wilaya.name_ar.toLowerCase().includes(q) ||
-      wilaya.name_fr.toLowerCase().includes(q) ||
-      wilaya.name_en.toLowerCase().includes(q),
-  )
-}
 
 type WilayaComboboxProps = {
   value: number[]

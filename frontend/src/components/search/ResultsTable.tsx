@@ -19,6 +19,7 @@ import {
   RevealControl,
   useRevealState,
 } from '@/components/search/RevealControl'
+import { bandLabelKey, CompanyLink, EmDash, MaybeArabic, WilayaCell } from '@/components/search/results-format'
 import type {
   CompanyResultRow,
   PeopleResultRow,
@@ -71,13 +72,6 @@ export function sortCycle(field: SortField, current: SortState | null): SortStat
   return { field, dir: null }
 }
 
-const KNOWN_BANDS = ['1-10', '11-50', '51-200', '201-500', '500+']
-
-export function bandLabelKey(band: string): string | null {
-  if (!KNOWN_BANDS.includes(band)) return null
-  return `search.size.${band.replace('-', '_').replace('+', '_plus')}`
-}
-
 export function columnLabelKey(field: SortField): string {
   switch (field) {
     case 'name':
@@ -95,44 +89,6 @@ export function columnLabelKey(field: SortField): string {
     case 'people_count':
       return 'search.results.columns.people_count'
   }
-}
-
-export function isArabic(text: string): boolean {
-  return /[\u0600-\u06FF]/.test(text) && !/[\u0041-\u024F]/.test(text)
-}
-
-function MaybeArabic({ text }: { text: string }) {
-  if (!isArabic(text)) return <>{text}</>
-  return (
-    <span lang="ar" dir="rtl">
-      {text}
-    </span>
-  )
-}
-
-function EmDash() {
-  return <span className="text-muted-foreground">—</span>
-}
-
-function WilayaCell({ code, name }: { code: number | null; name: string | null }) {
-  if (code === null || name === null) return <EmDash />
-  return (
-    <span>
-      <span className="tabular-nums">{code}</span> — <MaybeArabic text={name} />
-    </span>
-  )
-}
-
-function CompanyLink({ name, companyId }: { name: string | null; companyId: string | null }) {
-  if (!name || companyId === null) return <EmDash />
-  return (
-    <Link
-      href={`/companies/${companyId}`}
-      className="text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring rounded-sm focus-visible:outline-none"
-    >
-      <MaybeArabic text={name} />
-    </Link>
-  )
 }
 
 function RevealSlot({ tab, row }: { tab: SearchTab; row: PeopleResultRow | CompanyResultRow }) {

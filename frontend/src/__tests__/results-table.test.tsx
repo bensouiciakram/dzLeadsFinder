@@ -6,11 +6,10 @@ import type { ReactNode } from 'react'
 
 import {
   ResultsTable,
-  bandLabelKey,
-  isArabic,
   sortCycle,
   type SortState,
 } from '@/components/search/ResultsTable'
+import { bandLabelKey, isArabic } from '@/components/search/results-format'
 import type { CompanyResultRow, PeopleResultRow } from '@/lib/api/search-service'
 import { CreditProvider, useCredits } from '@/components/providers/CreditProvider'
 import { ToastProvider } from '@/components/providers/ToastProvider'

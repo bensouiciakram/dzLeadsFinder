@@ -3,8 +3,7 @@
 import { XIcon } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 
-import { bandLabelKey, isArabic } from '@/components/search/ResultsTable'
-import { wilayaDisplayName } from '@/components/search/WilayaCombobox'
+import { bandLabelKey, MaybeArabic, wilayaDisplayName } from '@/components/search/results-format'
 import { INDUSTRIES } from '@/data/industries'
 import { WILAYAS } from '@/data/wilayas'
 import type { StagedFilters } from '@/lib/api/search-service'
@@ -23,15 +22,6 @@ type Chip = {
   code?: string
   facet: ChipsFacet
   value: number | string | boolean
-}
-
-function MaybeArabic({ text }: { text: string }) {
-  if (!isArabic(text)) return <>{text}</>
-  return (
-    <span lang="ar" dir="rtl">
-      {text}
-    </span>
-  )
 }
 
 type ActiveFilterChipsProps = {

@@ -3,12 +3,12 @@ import { fireEvent } from '@testing-library/react'
 import { useLocale } from 'next-intl'
 import { describe, expect, it, vi } from 'vitest'
 
+import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import {
-  WilayaCombobox,
   filterWilayas,
   wilayaDisplayLabel,
   wilayaDisplayName,
-} from '@/components/search/WilayaCombobox'
+} from '@/components/search/results-format'
 import type { Wilaya } from '@/data/wilayas'
 
 vi.mock('@/data/wilayas', () => ({

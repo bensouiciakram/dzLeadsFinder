@@ -3,7 +3,13 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
-import { bandLabelKey, isArabic } from '@/components/search/ResultsTable'
+import {
+  bandLabelKey,
+  CompanyLink,
+  EmDash,
+  MaybeArabic,
+  WilayaLine,
+} from '@/components/search/results-format'
 import {
   RevealContent,
   RevealControl,
@@ -14,45 +20,6 @@ import type {
   PeopleResultRow,
   SearchTab,
 } from '@/lib/api/search-service'
-
-function MaybeArabic({ text }: { text: string }) {
-  if (!isArabic(text)) return <>{text}</>
-  return (
-    <span lang="ar" dir="rtl">
-      {text}
-    </span>
-  )
-}
-
-function EmDash() {
-  return <span className="text-muted-foreground">—</span>
-}
-
-function CompanyLink({ name, companyId }: { name: string | null; companyId: string | null }) {
-  if (!name || companyId === null) return <EmDash />
-  return (
-    <Link
-      href={`/companies/${companyId}`}
-      className="text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring rounded-sm focus-visible:outline-none"
-    >
-      <MaybeArabic text={name} />
-    </Link>
-  )
-}
-
-function WilayaLine({ code, name }: { code: number | null; name: string | null }) {
-  return (
-    <p className="mt-0.5 text-small text-muted-foreground">
-      {code === null || name === null ? (
-        <EmDash />
-      ) : (
-        <span>
-          <span className="tabular-nums">{code}</span> — <MaybeArabic text={name} />
-        </span>
-      )}
-    </p>
-  )
-}
 
 function Card({
   tab,

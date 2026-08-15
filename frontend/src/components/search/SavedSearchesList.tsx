@@ -32,7 +32,7 @@ import {
   type SavedSearchType,
 } from '@/lib/api/saved-search-service'
 import type { SearchTab } from '@/lib/api/search-service'
-import { isArabic } from '@/components/search/ResultsTable'
+import { MaybeArabic } from '@/components/search/results-format'
 
 export type SavedSearchSnapshot = {
   type: SavedSearchType
@@ -48,15 +48,6 @@ type SavedSearchesListProps = {
 }
 
 const CAPS: Record<string, number> = { free: 5, starter: 25 }
-
-function MaybeArabic({ text }: { text: string }) {
-  if (!isArabic(text)) return <>{text}</>
-  return (
-    <span lang="ar" dir="rtl">
-      {text}
-    </span>
-  )
-}
 
 export function SavedSearchesList({
   tab,
