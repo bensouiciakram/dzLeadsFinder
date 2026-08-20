@@ -521,6 +521,23 @@ class TestDjangoAdmin:
         api_client.force_login(staff)
         response = api_client.get('/admin/accounts/user/')
         assert response.status_code == status.HTTP_200_OK
+        assert create_user.email in response.content.decode()
+
+    def test_admin_user_change_view_renders_customized_fieldsets(
+        self,
+        api_client: Client,
+        create_user: Any,
+    ) -> None:
+        staff = User.objects.create_superuser(
+            email='admin@example.com',
+            password='adminpass123',
+        )
+        api_client.force_login(staff)
+        response = api_client.get(f'/admin/accounts/user/{create_user.pk}/change/')
+        assert response.status_code == status.HTTP_200_OK
+        content = response.content.decode()
+        assert create_user.email in content
+        assert 'Activity' in content
 
     def test_unauthenticated_user_redirected_from_admin(self, api_client: Client) -> None:
         response = api_client.get('/admin/')
