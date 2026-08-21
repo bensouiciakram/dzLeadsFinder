@@ -1,4 +1,5 @@
 import { HttpClient } from './http-client'
+import { formatDate } from '@/lib/format'
 import type { CreditBalances } from './reveal-service'
 
 export type PlanResult = {
@@ -103,19 +104,10 @@ export function formatBillingDate(
   locale: string,
   { withTime }: { withTime: boolean },
 ): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  try {
-    // '-u-nu-latn' forces Western numerals in every locale (FR-15/AD-8);
-    // withTime mirrors the CreditsPage formatTimestamp precedent (history
-    // cells), without it the DangerZone dateStyle-medium precedent (cards).
-    return new Intl.DateTimeFormat(locale + '-u-nu-latn', {
-      dateStyle: 'medium',
-      ...(withTime ? { timeStyle: 'short' as const } : {}),
-    }).format(date)
-  } catch {
-    return value
-  }
+  // Delegates to the shared formatter (lib/format.ts) — the '-u-nu-latn'
+  // suffix forces Western numerals in every locale (FR-15/AD-8); withTime
+  // mirrors the CreditsPage history cells, without it the DangerZone cards.
+  return formatDate(value, locale, { withTime })
 }
 
 export class BillingService extends HttpClient {

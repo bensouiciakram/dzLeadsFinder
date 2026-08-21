@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { settingsService, type FrozenStatus } from '@/lib/api/settings-service'
 import { useUndeleteAccount } from '@/hooks/useAccountMutations'
+import { formatDate } from '@/lib/format'
 import { FrozenLogout } from './FrozenLogout'
 
 type PanelPhase = 'loading' | 'ready' | 'irreversible' | 'error'
@@ -69,10 +70,7 @@ export function FrozenAccountPanel() {
 
   const scheduledDate =
     status?.deletion_scheduled_at != null
-      ? new Intl.DateTimeFormat(locale, {
-          dateStyle: 'medium',
-          numberingSystem: 'latn',
-        }).format(new Date(status.deletion_scheduled_at))
+      ? formatDate(status.deletion_scheduled_at, locale)
       : null
 
   return (

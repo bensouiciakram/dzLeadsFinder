@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ModalPanel } from '@/components/ui/dialog'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useDeleteAccount } from '@/hooks/useAccountMutations'
+import { formatDate } from '@/lib/format'
 
 export function DangerZone() {
   const t = useTranslations()
@@ -65,12 +66,7 @@ export function DangerZone() {
     setError(false)
     deleteAccount.mutate(undefined, {
       onSuccess: (data) => {
-        setScheduledDate(
-          new Intl.DateTimeFormat(locale, {
-            dateStyle: 'medium',
-            numberingSystem: 'latn',
-          }).format(new Date(data.deletion_scheduled_at)),
-        )
+        setScheduledDate(formatDate(data.deletion_scheduled_at, locale))
         setOpen(false)
       },
       onError: () => setError(true),

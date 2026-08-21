@@ -3,20 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 
 import type { LedgerRow } from '@/lib/api/credits-service'
-
-function formatTimestamp(value: string, locale: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  try {
-    // '-u-nu-latn' forces Western numerals in every locale (FR-15/AD-8).
-    return new Intl.DateTimeFormat(locale + '-u-nu-latn', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(date)
-  } catch {
-    return value
-  }
-}
+import { formatDate } from '@/lib/format'
 
 type LedgerTableProps = {
   rows: LedgerRow[]
@@ -59,7 +46,7 @@ export function LedgerTable({ rows, typeLabels }: LedgerTableProps) {
               {row.amount > 0 ? `+${row.amount}` : String(row.amount)}
             </td>
             <td className="px-3 py-3 text-start">
-              <bdi className="tabular-nums">{formatTimestamp(row.created_at, locale)}</bdi>
+              <bdi className="tabular-nums">{formatDate(row.created_at, locale, { withTime: true })}</bdi>
             </td>
             <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums">
               {String(row.balance_after)}
