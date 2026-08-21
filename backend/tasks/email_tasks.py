@@ -5,6 +5,8 @@ from typing import Any, Dict, Tuple
 import requests
 from celery import shared_task
 
+from apps.billing.pricing import PACK_PRICES
+
 logger = logging.getLogger(__name__)
 
 NEXTJS_INTERNAL_URL = os.environ.get('NEXTJS_INTERNAL_URL', 'http://nextjs:3004')
@@ -257,19 +259,31 @@ def send_payment_receipt(txn_id: str) -> None:
         raise
 
 
-PACK_RECEIPT_SUBJECTS = {
-    'ar': {
-        500: 'تمت إضافة ائتمانات الحزمة — 75 ائتمانًا، لا تنتهي صلاحيتها أبدًا',
-        1500: 'تمت إضافة ائتمانات الحزمة — 250 ائتمانًا، لا تنتهي صلاحيتها أبدًا',
-    },
-    'fr': {
-        500: "Crédits de pack ajoutés — 75 crédits, n'expirent jamais",
-        1500: "Crédits de pack ajoutés — 250 crédits, n'expirent jamais",
-    },
-    'en': {
-        500: 'Pack credits added — 75 credits, never expires',
-        1500: 'Pack credits added — 250 credits, never expires',
-    },
+# The credit count in the subject is DERIVED from PACK_PRICES (the single
+# price->credits table) — hand-typed prose drifted silently the moment the
+# table changed. pricing.py is stdlib-only, so this module-level import is
+# worker-safe (the celery pre-registry constraint).
+_PACK_SUBJECT_TEMPLATES: Dict[str, str] = {
+    'ar': 'تمت إضافة ائتمانات الحزمة — {credits} ائتمانًا، لا تنتهي صلاحيتها أبدًا',
+    'fr': "Crédits de pack ajoutés — {credits} crédits, n'expirent jamais",
+    'en': 'Pack credits added — {credits} credits, never expires',
+}
+
+PACK_RECEIPT_SUBJECTS: Dict[str, Dict[int, str]] = {
+    locale: {
+        price: template.format(credits=credits)
+        for price, credits in PACK_PRICES.items()
+    }
+    for locale, template in _PACK_SUBJECT_TEMPLATES.items()
+}
+
+# Amount-free subjects for a row whose amount is not in PACK_PRICES (table
+# drift): the email must stay truthful — the body carries the real
+# creditsGranted — and ops gets a loud error instead of a borrowed subject.
+GENERIC_PACK_RECEIPT_SUBJECTS: Dict[str, str] = {
+    'ar': 'تمت إضافة ائتمانات الحزمة',
+    'fr': 'Crédits de pack ajoutés',
+    'en': 'Pack credits added',
 }
 
 
@@ -333,8 +347,19 @@ def send_pack_receipt(txn_id: str) -> None:
         _set_receipt_marker(row)
 
     locale = user.effective_locale
-    subjects = PACK_RECEIPT_SUBJECTS.get(locale, PACK_RECEIPT_SUBJECTS['en'])
-    subject = subjects.get(row.amount_dzd, PACK_RECEIPT_SUBJECTS['en'][500])
+    subject = PACK_RECEIPT_SUBJECTS.get(locale, PACK_RECEIPT_SUBJECTS['en']).get(row.amount_dzd)
+    if subject is None:
+        # The old fallback borrowed the 500-pack subject — a lying subject on
+        # a payment email. An off-table amount now gets an amount-free
+        # subject and a loud error; the body still shows the true credits.
+        logger.error(
+            'send_pack_receipt: amount %s not in PACK_PRICES — using generic '
+            'subject (pricing table drift?)',
+            row.amount_dzd,
+        )
+        subject = GENERIC_PACK_RECEIPT_SUBJECTS.get(
+            locale, GENERIC_PACK_RECEIPT_SUBJECTS['en']
+        )
     try:
         html, plain_text = render_email(
             'payment_receipt',

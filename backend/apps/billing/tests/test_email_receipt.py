@@ -187,12 +187,23 @@ class TestPackReceiptEmail:
         assert mail.outbox[-1].subject == PACK_RECEIPT_SUBJECTS['en'][1500]
         assert '250' in PACK_RECEIPT_SUBJECTS['en'][1500]
 
-    def test_subjects_cover_all_locales_and_packs(self) -> None:
+    def test_subjects_derive_from_pack_prices(self) -> None:
+        # The subject's credit count must come from PACK_PRICES itself — a
+        # table change must flow into the copy (the old literal prose could
+        # silently disagree with the granted credits).
+        from apps.billing.pricing import PACK_PRICES
+
         for locale in ('ar', 'fr', 'en'):
-            assert 500 in PACK_RECEIPT_SUBJECTS[locale]
-            assert 1500 in PACK_RECEIPT_SUBJECTS[locale]
-            assert PACK_RECEIPT_SUBJECTS[locale][500]
-            assert PACK_RECEIPT_SUBJECTS[locale][1500]
+            for price, credits in PACK_PRICES.items():
+                assert str(credits) in PACK_RECEIPT_SUBJECTS[locale][price]
+
+    def test_subjects_cover_all_locales_and_packs(self) -> None:
+        from apps.billing.pricing import PACK_PRICES
+
+        for locale in ('ar', 'fr', 'en'):
+            for price in PACK_PRICES:
+                assert price in PACK_RECEIPT_SUBJECTS[locale]
+                assert PACK_RECEIPT_SUBJECTS[locale][price]
 
     def test_unknown_locale_falls_back_to_english(self, create_user: Any) -> None:
         create_user.locale = 'de'
@@ -200,6 +211,22 @@ class TestPackReceiptEmail:
         row = _pack_txn(create_user)
         send_pack_receipt(str(row.id))
         assert mail.outbox[-1].subject == PACK_RECEIPT_SUBJECTS['en'][500]
+
+    def test_off_table_amount_gets_generic_subject_not_wrong_pack(
+        self, create_user: Any, caplog: Any
+    ) -> None:
+        # An amount outside PACK_PRICES must never borrow another pack's
+        # subject (the old [500] fallback lied about the credits) — it gets
+        # the amount-free subject and logs an error.
+        from tasks.email_tasks import GENERIC_PACK_RECEIPT_SUBJECTS
+
+        create_user.locale = 'en'
+        create_user.save(update_fields=['locale'])
+        row = _pack_txn(create_user, amount=999, credits=100)
+        with caplog.at_level('ERROR'):
+            send_pack_receipt(str(row.id))
+        assert mail.outbox[-1].subject == GENERIC_PACK_RECEIPT_SUBJECTS['en']
+        assert 'not in PACK_PRICES' in caplog.text
 
     def test_missing_transaction_skipped(self, caplog: Any) -> None:
         with caplog.at_level('WARNING'):
