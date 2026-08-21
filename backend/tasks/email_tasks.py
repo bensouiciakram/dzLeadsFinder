@@ -23,6 +23,27 @@ def render_email(template: str, locale: str, context: Dict[str, Any]) -> Tuple[s
     return data['html'], data.get('plainText', '')
 
 
+def _send_html_email(subject: str, plain_text: str, html: str, to_email: str) -> None:
+    """The shared multipart send behind every email task: a plain-text body
+    plus an HTML alternative when the render route produced one, else an
+    HTML-only message. Django imports are deferred to runtime (the celery
+    pre-registry constraint)."""
+    from django.conf import settings
+    from django.core.mail import EmailMultiAlternatives
+
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_text or html,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[to_email],
+    )
+    if plain_text:
+        message.attach_alternative(html, 'text/html')
+    else:
+        message.content_subtype = 'html'
+    message.send()
+
+
 @shared_task(  # type: ignore[misc]
     autoretry_for=(Exception,),
     retry_kwargs={'max_retries': 1},
@@ -36,7 +57,6 @@ def send_verification_email(user_id: int) -> None:
     """
     from django.conf import settings
     from django.contrib.auth import get_user_model
-    from django.core.mail import EmailMultiAlternatives
     from django.utils import timezone
 
     from apps.accounts.models import TOKEN_PURPOSE_VERIFY, SingleUseToken
@@ -68,17 +88,7 @@ def send_verification_email(user_id: int) -> None:
         user.effective_locale,
         {'verificationLink': verification_link},
     )
-    message = EmailMultiAlternatives(
-        subject='Verify your email — DzLeadsFinder',
-        body=plain_text or html,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user.email],
-    )
-    if plain_text:
-        message.attach_alternative(html, 'text/html')
-    else:
-        message.content_subtype = 'html'
-    message.send()
+    _send_html_email('Verify your email — DzLeadsFinder', plain_text, html, user.email)
 
 
 RESET_SUBJECTS = {
@@ -101,7 +111,6 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
     """
     from django.conf import settings
     from django.contrib.auth import get_user_model
-    from django.core.mail import EmailMultiAlternatives
     from django.utils import timezone
 
     from apps.accounts.models import (
@@ -135,17 +144,9 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
         locale,
         {'resetLink': reset_link},
     )
-    message = EmailMultiAlternatives(
-        subject=RESET_SUBJECTS.get(locale, RESET_SUBJECTS['en']),
-        body=plain_text or html,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user.email],
+    _send_html_email(
+        RESET_SUBJECTS.get(locale, RESET_SUBJECTS['en']), plain_text, html, user.email
     )
-    if plain_text:
-        message.attach_alternative(html, 'text/html')
-    else:
-        message.content_subtype = 'html'
-    message.send()
 
 
 PAYMENT_RECEIPT_SUBJECTS = {
@@ -264,10 +265,8 @@ def _send_receipt(txn_id: str, *, pack: bool, task: str) -> None:
     guard is the contract. ``date`` is the raw ISO local date of the
     transaction; the template owns localized formatting (AD-8).
     """
-    from django.conf import settings
     from django.contrib.auth import get_user_model
     from django.core.exceptions import ValidationError
-    from django.core.mail import EmailMultiAlternatives
     from django.db import transaction
     from django.utils import timezone
 
@@ -319,17 +318,7 @@ def _send_receipt(txn_id: str, *, pack: bool, task: str) -> None:
         subject = PAYMENT_RECEIPT_SUBJECTS[locale]['renewal' if is_renewal else 'creation']
     try:
         html, plain_text = render_email('payment_receipt', locale, context)
-        message = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_text or html,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.email],
-        )
-        if plain_text:
-            message.attach_alternative(html, 'text/html')
-        else:
-            message.content_subtype = 'html'
-        message.send()
+        _send_html_email(subject, plain_text, html, user.email)
     except Exception:
         _clear_receipt_marker(row)
         raise
