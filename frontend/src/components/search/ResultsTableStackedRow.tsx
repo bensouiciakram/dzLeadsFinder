@@ -10,11 +10,9 @@ import {
   MaybeArabic,
   WilayaLine,
 } from '@/components/search/results-format'
-import {
-  RevealContent,
-  RevealControl,
-  useRevealState,
-} from '@/components/search/RevealControl'
+import { RevealContent } from '@/components/search/RevealContent'
+import { RevealControl } from '@/components/search/RevealControl'
+import { useRevealState } from '@/hooks/useRevealState'
 import type {
   CompanyResultRow,
   PeopleResultRow,

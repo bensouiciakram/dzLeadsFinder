@@ -14,11 +14,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  RevealContent,
-  RevealControl,
-  useRevealState,
-} from '@/components/search/RevealControl'
+import { RevealContent } from '@/components/search/RevealContent'
+import { RevealControl } from '@/components/search/RevealControl'
+import { useRevealState } from '@/hooks/useRevealState'
 import { bandLabelKey, CompanyLink, EmDash, MaybeArabic, WilayaCell } from '@/components/search/results-format'
 import type { SortField, SortState } from '@/lib/search/search-params'
 import type {

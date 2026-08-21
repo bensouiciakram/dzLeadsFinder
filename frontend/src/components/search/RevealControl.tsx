@@ -1,10 +1,9 @@
 'use client'
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
-import { useCredits } from '@/components/providers/CreditProvider'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useToast } from '@/components/providers/ToastProvider'
 import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
@@ -12,165 +11,11 @@ import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider
 import { usePlan } from '@/hooks/usePlan'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useReveal } from '@/hooks/useReveal'
+import { useRevealState } from '@/hooks/useRevealState'
 import type { RevealInFlight } from '@/lib/reveal/reveal-cache'
-import { userKey } from '@/lib/user-key'
-import type {
-  CompanyContact,
-  PeopleContact,
-  RevealResult,
-} from '@/lib/api/reveal-service'
-import { revealService } from '@/lib/api/reveal-service'
 import { revealKeys } from '@/lib/queryKeys/reveal'
 import { cn } from '@/lib/utils'
 import type { CompanyResultRow, PeopleResultRow, SearchTab } from '@/lib/api/search-service'
-import { bandLabelKey } from '@/components/search/results-format'
-
-const SAFE_URL = /^https?:\/\//i
-
-function Field({ labelKey, children }: { labelKey: string; children: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 gap-2">
-      <dt className="w-28 shrink-0 text-muted-foreground">{labelKey}</dt>
-      <dd className="min-w-0 break-words">{children}</dd>
-    </div>
-  )
-}
-
-function PeopleFields({ contact }: { contact: PeopleContact }) {
-  const t = useTranslations()
-  return (
-    <dl className="grid gap-2 text-small" data-testid="reveal-fields">
-      <Field labelKey={t('search.reveal.field_email')}>{contact.email ?? '—'}</Field>
-      <Field labelKey={t('search.reveal.field_phone')}>
-        <span className="tabular-nums">{contact.phone ?? '—'}</span>
-      </Field>
-      <Field labelKey={t('search.reveal.field_address')}>{contact.address ?? '—'}</Field>
-    </dl>
-  )
-}
-
-function CompanyFields({ contact }: { contact: CompanyContact }) {
-  const t = useTranslations()
-  const bandKey = contact.size_band === null ? null : bandLabelKey(contact.size_band)
-  return (
-    <dl className="grid gap-2 text-small" data-testid="reveal-fields">
-      {contact.website !== null && (
-        <Field labelKey={t('search.reveal.field_website')}>
-          {SAFE_URL.test(contact.website) ? (
-            <a
-              href={contact.website}
-              target="_blank"
-              rel="noreferrer"
-              className="break-all text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {contact.website}
-            </a>
-          ) : (
-            <span className="break-all">{contact.website}</span>
-          )}
-        </Field>
-      )}
-      {contact.industry !== null && (
-        <Field labelKey={t('search.reveal.field_industry')}>{contact.industry}</Field>
-      )}
-      {contact.size_band !== null && (
-        <Field labelKey={t('search.reveal.field_size_band')}>
-          {bandKey === null ? contact.size_band : t(bandKey)}
-        </Field>
-      )}
-    </dl>
-  )
-}
-
-type RevealState = {
-  recordType: 'people' | 'company'
-  key: string
-  rowId: string
-  regionId: string
-  contactData: RevealResult | undefined
-  revealed: boolean
-  pending: boolean
-  autoFetching: boolean
-  zeroCredits: boolean
-  showRegion: boolean
-}
-
-export function useRevealState({
-  tab,
-  row,
-}: {
-  tab: SearchTab
-  row: PeopleResultRow | CompanyResultRow
-}): RevealState {
-  const { user } = useSession()
-  const { balance } = useCredits()
-  const queryClient = useQueryClient()
-
-  const recordType: 'people' | 'company' = tab === 'people' ? 'people' : 'company'
-  const key = userKey(user)
-  const rowId = row.id
-  const regionId = `reveal-content-${rowId}`
-
-  const cached = queryClient.getQueryData<RevealResult>(
-    revealKeys.contact(key, recordType, rowId),
-  )
-  const contactQuery = useQuery({
-    queryKey: revealKeys.contact(key, recordType, rowId),
-    queryFn: () => revealService.reveal(recordType, rowId),
-    enabled: row.revealed && cached === undefined,
-  })
-  const inFlightQuery = useQuery<RevealInFlight>({
-    queryKey: revealKeys.inFlight,
-    queryFn: () => null,
-    enabled: false,
-    initialData: null,
-  })
-  const inFlight = inFlightQuery.data
-
-  const pending = inFlight !== null && inFlight.type === recordType && inFlight.id === rowId
-  const contactData = contactQuery.data
-  const revealed = row.revealed || contactData !== undefined
-  const autoFetching = row.revealed && contactQuery.isFetching
-  const zeroCredits = balance !== null && balance <= 0
-  const showRegion = pending || contactData !== undefined || autoFetching
-
-  return {
-    recordType,
-    key,
-    rowId,
-    regionId,
-    contactData,
-    revealed,
-    pending,
-    autoFetching,
-    zeroCredits,
-    showRegion,
-  }
-}
-
-export function RevealContent({ state }: { state: RevealState }) {
-  const t = useTranslations()
-  if (!state.showRegion) return null
-  return (
-    <div
-      id={state.regionId}
-      role="region"
-      aria-label={t('search.reveal.content')}
-      data-testid={`reveal-content-${state.rowId}`}
-      className="mt-3 border-t border-border pt-3"
-    >
-      {state.contactData !== undefined ? (
-        state.contactData.contact.record_type === 'people' ? (
-          <PeopleFields contact={state.contactData.contact} />
-        ) : (
-          <CompanyFields contact={state.contactData.contact} />
-        )
-      ) : (
-        <p className="text-small text-muted-foreground">{t('common.states.loading')}</p>
-      )}
-    </div>
-  )
-}
 
 export function RevealControl({
   tab,
