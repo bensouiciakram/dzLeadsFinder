@@ -4,14 +4,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { isAxiosError } from 'axios'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { FormErrorSummary } from './FormErrorSummary'
+import { NewPasswordForm } from '@/components/auth/NewPasswordForm'
 import { authService } from '@/lib/api/auth-service'
-import { newPasswordSchema, type NewPasswordValues } from '@/lib/validation/auth'
 
 type Props = { token: string }
 
@@ -23,19 +20,32 @@ type ConfirmState =
   | { kind: 'used' }
   | { kind: 'error' }
 
+function LinkProblemView({
+  titleKey,
+  descriptionKey,
+}: {
+  titleKey: string
+  descriptionKey: string
+}) {
+  const t = useTranslations()
+  return (
+    <div>
+      <h1 className="text-title font-bold text-foreground">{t(titleKey)}</h1>
+      <p className="mt-2 text-small text-muted-foreground">{t(descriptionKey)}</p>
+      <Link
+        href="/password-reset"
+        className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-small font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+      >
+        {t('auth.password_reset.request_new_link')}
+      </Link>
+    </div>
+  )
+}
+
 export function PasswordResetConfirm({ token }: Props) {
   const t = useTranslations()
   const router = useRouter()
   const [state, setState] = useState<ConfirmState>({ kind: 'loading' })
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<NewPasswordValues>({
-    resolver: zodResolver(newPasswordSchema),
-    defaultValues: { password: '', confirmPassword: '' },
-  })
 
   useEffect(() => {
     let cancelled = false
@@ -66,30 +76,11 @@ export function PasswordResetConfirm({ token }: Props) {
     }
   }, [token])
 
-  async function onSubmit(values: NewPasswordValues) {
-    if (isSubmitting) return
-    try {
-      await authService.confirmPasswordReset(token, values.password)
-      setState({ kind: 'done' })
-    } catch (error) {
-      if (isAxiosError(error) && error.response) {
-        if (error.response.status === 410) {
-          setState((prev) => (prev.kind === 'done' ? prev : { kind: 'used' }))
-          return
-        }
-        if (error.response.status === 400) {
-          setError('root', { message: 'common.states.error' })
-          return
-        }
-        setState((prev) => (prev.kind === 'done' ? prev : { kind: 'error' }))
-        return
-      }
-      setState((prev) => (prev.kind === 'done' ? prev : { kind: 'error' }))
-    }
-  }
-
-  const inputClass =
-    'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
+  // The outcome guards mirror the original functional setStates: a result
+  // that lands after `done` must never demote the success screen.
+  const markDone = () => setState({ kind: 'done' })
+  const markUsed = () => setState((prev) => (prev.kind === 'done' ? prev : { kind: 'used' }))
+  const markError = () => setState((prev) => (prev.kind === 'done' ? prev : { kind: 'error' }))
 
   if (state.kind === 'loading') {
     return (
@@ -102,96 +93,7 @@ export function PasswordResetConfirm({ token }: Props) {
   return (
     <div className="mx-auto w-full max-w-md rounded-lg border border-border bg-card p-6 md:p-8">
       {state.kind === 'valid' ? (
-        <div>
-          <h1 className="text-title font-bold text-foreground">
-            {t('auth.password_reset.new_password_title')}
-          </h1>
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 space-y-5">
-            <div>
-              <label
-                htmlFor="reset-new-password"
-                className="text-small font-medium text-foreground"
-              >
-                {t('auth.password_reset.new_password_label')}
-              </label>
-              <input
-                id="reset-new-password"
-                type="password"
-                autoComplete="new-password"
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={
-                  errors.password
-                    ? 'reset-new-password-error reset-new-password-requirements'
-                    : 'reset-new-password-requirements'
-                }
-                className={inputClass}
-                {...register('password')}
-              />
-              {errors.password?.message ? (
-                <p
-                  id="reset-new-password-error"
-                  tabIndex={-1}
-                  className="mt-1 text-small text-destructive"
-                >
-                  {t(errors.password.message)}
-                </p>
-              ) : null}
-              <p id="reset-new-password-requirements" className="mt-1 text-small text-muted-foreground">
-                {t('auth.password_reset.password_requirements')}
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="reset-confirm-password"
-                className="text-small font-medium text-foreground"
-              >
-                {t('auth.password_reset.confirm_password_label')}
-              </label>
-              <input
-                id="reset-confirm-password"
-                type="password"
-                autoComplete="new-password"
-                aria-invalid={Boolean(errors.confirmPassword)}
-                aria-describedby={
-                  errors.confirmPassword ? 'reset-confirm-password-error' : undefined
-                }
-                className={inputClass}
-                {...register('confirmPassword')}
-              />
-              {errors.confirmPassword?.message ? (
-                <p
-                  id="reset-confirm-password-error"
-                  tabIndex={-1}
-                  className="mt-1 text-small text-destructive"
-                >
-                  {t(errors.confirmPassword.message)}
-                </p>
-              ) : null}
-            </div>
-
-            {errors.root?.message ? (
-              <p role="alert" className="text-small text-destructive">
-                {t(errors.root.message)}
-              </p>
-            ) : null}
-
-            <FormErrorSummary
-              errors={[
-                errors.password?.message
-                  ? { id: 'reset-new-password-error', message: errors.password.message }
-                  : null,
-                errors.confirmPassword?.message
-                  ? { id: 'reset-confirm-password-error', message: errors.confirmPassword.message }
-                  : null,
-              ].filter((item): item is { id: string; message: string } => item !== null)}
-            />
-
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {t('auth.password_reset.submit_new')}
-            </Button>
-          </form>
-        </div>
+        <NewPasswordForm token={token} onDone={markDone} onUsed={markUsed} onError={markError} />
       ) : null}
 
       {state.kind === 'done' ? (
@@ -212,37 +114,17 @@ export function PasswordResetConfirm({ token }: Props) {
       ) : null}
 
       {state.kind === 'expired' ? (
-        <div>
-          <h1 className="text-title font-bold text-foreground">
-            {t('auth.password_reset.expired_title')}
-          </h1>
-          <p className="mt-2 text-small text-muted-foreground">
-            {t('auth.password_reset.expired_description')}
-          </p>
-          <Link
-            href="/password-reset"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-small font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-          >
-            {t('auth.password_reset.request_new_link')}
-          </Link>
-        </div>
+        <LinkProblemView
+          titleKey="auth.password_reset.expired_title"
+          descriptionKey="auth.password_reset.expired_description"
+        />
       ) : null}
 
       {state.kind === 'used' ? (
-        <div>
-          <h1 className="text-title font-bold text-foreground">
-            {t('auth.password_reset.used_title')}
-          </h1>
-          <p className="mt-2 text-small text-muted-foreground">
-            {t('auth.password_reset.used_description')}
-          </p>
-          <Link
-            href="/password-reset"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-small font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-          >
-            {t('auth.password_reset.request_new_link')}
-          </Link>
-        </div>
+        <LinkProblemView
+          titleKey="auth.password_reset.used_title"
+          descriptionKey="auth.password_reset.used_description"
+        />
       ) : null}
 
       {state.kind === 'error' ? (

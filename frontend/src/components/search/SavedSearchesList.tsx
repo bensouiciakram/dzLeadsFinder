@@ -4,16 +4,9 @@ import { MoreVerticalIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
+import { SavedSearchDeleteDialog } from '@/components/search/SavedSearchDeleteDialog'
 import { SavedSearchNameDialog } from '@/components/search/SavedSearchNameDialog'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,11 +44,10 @@ export function SavedSearchesList({
   const t = useTranslations()
   const { user } = useSession()
   const { savedSearches, phase, refetch } = useSavedSearches({ user })
-  const { create, rename, remove } = useSavedSearchMutations()
+  const { create, rename } = useSavedSearchMutations()
   const [createOpen, setCreateOpen] = useState(false)
   const [renameRow, setRenameRow] = useState<SavedSearchRow | null>(null)
   const [deleteRow, setDeleteRow] = useState<SavedSearchRow | null>(null)
-  const [deleteError, setDeleteError] = useState(false)
 
   const tier = user?.tier ?? 'free'
   const cap = CAPS[tier] ?? CAPS.free
@@ -72,17 +64,6 @@ export function SavedSearchesList({
   const handleRename = async (name: string) => {
     if (renameRow === null) return
     await rename.mutateAsync({ id: renameRow.id, name })
-  }
-
-  const handleDelete = async () => {
-    if (deleteRow === null) return
-    setDeleteError(false)
-    try {
-      await remove.mutateAsync(deleteRow.id)
-      setDeleteRow(null)
-    } catch {
-      setDeleteError(true)
-    }
   }
 
   const saveButton = (
@@ -199,31 +180,7 @@ export function SavedSearchesList({
         onSubmit={handleRename}
       />
 
-      <Dialog open={deleteRow !== null} onOpenChange={(next) => !next && setDeleteRow(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('search.saved.delete_confirm')}</DialogTitle>
-            <DialogDescription>{deleteRow?.name}</DialogDescription>
-          </DialogHeader>
-          {deleteError && (
-            <p role="alert" className="text-small text-destructive">
-              {t('common.states.error')}
-            </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteRow(null)} disabled={remove.isPending}>
-              {t('common.actions.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleDelete()}
-              disabled={remove.isPending}
-            >
-              {remove.isPending ? t('common.states.loading') : t('common.actions.delete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SavedSearchDeleteDialog row={deleteRow} onClose={() => setDeleteRow(null)} />
     </section>
   )
 }
