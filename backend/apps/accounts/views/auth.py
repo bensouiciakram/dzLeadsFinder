@@ -42,7 +42,7 @@ FREE_SIGNUP_CREDITS: int = 15
 
 
 def _account_blocked(user: Any) -> bool:
-    return user.deleted_at is not None or user.deletion_scheduled_at is not None
+    return bool(user.is_frozen)
 
 
 def _in_deletion_grace(user: Any) -> bool:
@@ -229,7 +229,7 @@ class VerifyEmailView(APIView):
                     {'detail': 'Invalid verification link', 'code': 'token_not_found'},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            if user.deleted_at is not None or user.deletion_scheduled_at is not None:
+            if user.is_frozen:
                 return Response(
                     {'detail': 'Invalid verification link', 'code': 'token_not_found'},
                     status=status.HTTP_404_NOT_FOUND,

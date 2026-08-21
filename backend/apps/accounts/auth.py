@@ -16,7 +16,7 @@ def validate_user_token(user: Any, token: Token) -> None:
         raise AuthenticationFailed('Token has been invalidated', code='token_not_valid')
     if not user.is_active:
         raise AuthenticationFailed('Account is inactive', code='account_inactive')
-    if user.deleted_at is not None or user.deletion_scheduled_at is not None:
+    if user.is_frozen:
         raise AuthenticationFailed('Account has been deleted', code='account_deleted')
     if user.last_active_at <= timezone.now() - timedelta(days=30):
         raise AuthenticationFailed('Session expired due to inactivity', code='session_expired')
@@ -53,12 +53,18 @@ class CookieJWTAuthentication(JWTAuthentication):
         return user, validated_token
 
 
+def _apply_version_claims(token: Token, user: Any) -> None:
+    """The shared JWT claims: the token_version (password-change invalidation)
+    and a fresh jti. Both token classes would drift if spelled twice."""
+    token['token_version'] = user.token_version
+    token['jti'] = str(uuid4())
+
+
 class TokenWithVersionAccessToken(AccessToken):
     @classmethod
     def for_user(cls, user: Any) -> 'TokenWithVersionAccessToken':
         token = super().for_user(user)
-        token['token_version'] = user.token_version
-        token['jti'] = str(uuid4())
+        _apply_version_claims(token, user)
         return token
 
 
@@ -66,6 +72,5 @@ class TokenWithVersionRefreshToken(RefreshToken):
     @classmethod
     def for_user(cls, user: Any) -> 'TokenWithVersionRefreshToken':
         token = cast(TokenWithVersionRefreshToken, super().for_user(user))
-        token['token_version'] = user.token_version
-        token['jti'] = str(uuid4())
+        _apply_version_claims(token, user)
         return token

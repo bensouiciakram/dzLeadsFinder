@@ -96,6 +96,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         locale = str(self.locale)
         return locale if locale in dict(LOCALE_CHOICES) else 'en'
 
+    @property
+    def is_frozen(self) -> bool:
+        """Deleted or scheduled-for-deletion — the account must not
+        authenticate or receive new tokens (the single frozen predicate the
+        JWT validator, the auth views and the settings views share)."""
+        return self.deleted_at is not None or self.deletion_scheduled_at is not None
+
     def __str__(self) -> str:
         return str(self.email)
 

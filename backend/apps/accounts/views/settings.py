@@ -55,7 +55,7 @@ def _frozen_user_from_cookie(request: Request) -> Tuple[Any, Optional[Response]]
 
 
 def _is_frozen(user: Any) -> bool:
-    return user.deleted_at is not None or user.deletion_scheduled_at is not None
+    return bool(user.is_frozen)
 
 
 def _days_left(deletion_scheduled_at: Any) -> int:
