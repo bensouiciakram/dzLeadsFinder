@@ -173,94 +173,12 @@ def send_payment_receipt(txn_id: str) -> None:
     """Send the localized payment receipt after a successful subscription
     payment (5.3 — replaces the 1.8 stub).
 
-    Django imports are deferred to runtime: config/celery.py imports this
-    module before the app registry is ready. The subject is localized per
-    ``user.effective_locale`` and differentiated creation vs renewal; the
-    body renders via the Next.js render route (PaymentReceipt component —
-    locale + isRenewal props). ``date`` is the raw ISO local date of the
-    transaction; the template owns localized formatting (AD-8).
-
-    5.4 review RP2/RP4: the ``receipt_sent_at`` marker is the dedupe key and
-    is set BEFORE the send under the row lock (a concurrent sweep run sees
-    the marker and skips — no double-send under queue backlog); a failing
-    send CLEARS the marker before re-raising so the autoretry (and the
-    resend sweep) can rescue the row. Terminal skips (anonymised/deleted
-    user) SET the marker — the sweep stops re-enqueueing rows that can
-    never receive a receipt (the 5.3 P5 lesson, extended to receipts).
+    Subject is localized per ``user.effective_locale`` and differentiated
+    creation vs renewal; the body renders via the Next.js render route
+    (PaymentReceipt component — locale + isRenewal props). Delegates to the
+    shared ``_send_receipt`` pipeline (marker semantics, terminal settles).
     """
-    from django.conf import settings
-    from django.contrib.auth import get_user_model
-    from django.core.exceptions import ValidationError
-    from django.core.mail import EmailMultiAlternatives
-    from django.db import transaction
-    from django.utils import timezone
-
-    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
-
-    with transaction.atomic():
-        try:
-            row = PaymentTransaction.objects.select_for_update().get(pk=txn_id)
-        except (PaymentTransaction.DoesNotExist, ValueError, TypeError, ValidationError):
-            logger.warning('send_payment_receipt: transaction %s not found', txn_id)
-            return
-        if row.status != PaymentStatus.SUCCEEDED:
-            # A refunded/failed row must never get a receipt (review RP7 —
-            # latent until the 5.5 refunded path; the guard is the contract).
-            logger.warning(
-                'send_payment_receipt: transaction %s status=%s — no receipt',
-                txn_id,
-                row.status,
-            )
-            return
-        if row.receipt_sent_at is not None:
-            logger.info(
-                'send_payment_receipt: transaction %s already receipted — skip',
-                txn_id,
-            )
-            return
-        if row.user_id is None:
-            _settle_receipt(row, 'anonymised user — receipt terminal')
-            return
-        user = get_user_model().objects.filter(pk=row.user_id).first()
-        if user is None:
-            _settle_receipt(row, 'user deleted — receipt terminal')
-            return
-        # Marker BEFORE send (5.4 review RP2 — reverses the D20 after-send
-        # deviation; Winston's original ruling): a concurrent sweep run
-        # serializes on the row lock and skips on the marker — no duplicates
-        # under queue backlog. Cleared on failure below.
-        _set_receipt_marker(row)
-
-    is_renewal = row.type == PaymentType.SUBSCRIPTION_RENEWAL
-    locale = user.effective_locale
-    variant = 'renewal' if is_renewal else 'creation'
-    subject = PAYMENT_RECEIPT_SUBJECTS[locale][variant]
-    try:
-        html, plain_text = render_email(
-            'payment_receipt',
-            locale,
-            {
-                'amount': row.amount_dzd,
-                'currency': 'DZD',
-                'creditsGranted': row.credits_granted or 0,
-                'date': timezone.localdate(row.created_at).isoformat(),
-                'isRenewal': is_renewal,
-            },
-        )
-        message = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_text or html,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.email],
-        )
-        if plain_text:
-            message.attach_alternative(html, 'text/html')
-        else:
-            message.content_subtype = 'html'
-        message.send()
-    except Exception:
-        _clear_receipt_marker(row)
-        raise
+    _send_receipt(txn_id, pack=False, task='send_payment_receipt')
 
 
 # The credit count in the subject is DERIVED from PACK_PRICES (the single
@@ -302,13 +220,49 @@ def send_pack_receipt(txn_id: str) -> None:
     The 1.8-era stub becomes the real implementation. Subject per locale and
     per pack amount (latn numerals — the 5.3 subject precedent); the body
     renders via the Next.js render route (PaymentReceipt — isPack prop,
-    packNote copy, Western numerals per AD-8).
+    packNote copy, Western numerals per AD-8). Delegates to the shared
+    ``_send_receipt`` pipeline with the pack type gate.
+    """
+    _send_receipt(txn_id, pack=True, task='send_pack_receipt')
 
-    Marker semantics (5.4 review RP2/RP4 — same as send_payment_receipt):
-    ``receipt_sent_at`` set BEFORE the send under the row lock (dedupe vs
-    concurrent sweep runs), cleared on a failing send (autoretry + sweep can
-    rescue), and set terminally on unreceiptable rows (wrong type, anonymised
-    or deleted user) so the sweep stops re-enqueueing them.
+
+def _pack_subject(row: Any, locale: str) -> str:
+    subject = PACK_RECEIPT_SUBJECTS.get(locale, PACK_RECEIPT_SUBJECTS['en']).get(
+        row.amount_dzd
+    )
+    if subject is None:
+        # The old fallback borrowed the 500-pack subject — a lying subject on
+        # a payment email. An off-table amount now gets an amount-free
+        # subject and a loud error; the body still shows the true credits.
+        logger.error(
+            'send_pack_receipt: amount %s not in PACK_PRICES — using generic '
+            'subject (pricing table drift?)',
+            row.amount_dzd,
+        )
+        subject = GENERIC_PACK_RECEIPT_SUBJECTS.get(
+            locale, GENERIC_PACK_RECEIPT_SUBJECTS['en']
+        )
+    return subject
+
+
+def _send_receipt(txn_id: str, *, pack: bool, task: str) -> None:
+    """The shared receipt pipeline behind both Celery tasks.
+
+    Django imports are deferred to runtime: config/celery.py imports this
+    module before the app registry is ready.
+
+    Marker semantics (5.4 review RP2/RP4): the ``receipt_sent_at`` marker is
+    the dedupe key and is set BEFORE the send under the row lock (a
+    concurrent sweep run sees the marker and skips — no double-send under
+    queue backlog); a failing send CLEARS the marker before re-raising so
+    the autoretry (and the resend sweep) can rescue the row. Terminal skips
+    (wrong type for the variant, anonymised/deleted user) SET the marker —
+    the sweep stops re-enqueueing rows that can never receive a receipt
+    (the 5.3 P5 lesson, extended to receipts).
+
+    Review RP7: a refunded/failed row must never get a receipt — the status
+    guard is the contract. ``date`` is the raw ISO local date of the
+    transaction; the template owns localized formatting (AD-8).
     """
     from django.conf import settings
     from django.contrib.auth import get_user_model
@@ -323,22 +277,17 @@ def send_pack_receipt(txn_id: str) -> None:
         try:
             row = PaymentTransaction.objects.select_for_update().get(pk=txn_id)
         except (PaymentTransaction.DoesNotExist, ValueError, TypeError, ValidationError):
-            logger.warning('send_pack_receipt: transaction %s not found', txn_id)
+            logger.warning('%s: transaction %s not found', task, txn_id)
             return
         if row.status != PaymentStatus.SUCCEEDED:
             logger.warning(
-                'send_pack_receipt: transaction %s status=%s — no receipt',
-                txn_id,
-                row.status,
+                '%s: transaction %s status=%s — no receipt', task, txn_id, row.status
             )
             return
         if row.receipt_sent_at is not None:
-            logger.info(
-                'send_pack_receipt: transaction %s already receipted — skip',
-                txn_id,
-            )
+            logger.info('%s: transaction %s already receipted — skip', task, txn_id)
             return
-        if row.type != PaymentType.PACK_PURCHASE:
+        if pack and row.type != PaymentType.PACK_PURCHASE:
             _settle_receipt(row, f'type {row.type} is not a pack purchase')
             return
         if row.user_id is None:
@@ -348,34 +297,28 @@ def send_pack_receipt(txn_id: str) -> None:
         if user is None:
             _settle_receipt(row, 'user deleted — receipt terminal')
             return
+        # Marker BEFORE send (5.4 review RP2 — reverses the D20 after-send
+        # deviation; Winston's original ruling): a concurrent sweep run
+        # serializes on the row lock and skips on the marker — no duplicates
+        # under queue backlog. Cleared on failure below.
         _set_receipt_marker(row)
 
     locale = user.effective_locale
-    subject = PACK_RECEIPT_SUBJECTS.get(locale, PACK_RECEIPT_SUBJECTS['en']).get(row.amount_dzd)
-    if subject is None:
-        # The old fallback borrowed the 500-pack subject — a lying subject on
-        # a payment email. An off-table amount now gets an amount-free
-        # subject and a loud error; the body still shows the true credits.
-        logger.error(
-            'send_pack_receipt: amount %s not in PACK_PRICES — using generic '
-            'subject (pricing table drift?)',
-            row.amount_dzd,
-        )
-        subject = GENERIC_PACK_RECEIPT_SUBJECTS.get(
-            locale, GENERIC_PACK_RECEIPT_SUBJECTS['en']
-        )
+    context: Dict[str, Any] = {
+        'amount': row.amount_dzd,
+        'currency': 'DZD',
+        'creditsGranted': row.credits_granted or 0,
+        'date': timezone.localdate(row.created_at).isoformat(),
+    }
+    if pack:
+        context['isPack'] = True
+        subject = _pack_subject(row, locale)
+    else:
+        is_renewal = row.type == PaymentType.SUBSCRIPTION_RENEWAL
+        context['isRenewal'] = is_renewal
+        subject = PAYMENT_RECEIPT_SUBJECTS[locale]['renewal' if is_renewal else 'creation']
     try:
-        html, plain_text = render_email(
-            'payment_receipt',
-            locale,
-            {
-                'amount': row.amount_dzd,
-                'currency': 'DZD',
-                'creditsGranted': row.credits_granted or 0,
-                'date': timezone.localdate(row.created_at).isoformat(),
-                'isPack': True,
-            },
-        )
+        html, plain_text = render_email('payment_receipt', locale, context)
         message = EmailMultiAlternatives(
             subject=subject,
             body=plain_text or html,
