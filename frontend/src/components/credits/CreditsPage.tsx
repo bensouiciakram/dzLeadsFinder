@@ -1,39 +1,25 @@
 'use client'
 
 import Link from 'next/link'
-import { useLocale, useTranslations } from 'next-intl'
-import { ChevronLeftIcon, ChevronRightIcon, Download } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { Download } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { LedgerTable } from '@/components/credits/LedgerTable'
 import { useSession } from '@/components/providers/SessionProvider'
+import { PaginationNav } from '@/components/ui/PaginationNav'
 import { useCreditsLedger } from '@/hooks/useCreditsLedger'
 import { buildCreditsCsv, downloadCreditsCsv, type CreditsCsvLabels } from '@/lib/credits/csv'
-import { creditsService, type LedgerRow } from '@/lib/api/credits-service'
+import { collectAllLedgerRows, LEDGER_PAGE_SIZE } from '@/lib/credits/ledger-export'
+import { creditsService } from '@/lib/api/credits-service'
 import { Button } from '@/components/ui/button'
 
-const PAGE_SIZE = 50
-
 function totalPages(total: number): number {
-  return Math.max(1, Math.ceil(total / PAGE_SIZE))
-}
-
-function formatTimestamp(value: string, locale: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  try {
-    // '-u-nu-latn' forces Western numerals in every locale (FR-15/AD-8).
-    return new Intl.DateTimeFormat(locale + '-u-nu-latn', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(date)
-  } catch {
-    return value
-  }
+  return Math.max(1, Math.ceil(total / LEDGER_PAGE_SIZE))
 }
 
 export function CreditsPage() {
   const t = useTranslations()
-  const locale = useLocale()
   const { user } = useSession()
   const [page, setPage] = useState(1)
   const [exporting, setExporting] = useState(false)
@@ -77,38 +63,14 @@ export function CreditsPage() {
     setExporting(true)
     setExportError(false)
     try {
-      // Completeness: the CSV covers the FULL 90-day window, so every page
-      // is fetched on demand (never on mount — NFR-1 headroom).
-      const allRows: LedgerRow[] = []
-      const seen = new Set<string>()
-      let lastTotal = 0
-      for (let currentPage = 1; ; currentPage += 1) {
-        const result = await creditsService.ledger(currentPage)
-        lastTotal = result.total
-        for (const row of result.results) {
-          // Offset-pagination drift: a grant/reveal landing between page
-          // fetches shifts offsets, so a row can appear on two pages.
-          // Dedupe by id — the window export must contain each row once.
-          if (!seen.has(row.id)) {
-            seen.add(row.id)
-            allRows.push(row)
-          }
-        }
-        if (
-          result.results.length === 0 ||
-          result.results.length < PAGE_SIZE ||
-          allRows.length >= result.total
-        ) {
-          break
-        }
-      }
-      if (allRows.length < lastTotal) {
-        // The ledger shrank mid-export (rows rolled out of the 90-day
-        // window) — export what was collected rather than a partial loop.
+      const collection = await collectAllLedgerRows((currentPage) =>
+        creditsService.ledger(currentPage),
+      )
+      if (!collection.ok) {
         setExportError(true)
         return
       }
-      downloadCreditsCsv(buildCreditsCsv(allRows, csvLabels), 'credits-90-days.csv')
+      downloadCreditsCsv(buildCreditsCsv(collection.rows, csvLabels), 'credits-90-days.csv')
     } catch {
       setExportError(true)
     } finally {
@@ -192,88 +154,20 @@ export function CreditsPage() {
 
       {phase === 'success' && rows.length > 0 && (
         <div className="mt-6 overflow-x-auto">
-          {/* table-fixed + explicit widths: auto layout stretches the columns
-              proportionally and the /credits cells carry no horizontal padding,
-              so compressed columns run together ("Balance afterReference" —
-              deferred-work manual-testing finding). */}
-          <table data-testid="ledger-table" className="w-full min-w-[640px] table-fixed border-collapse text-small">
-            <thead>
-              <tr className="text-small font-semibold text-muted-foreground">
-                <th scope="col" className="w-[30%] border-b border-border px-3 py-3 text-start font-semibold">
-                  {t('common.credits.column_type')}
-                </th>
-                <th scope="col" className="w-[12%] border-b border-border px-3 py-3 text-end font-semibold">
-                  {t('common.credits.column_amount')}
-                </th>
-                <th scope="col" className="w-[22%] border-b border-border px-3 py-3 text-start font-semibold">
-                  {t('common.credits.column_date')}
-                </th>
-                <th scope="col" className="w-[14%] border-b border-border px-3 py-3 text-end font-semibold">
-                  {t('common.credits.column_balance_after')}
-                </th>
-                <th scope="col" className="w-[22%] border-b border-border px-3 py-3 text-start font-semibold">
-                  {t('common.credits.column_reference')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-b border-border hover:bg-muted">
-                  <td className="px-3 py-3 text-start">
-                    {csvLabels.types[row.event_type] ?? row.event_type}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums">
-                    {row.amount > 0 ? `+${row.amount}` : String(row.amount)}
-                  </td>
-                  <td className="px-3 py-3 text-start">
-                    <bdi className="tabular-nums">{formatTimestamp(row.created_at, locale)}</bdi>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-end tabular-nums">
-                    {String(row.balance_after)}
-                  </td>
-                  <td
-                    className="truncate px-3 py-3 text-start font-mono text-caption text-muted-foreground"
-                    title={row.reference_id ?? undefined}
-                  >
-                    {row.reference_id ?? '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {total > PAGE_SIZE && (
-            <nav
-              aria-label={t('common.credits.pagination', {
+          <LedgerTable rows={rows} typeLabels={csvLabels.types} />
+          {total > LEDGER_PAGE_SIZE && (
+            <PaginationNav
+              page={page}
+              pageCount={totalPages(total)}
+              onPage={setPage}
+              formatLabel={(current, pages) =>
+                t('common.credits.pagination', { current: String(current), total: String(pages) })
+              }
+              ariaLabel={t('common.credits.pagination', {
                 current: String(page),
                 total: String(totalPages(total)),
               })}
-              className="mt-4 flex items-center justify-center gap-2"
-            >
-              <Button
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => current - 1)}
-                className="min-h-11 md:h-8"
-              >
-                <ChevronLeftIcon className="size-4 rtl:rotate-180" />
-                {t('search.results.previous')}
-              </Button>
-              <span aria-current="page" className="text-small text-muted-foreground tabular-nums">
-                {t('common.credits.pagination', {
-                  current: String(page),
-                  total: String(totalPages(total)),
-                })}
-              </span>
-              <Button
-                variant="outline"
-                disabled={page >= totalPages(total)}
-                onClick={() => setPage((current) => current + 1)}
-                className="min-h-11 md:h-8"
-              >
-                {t('common.actions.next')}
-                <ChevronRightIcon className="size-4 rtl:rotate-180" />
-              </Button>
-            </nav>
+            />
           )}
         </div>
       )}
