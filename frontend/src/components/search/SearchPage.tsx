@@ -1,52 +1,30 @@
 'use client'
 
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeftIcon, ChevronRightIcon, SlidersHorizontalIcon } from 'lucide-react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { ActiveFilterChips, type ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { ChecklistCard } from '@/components/search/ChecklistCard'
 import { CreditsWelcomeBanner } from '@/components/search/CreditsWelcomeBanner'
-import { ExportToolbar } from '@/components/search/ExportToolbar'
 import { FilterSidebar } from '@/components/search/FilterSidebar'
+import { columnLabelKey } from '@/components/search/ResultsTable'
+import type { SortState } from '@/lib/search/search-params'
 import { useSession } from '@/components/providers/SessionProvider'
-import {
-  ResultsTable,
-  columnLabelKey,
-  type SortState,
-} from '@/components/search/ResultsTable'
-import { ResultsTableStackedRow } from '@/components/search/ResultsTableStackedRow'
-import {
-  SavedSearchesList,
-  type SavedSearchSnapshot,
-} from '@/components/search/SavedSearchesList'
+import { SavedSearchesList } from '@/components/search/SavedSearchesList'
+import { SearchResultsArea } from '@/components/search/SearchResultsArea'
+import { SearchTabNav } from '@/components/search/SearchTabNav'
 import { WilayaCombobox } from '@/components/search/WilayaCombobox'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useSearchResults } from '@/hooks/useSearchResults'
-import { useSearchForm } from '@/hooks/useSearchForm'
-import {
-  buildFiltersPayload,
-  filtersPayloadToStaged,
-  SEARCH_MAX_NAVIGABLE_PAGES,
-  SEARCH_PAGE_SIZE,
-  type CompanyResultRow,
-  type PeopleResultRow,
-  type SearchTab,
-  type StagedFilters,
-} from '@/lib/api/search-service'
-import type { SavedSearchRow, SavedSearchSort } from '@/lib/api/saved-search-service'
-import { savedTypeToTab, tabToSavedType } from '@/lib/api/saved-search-service'
-import type { ChecklistStep } from '@/lib/api/checklist-service'
-import { checklistKeys } from '@/lib/queryKeys/checklist'
+import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
+import { activeSearchSnapshot, savedSearchRerun } from '@/lib/search/saved-search-mapping'
+import { totalPages } from '@/lib/search/pagination'
 import { useChecklist } from '@/hooks/useChecklist'
-import { SORT_FIELDS } from '@/lib/search/search-params'
-
-const PAGE_SIZE = SEARCH_PAGE_SIZE
-const MAX_NAVIGABLE_PAGES = SEARCH_MAX_NAVIGABLE_PAGES
-const SKELETON_CARDS = 3
+import { useChecklistStepAnnouncement } from '@/hooks/useChecklistStepAnnouncement'
+import { useSearchAnnouncements } from '@/hooks/useSearchAnnouncements'
+import { useSearchForm } from '@/hooks/useSearchForm'
+import { useSearchResults } from '@/hooks/useSearchResults'
+import type { SearchTab, StagedFilters } from '@/lib/api/search-service'
+import type { SavedSearchRow } from '@/lib/api/saved-search-service'
+import type { ChecklistStep } from '@/lib/api/checklist-service'
 
 type SearchPageProps = {
   tab: SearchTab
@@ -66,14 +44,13 @@ export function SearchPage({ tab }: SearchPageProps) {
     removeChip,
     clearAll,
   } = useSearchForm({ tab })
-  const [announcement, setAnnouncement] = useState<string | null>(null)
   const [wilayas, setWilayas] = useState<number[]>([])
   const [wilayaQuery, setWilayaQuery] = useState('')
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const savedTargetRef = useRef<string | null>(null)
 
-  const onSuccess = useCallback((filters: StagedFilters) => {
+  const onSuccess = (filters: StagedFilters) => {
     // The active indicator tracks the LAST RE-RUN only: a success without a
     // pending target clears the highlight (the results no longer match the
     // row — e.g. after a manual Apply or sort change); a failed re-run
@@ -81,7 +58,7 @@ export function SearchPage({ tab }: SearchPageProps) {
     // can never mark the wrong row.
     setActiveSavedId(savedTargetRef.current)
     savedTargetRef.current = null
-  }, [])
+  }
 
   const { query, phase, rateLimitMessage, beginSearch, nonce } = useSearchResults({
     tab,
@@ -89,70 +66,23 @@ export function SearchPage({ tab }: SearchPageProps) {
     onSuccess,
   })
 
+  const { announcement, announce, announceOnce, clear: clearAnnouncement } =
+    useSearchAnnouncements({ isError: query.isError })
+  useChecklistStepAnnouncement({
+    state: checklist.state,
+    searchSuccess: query.isSuccess,
+    announce,
+  })
+
   useEffect(() => {
     if (query.isError) savedTargetRef.current = null
   }, [query.isError])
 
-  const activeSearch: SavedSearchSnapshot | null = useMemo(() => {
-    if (submitted === null) return null
-    let filters: Record<string, unknown>
-    try {
-      filters = JSON.parse(submitted.filtersJson) as Record<string, unknown>
-    } catch {
-      return null
-    }
-    // The snapshot is the search that was actually executed (the submitted
-    // payload + sort param), never a mix of staged state — a save captures
-    // exactly what produced the visible results (D6).
-    const [field, dir] = submitted.sort.split(':')
-    const sortState: SavedSearchSort | null =
-      submitted.sort === 'name:asc'
-        ? null
-        : dir === 'asc' || dir === 'desc'
-          ? { field, dir }
-          : null
-    return {
-      type: tabToSavedType(tab),
-      filters,
-      sort: sortState,
-    }
-  }, [submitted, tab])
+  const activeSearch = useMemo(
+    () => (submitted === null ? null : activeSearchSnapshot(submitted, tab)),
+    [submitted, tab],
+  )
 
-  useEffect(() => {
-    if (query.isError) setAnnouncement(null)
-  }, [query.isError])
-
-  // Step-1 completion announcement. Two complementary mechanisms:
-  // (a) the card's step-flip effect fires onStepComplete when the refetched
-  // state flips mid-session (the normal path — the pre-flip state was seeded
-  // on the mount fetch);
-  // (b) if the mount checklist fetch FAILED, the card has no pre-flip state
-  // to diff against — its first success seeds silently and no flip is
-  // detected. In that case the checklist had no data at search-success time,
-  // so THIS effect takes over and announces once the refetch lands with
-  // step_search true. Both paths can never double-announce: (b) is armed
-  // only when the checklist data was never seen.
-  const checklistDataSeenRef = useRef(false)
-  if (checklist.state !== null) checklistDataSeenRef.current = true
-  const step1PendingRef = useRef(false)
-
-  useEffect(() => {
-    if (query.isSuccess) {
-      if (!checklistDataSeenRef.current) step1PendingRef.current = true
-      void queryClient.invalidateQueries({ queryKey: checklistKeys.all })
-    }
-  }, [query.isSuccess, queryClient])
-
-  useEffect(() => {
-    if (!step1PendingRef.current) return
-    if (checklist.state?.step_search !== true) return
-    step1PendingRef.current = false
-    setAnnouncement(t('search.checklist.done_search'))
-  }, [checklist.state, t])
-
-  // Step announcements never clobber a fresher announcement from the user's
-  // own action (sort/page land inside the flip window on the first search):
-  // the user-action feedback wins, the step flip stays visible on the card.
   const handleChecklistStepComplete = (step: ChecklistStep) => {
     const announcementKey =
       step === 'search'
@@ -160,7 +90,7 @@ export function SearchPage({ tab }: SearchPageProps) {
         : step === 'reveal'
           ? 'search.checklist.done_reveal'
           : 'search.checklist.done_export'
-    setAnnouncement((current) => (current === null ? t(announcementKey) : current))
+    announceOnce(t(announcementKey))
   }
 
   // Every user search action: cancel any in-flight query, bump the submit
@@ -168,7 +98,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   // let the URL push drive the committed state.
   const startSearch = () => {
     beginSearch()
-    setAnnouncement(null)
+    clearAnnouncement()
   }
 
   const handleApply = () => {
@@ -180,16 +110,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   }
 
   const handleRerun = (row: SavedSearchRow) => {
-    const rowTab: SearchTab = savedTypeToTab(row.type)
-    const staged = filtersPayloadToStaged(row.filters, rowTab)
-    const sortField = SORT_FIELDS.includes(row.sort?.field as (typeof SORT_FIELDS)[number])
-      ? (row.sort?.field as (typeof SORT_FIELDS)[number])
-      : null
-    const sortDir = row.sort?.dir
-    const nextSort: SortState | null =
-      sortField !== null && (sortDir === 'asc' || sortDir === 'desc')
-        ? { field: sortField, dir: sortDir }
-        : null
+    const { staged, nextSort } = savedSearchRerun(row)
     savedTargetRef.current = row.id
     setWilayas(staged.wilayas)
     setWilayaQuery('')
@@ -207,14 +128,14 @@ export function SearchPage({ tab }: SearchPageProps) {
           ? 'search.results.sort_asc'
           : 'search.results.sort_desc'
     const columnKey = next.dir === null ? columnLabelKey('name') : columnLabelKey(next.field)
-    setAnnouncement(t(announcementKey, { column: t(columnKey) }))
+    announce(t(announcementKey, { column: t(columnKey) }))
     commit(submitted.filters, next)
   }
 
   const handlePage = (next: number) => {
     if (submitted === null || query.data === undefined) return
     startSearch()
-    setAnnouncement(
+    announce(
       t('search.results.pagination', {
         current: String(next),
         total: String(totalPages(query.data.total)),
@@ -230,7 +151,7 @@ export function SearchPage({ tab }: SearchPageProps) {
   const handleClearAll = () => {
     setWilayas([])
     setWilayaQuery('')
-    setAnnouncement(null)
+    clearAnnouncement()
     setActiveSavedId(null)
     savedTargetRef.current = null
     clearAll()
@@ -242,11 +163,6 @@ export function SearchPage({ tab }: SearchPageProps) {
       setWilayas((current) => current.filter((code) => code !== value))
     }
   }
-
-  const rows =
-    tab === 'people'
-      ? ((query.data?.results ?? []) as PeopleResultRow[])
-      : ((query.data?.results ?? []) as CompanyResultRow[])
 
   return (
     <div className="mx-auto flex max-w-content-max-app flex-col md:flex-row">
@@ -287,40 +203,11 @@ export function SearchPage({ tab }: SearchPageProps) {
       />
       <main className="min-w-0 grow px-gutter py-6 md:px-gutter-desktop">
         <h1 className="sr-only">{t('search.title')}</h1>
-        <nav aria-label={t('common.nav.search')} className="flex gap-2">
-          <Link
-            href="/search"
-            aria-current={tab === 'people' ? 'page' : undefined}
-            className={
-              tab === 'people'
-                ? 'inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-small font-medium text-primary-foreground md:min-h-8'
-                : 'inline-flex min-h-11 items-center rounded-md px-4 text-small font-medium text-muted-foreground hover:text-foreground md:min-h-8'
-            }
-          >
-            {t('search.people_tab')}
-          </Link>
-          <Link
-            href="/search/companies"
-            aria-current={tab === 'companies' ? 'page' : undefined}
-            className={
-              tab === 'companies'
-                ? 'inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-small font-medium text-primary-foreground md:min-h-8'
-                : 'inline-flex min-h-11 items-center rounded-md px-4 text-small font-medium text-muted-foreground hover:text-foreground md:min-h-8'
-            }
-          >
-            {t('search.companies_tab')}
-          </Link>
-          {!sidebarOpen && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="hidden min-h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-small font-medium text-foreground hover:bg-muted md:inline-flex"
-            >
-              <SlidersHorizontalIcon className="size-4" />
-              {t('search.filters.title')}
-            </button>
-          )}
-        </nav>
+        <SearchTabNav
+          tab={tab}
+          sidebarOpen={sidebarOpen}
+          onReopenSidebar={() => setSidebarOpen(true)}
+        />
 
         <section id="results" data-testid="results" className="mt-6">
           <CreditsWelcomeBanner />
@@ -333,137 +220,26 @@ export function SearchPage({ tab }: SearchPageProps) {
           )}
 
           {submitted !== null && (
-            <div aria-busy={phase === 'loading'} data-testid="results-area">
-              <div aria-live="polite" data-testid="results-status">
-                {phase === 'loading' && (
-                  <p className="text-small text-muted-foreground">{t('common.states.loading')}</p>
-                )}
-                {phase === 'error' && (
-                  <div role="alert" className="rounded-lg border border-border bg-card p-6">
-                    <p className="text-small">{t('common.states.error')}</p>
-                    <Button variant="outline" className="mt-3" onClick={handleRetry}>
-                      {t('search.results.retry')}
-                    </Button>
-                  </div>
-                )}
-                {phase === 'rate_limited' && (
-                  <p className="text-small text-destructive">
-                    {rateLimitMessage ?? t('search.results.rate_limited')}
-                  </p>
-                )}
-                {phase === 'idle' && query.data !== undefined && (
-                  <>
-                    <p className="text-small text-muted-foreground tabular-nums">
-                      {query.data.total > 0
-                        ? t('search.results.count', { count: String(query.data.total) })
-                        : t('search.results.empty')}
-                    </p>
-                    {query.data.truncated && (
-                      <p className="mt-1 text-caption text-muted-foreground">
-                        {t('search.results.truncated')}
-                      </p>
-                    )}
-                    {announcement !== null && (
-                      <span className="sr-only" role="status">
-                        {announcement}
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {phase === 'loading' && (
-                <div className="mt-4">
-                  <ResultsTable tab={tab} rows={[]} sort={sort} onSortChange={handleSortChange} skeleton />
-                  <div className="flex flex-col gap-3 md:hidden">
-                    {Array.from({ length: SKELETON_CARDS }, (_, index) => (
-                      <div
-                        key={`skeleton-card-${index}`}
-                        data-testid="skeleton-card"
-                        aria-hidden="true"
-                        className="rounded-lg border border-border bg-card p-gutter"
-                      >
-                        <Skeleton className="h-5 w-2/3" />
-                        <Skeleton className="mt-2 h-4 w-full" />
-                        <Skeleton className="mt-2 h-4 w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {phase === 'idle' && query.data !== undefined && query.data.total === 0 && (
-                <div className="mt-4">
-                  <Button variant="outline" className="min-h-11 md:h-8" onClick={handleClearAll}>
-                    {t('search.results.clear_all')}
-                  </Button>
-                </div>
-              )}
-
-              {phase === 'idle' && query.data !== undefined && query.data.total > 0 && (
-                <div className="mt-4">
-                  <ExportToolbar
-                    tab={tab}
-                    submitted={submitted}
-                    nonce={nonce}
-                    total={query.data.total}
-                    isFetching={query.isFetching}
-                    tier={user?.tier === 'starter' ? 'starter' : 'free'}
-                  />
-                  {submitted !== null && (
-                    <ActiveFilterChips filters={submitted.filters} onRemove={handleChipRemove} />
-                  )}
-                  <div data-testid="results-slot" className="mt-4">
-                    <ResultsTable tab={tab} rows={rows} sort={sort} onSortChange={handleSortChange} />
-                    <ResultsTableStackedRow tab={tab} rows={rows} />
-                  </div>
-                  {query.data.total > PAGE_SIZE && (
-                    <nav
-                      aria-label={t('search.results.pagination', {
-                        current: String(query.data.page),
-                        total: String(totalPages(query.data.total)),
-                      })}
-                      className="mt-4 flex items-center justify-center gap-2"
-                    >
-                      <Button
-                        variant="outline"
-                        disabled={query.data.page <= 1}
-                        onClick={() => handlePage(query.data.page - 1)}
-                        className="min-h-11 md:h-8"
-                      >
-                        <ChevronLeftIcon className="size-4 rtl:rotate-180" />
-                        {t('search.results.previous')}
-                      </Button>
-                      <span
-                        aria-current="page"
-                        className="text-small text-muted-foreground tabular-nums"
-                      >
-                        {t('search.results.pagination', {
-                          current: String(query.data.page),
-                          total: String(totalPages(query.data.total)),
-                        })}
-                      </span>
-                      <Button
-                        variant="outline"
-                        disabled={query.data.page >= totalPages(query.data.total)}
-                        onClick={() => handlePage(query.data.page + 1)}
-                        className="min-h-11 md:h-8"
-                      >
-                        {t('common.actions.next')}
-                        <ChevronRightIcon className="size-4 rtl:rotate-180" />
-                      </Button>
-                    </nav>
-                  )}
-                </div>
-              )}
-            </div>
+            <SearchResultsArea
+              tab={tab}
+              phase={phase}
+              rateLimitMessage={rateLimitMessage}
+              data={query.data}
+              isFetching={query.isFetching}
+              announcement={announcement}
+              submitted={submitted}
+              nonce={nonce}
+              tier={user?.tier === 'starter' ? 'starter' : 'free'}
+              sort={sort}
+              onSortChange={handleSortChange}
+              onRetry={handleRetry}
+              onPage={handlePage}
+              onClearAll={handleClearAll}
+              onChipRemove={handleChipRemove}
+            />
           )}
         </section>
       </main>
     </div>
   )
-}
-
-function totalPages(total: number): number {
-  return Math.min(MAX_NAVIGABLE_PAGES, Math.max(1, Math.ceil(total / PAGE_SIZE)))
 }

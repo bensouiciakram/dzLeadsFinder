@@ -1,4 +1,3 @@
-import type { SortState, SortField } from '@/components/search/ResultsTable'
 import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
 import type { SearchTab, StagedFilters } from '@/lib/api/search-service'
 import { EMPTY_FILTERS, buildFiltersPayload, countActiveFilters } from '@/lib/api/search-service'
@@ -9,6 +8,20 @@ import type { SearchSubmitted } from '@/hooks/useSearchResults'
 // is addressable and browser back/forward restores previous searches.
 // Facet params are tab-scoped: seniority belongs to people, size +
 // include-unknown-size to companies.
+
+export type SortField =
+  | 'name'
+  | 'role'
+  | 'company_name'
+  | 'wilaya_code'
+  | 'industry'
+  | 'size_band'
+  | 'people_count'
+
+export type SortState = {
+  field: SortField
+  dir: 'asc' | 'desc' | null
+}
 
 export const SORT_FIELDS: readonly SortField[] = [
   'name',

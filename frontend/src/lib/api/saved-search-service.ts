@@ -32,6 +32,14 @@ export type SavedSearchPayload = {
   sort: SavedSearchSort | null
 }
 
+// The search that was actually executed (type + payload + sort), used both
+// as the save-request body source and the "currently active" highlight key.
+export type SavedSearchSnapshot = {
+  type: SavedSearchType
+  filters: Record<string, unknown>
+  sort: SavedSearchSort | null
+}
+
 type SavedSearchApiError = {
   response?: {
     status?: number

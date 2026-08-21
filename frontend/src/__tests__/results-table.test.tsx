@@ -4,11 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 
-import {
-  ResultsTable,
-  sortCycle,
-  type SortState,
-} from '@/components/search/ResultsTable'
+import { ResultsTable, sortCycle } from '@/components/search/ResultsTable'
+import type { SortState } from '@/lib/search/search-params'
 import { bandLabelKey, isArabic } from '@/components/search/results-format'
 import type { CompanyResultRow, PeopleResultRow } from '@/lib/api/search-service'
 import { CreditProvider, useCredits } from '@/components/providers/CreditProvider'

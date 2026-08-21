@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
 
 import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
-import type { SortState } from '@/components/search/ResultsTable'
+import type { SortState } from '@/lib/search/search-params'
 import type { SearchTab, StagedFilters } from '@/lib/api/search-service'
 import { EMPTY_FILTERS } from '@/lib/api/search-service'
 import {

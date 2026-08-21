@@ -28,17 +28,10 @@ import {
   tabToSavedType,
   type SavedSearchPayload,
   type SavedSearchRow,
-  type SavedSearchSort,
-  type SavedSearchType,
+  type SavedSearchSnapshot,
 } from '@/lib/api/saved-search-service'
 import type { SearchTab } from '@/lib/api/search-service'
 import { MaybeArabic } from '@/components/search/results-format'
-
-export type SavedSearchSnapshot = {
-  type: SavedSearchType
-  filters: Record<string, unknown>
-  sort: SavedSearchSort | null
-}
 
 type SavedSearchesListProps = {
   tab: SearchTab

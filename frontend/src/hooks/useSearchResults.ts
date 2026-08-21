@@ -14,7 +14,7 @@ import {
 } from '@/lib/api/search-service'
 import { searchKeys } from '@/lib/queryKeys/search'
 
-type SearchPhase = 'idle' | 'loading' | 'error' | 'rate_limited'
+export type SearchPhase = 'idle' | 'loading' | 'error' | 'rate_limited'
 
 export type SearchSubmitted = {
   filters: StagedFilters
@@ -23,7 +23,7 @@ export type SearchSubmitted = {
   sort: string
 }
 
-type SearchResultData = SearchResult<PeopleResultRow> | SearchResult<CompanyResultRow>
+export type SearchResultData = SearchResult<PeopleResultRow> | SearchResult<CompanyResultRow>
 
 type UseSearchResultsArgs = {
   tab: SearchTab

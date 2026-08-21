@@ -20,26 +20,13 @@ import {
   useRevealState,
 } from '@/components/search/RevealControl'
 import { bandLabelKey, CompanyLink, EmDash, MaybeArabic, WilayaCell } from '@/components/search/results-format'
+import type { SortField, SortState } from '@/lib/search/search-params'
 import type {
   CompanyResultRow,
   PeopleResultRow,
   SearchTab,
 } from '@/lib/api/search-service'
 import { cn } from '@/lib/utils'
-
-export type SortField =
-  | 'name'
-  | 'role'
-  | 'company_name'
-  | 'wilaya_code'
-  | 'industry'
-  | 'size_band'
-  | 'people_count'
-
-export type SortState = {
-  field: SortField
-  dir: 'asc' | 'desc' | null
-}
 
 type Column = {
   field: SortField | null
