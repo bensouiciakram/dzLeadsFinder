@@ -16,12 +16,11 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.billing.chargily import verify_webhook_signature
+from apps.billing.pricing import MAX_AMOUNT_DZD
 from apps.billing.tasks import grant_credits
 
 logger = logging.getLogger(__name__)
 
-# PG int4 parity — 5.1 D14 `payments_amount_range_check` upper bound.
-MAX_AMOUNT_DZD = 2147483647
 # Webhook payloads are small JSON events; the cap bounds the memory read on
 # the only public unauthenticated endpoint (5.2 P7 — Django's
 # DATA_UPLOAD_MAX_MEMORY_SIZE does NOT bound raw POST bodies).

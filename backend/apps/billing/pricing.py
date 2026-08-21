@@ -16,6 +16,11 @@ SUBSCRIPTION_PRICE_DZD: int = 1500
 SUBSCRIPTION_CREDITS: int = 200
 SUBSCRIPTION_DESCRIPTION: str = 'DZLeads Starter — 200 credits/mo'
 
+# PG int4 parity — the payments_amount_range_check upper bound (5.1 D14).
+# Single source for the model constraint, the checkout validation and the
+# webhook amount guard (each used to re-spell the magic number).
+MAX_AMOUNT_DZD: int = 2147483647
+
 # One-time add-on packs (5.4 Task 1 — FR-25): price DZD -> credits. Packs
 # never expire and never auto-renew. The Chargily payload description carries
 # the "never expires" qualifier — load-bearing trust copy on the payment page

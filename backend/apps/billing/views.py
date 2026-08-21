@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.billing.chargily import ChargilyError, create_checkout_details
 from apps.billing.pricing import (
+    MAX_AMOUNT_DZD,
     PACK_DESCRIPTIONS,
     PACK_NEVER_EXPIRES,
     PACK_PRICES,
@@ -18,8 +19,6 @@ from apps.billing.pricing import (
 )
 
 PAYMENT_TYPES = frozenset({'subscription', 'pack'})
-# PG int4 parity — 5.1 D14 `payments_amount_range_check` upper bound.
-MAX_AMOUNT_DZD = 2147483647
 
 
 class PacksView(APIView):

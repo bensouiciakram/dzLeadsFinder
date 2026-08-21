@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.accounts.models import TIER_CHOICES, TIER_STARTER
+from apps.billing.pricing import MAX_AMOUNT_DZD
 
 
 class SubscriptionStatus(models.TextChoices):
@@ -146,7 +147,9 @@ class PaymentTransaction(models.Model):
                 name='payment_transactions_status_check',
             ),
             models.CheckConstraint(
-                check=models.Q(amount_dzd__gte=0, amount_dzd__lte=2147483647),
+                check=models.Q(
+                    amount_dzd__gte=0, amount_dzd__lte=MAX_AMOUNT_DZD
+                ),
                 name='payments_amount_range_check',
             ),
             models.CheckConstraint(
