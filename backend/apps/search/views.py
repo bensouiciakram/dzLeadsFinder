@@ -1,5 +1,6 @@
 """Search API endpoint views for People and Company search."""
 
+from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
 
@@ -178,70 +179,71 @@ def _page_out_of_range() -> Response:
     )
 
 
+def _run_search(
+    request: Request, *, company: bool
+) -> Response:
+    """The shared search skeleton behind both endpoints: parse → page/quota
+    gates → filter+sort+slice → count increment → revealed-flag + render.
+
+    The variants inject only what genuinely differs: the filter parser mode,
+    sort fields, base queryset, condition builder, record type and row
+    renderer. The gate ORDER (validation 400 before quota 429 before page
+    range) is contract — it lives here exactly once.
+    """
+    try:
+        filters = parse_filters(
+            request.query_params.get('filters'),
+            include_company_fields=company,
+        )
+        sort_fields = COMPANY_SORT_FIELDS if company else PEOPLE_SORT_FIELDS
+        sort_field, direction = parse_sort(
+            request.query_params.get('sort'), sort_fields
+        )
+        page = parse_page(request.query_params.get('page'))
+    except ValidationError as exc:
+        return _validation_response(exc)
+    if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
+        return _page_out_of_range()
+    error = _quota_error(request.user)
+    if error is not None:
+        return error
+    if company:
+        queryset = Company.objects.select_related(
+            'industry', 'wilaya_code'
+        ).annotate(people_count=Count('people'))
+        conditions = _company_conditions(filters)
+        record_type = RECORD_TYPE_COMPANY
+        render_row: Callable[[Any, str, set[str]], dict[str, object]] = _company_row
+    else:
+        queryset = Person.objects.select_related('company__wilaya_code')
+        conditions = _people_conditions(filters)
+        record_type = RECORD_TYPE_PEOPLE
+        render_row = _people_row
+    for condition in conditions:
+        queryset = queryset.filter(condition)
+    sort_map = _COMPANY_SORT if company else _PEOPLE_SORT
+    queryset = _order_by(queryset, sort_field, direction, sort_map)
+    total = queryset.count()
+    offset = (page - 1) * quota.PAGE_SIZE
+    rows = list(queryset[offset:offset + quota.PAGE_SIZE])
+    quota.increment_search_count(request.user)
+    locale = request.user.effective_locale
+    revealed_ids = _revealed_ids(request.user, record_type, rows)
+    payload: dict[str, object] = {
+        'results': [render_row(row, locale, revealed_ids) for row in rows],
+    }
+    payload.update(_truncated_payload(total, page, request.user))
+    return Response(payload)
+
+
 class PeopleSearchView(APIView):
     def get(self, request: Request) -> Response:
-        try:
-            filters = parse_filters(request.query_params.get('filters'))
-            sort_field, direction = parse_sort(request.query_params.get('sort'), PEOPLE_SORT_FIELDS)
-            page = parse_page(request.query_params.get('page'))
-        except ValidationError as exc:
-            return _validation_response(exc)
-        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
-            return _page_out_of_range()
-        error = _quota_error(request.user)
-        if error is not None:
-            return error
-        queryset = Person.objects.select_related('company__wilaya_code')
-        for condition in _people_conditions(filters):
-            queryset = queryset.filter(condition)
-        queryset = _order_by(queryset, sort_field, direction, _PEOPLE_SORT)
-        total = queryset.count()
-        offset = (page - 1) * quota.PAGE_SIZE
-        rows = list(queryset[offset:offset + quota.PAGE_SIZE])
-        quota.increment_search_count(request.user)
-        locale = request.user.effective_locale
-        revealed_ids = _revealed_ids(request.user, RECORD_TYPE_PEOPLE, rows)
-        payload: dict[str, object] = {
-            'results': [_people_row(person, locale, revealed_ids) for person in rows],
-        }
-        payload.update(_truncated_payload(total, page, request.user))
-        return Response(payload)
+        return _run_search(request, company=False)
 
 
 class CompanySearchView(APIView):
     def get(self, request: Request) -> Response:
-        try:
-            filters = parse_filters(
-                request.query_params.get('filters'), include_company_fields=True
-            )
-            sort_field, direction = parse_sort(
-                request.query_params.get('sort'), COMPANY_SORT_FIELDS
-            )
-            page = parse_page(request.query_params.get('page'))
-        except ValidationError as exc:
-            return _validation_response(exc)
-        if (page - 1) * quota.PAGE_SIZE >= quota.MAX_NAVIGABLE_RESULTS:
-            return _page_out_of_range()
-        error = _quota_error(request.user)
-        if error is not None:
-            return error
-        queryset = Company.objects.select_related('industry', 'wilaya_code').annotate(
-            people_count=Count('people')
-        )
-        for condition in _company_conditions(filters):
-            queryset = queryset.filter(condition)
-        queryset = _order_by(queryset, sort_field, direction, _COMPANY_SORT)
-        total = queryset.count()
-        offset = (page - 1) * quota.PAGE_SIZE
-        rows = list(queryset[offset:offset + quota.PAGE_SIZE])
-        quota.increment_search_count(request.user)
-        locale = request.user.effective_locale
-        revealed_ids = _revealed_ids(request.user, RECORD_TYPE_COMPANY, rows)
-        payload: dict[str, object] = {
-            'results': [_company_row(company, locale, revealed_ids) for company in rows],
-        }
-        payload.update(_truncated_payload(total, page, request.user))
-        return Response(payload)
+        return _run_search(request, company=True)
 
 
 class SavedSearchListView(APIView):
