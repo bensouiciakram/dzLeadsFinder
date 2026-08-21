@@ -17,6 +17,7 @@ import { WilayaCombobox } from '@/components/search/WilayaCombobox'
 import type { ChipsFacet } from '@/components/search/ActiveFilterChips'
 import { activeSearchSnapshot, savedSearchRerun } from '@/lib/search/saved-search-mapping'
 import { totalPages } from '@/lib/search/pagination'
+import { entitlementTierOf } from '@/lib/entitlement'
 import { useChecklist } from '@/hooks/useChecklist'
 import { useChecklistStepAnnouncement } from '@/hooks/useChecklistStepAnnouncement'
 import { useSearchAnnouncements } from '@/hooks/useSearchAnnouncements'
@@ -229,7 +230,7 @@ export function SearchPage({ tab }: SearchPageProps) {
               announcement={announcement}
               submitted={submitted}
               nonce={nonce}
-              tier={user?.tier === 'starter' ? 'starter' : 'free'}
+              tier={entitlementTierOf(user?.tier)}
               sort={sort}
               onSortChange={handleSortChange}
               onRetry={handleRetry}

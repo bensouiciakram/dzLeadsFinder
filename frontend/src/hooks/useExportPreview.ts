@@ -13,6 +13,7 @@ import {
   type SearchTab,
 } from '@/lib/api/search-service'
 import { searchKeys } from '@/lib/queryKeys/search'
+import type { EntitlementTier } from '@/lib/entitlement'
 
 const PAGE_SIZE = SEARCH_PAGE_SIZE
 const MAX_PAGES = SEARCH_MAX_NAVIGABLE_PAGES
@@ -44,7 +45,7 @@ type UseExportPreviewArgs = {
   sort: string
   nonce: number
   total: number
-  tier: 'free' | 'starter'
+  tier: EntitlementTier
 }
 
 type SearchPageData = SearchResult<PeopleResultRow> | SearchResult<CompanyResultRow>

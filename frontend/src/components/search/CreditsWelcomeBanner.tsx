@@ -7,6 +7,7 @@ import { useCredits } from '@/components/providers/CreditProvider'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useCreditsBanner } from '@/hooks/useCreditsBanner'
 import { useCreditsBannerMutations } from '@/hooks/useCreditsBannerMutations'
+import { entitlementTierOf } from '@/lib/entitlement'
 
 export function CreditsWelcomeBanner() {
   const t = useTranslations()
@@ -16,7 +17,7 @@ export function CreditsWelcomeBanner() {
   const { dismiss } = useCreditsBannerMutations()
 
   if (user === null) return null
-  if (user.tier !== 'free') return null
+  if (entitlementTierOf(user.tier) !== 'free') return null
   if (balance === null || balance <= 0) return null
   // Render only once the dismissal state is KNOWN: while the query is
   // loading or failed, `dismissed` defaults to false — showing the strip

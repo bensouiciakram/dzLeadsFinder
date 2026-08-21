@@ -21,6 +21,7 @@ import {
   type SearchTab,
 } from '@/lib/api/search-service'
 import { totalPages } from '@/lib/search/pagination'
+import type { EntitlementTier } from '@/lib/entitlement'
 
 type SearchResultsAreaProps = {
   tab: SearchTab
@@ -31,7 +32,7 @@ type SearchResultsAreaProps = {
   announcement: string | null
   submitted: SearchSubmitted
   nonce: number
-  tier: 'free' | 'starter'
+  tier: EntitlementTier
   sort: SortState | null
   onSortChange: (sort: SortState) => void
   onRetry: () => void

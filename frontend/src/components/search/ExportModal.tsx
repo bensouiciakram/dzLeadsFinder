@@ -16,6 +16,7 @@ import { useExportPreview } from '@/hooks/useExportPreview'
 import type { ExportFormat } from '@/lib/api/export-service'
 import { navigator } from '@/lib/api/http-client'
 import type { SearchTab } from '@/lib/api/search-service'
+import type { EntitlementTier } from '@/lib/entitlement'
 
 type ExportModalProps = {
   open: boolean
@@ -25,7 +26,7 @@ type ExportModalProps = {
   sort: string
   nonce: number
   total: number
-  tier: 'free' | 'starter'
+  tier: EntitlementTier
   balance: number | null
 }
 

@@ -6,6 +6,7 @@ import { creditsService } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
 import { userKey } from '@/lib/user-key'
+import { entitlementTierOf } from '@/lib/entitlement'
 
 type CreditsBannerPhase = 'idle' | 'loading' | 'error' | 'success'
 
@@ -26,7 +27,7 @@ export function useCreditsBanner({
     queryFn: () => creditsService.getBanner(),
     // Free users are the only audience for the welcome banner — Starter
     // users never see it, so their visits must not pay the request.
-    enabled: user !== null && user.tier === 'free',
+    enabled: user !== null && entitlementTierOf(user.tier) === 'free',
   })
 
   const phase: CreditsBannerPhase =

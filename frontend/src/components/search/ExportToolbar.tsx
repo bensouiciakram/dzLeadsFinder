@@ -8,6 +8,7 @@ import { useCredits } from '@/components/providers/CreditProvider'
 import { Button } from '@/components/ui/button'
 import type { SearchSubmitted } from '@/hooks/useSearchResults'
 import type { SearchTab } from '@/lib/api/search-service'
+import type { EntitlementTier } from '@/lib/entitlement'
 
 type ExportToolbarProps = {
   tab: SearchTab
@@ -15,7 +16,7 @@ type ExportToolbarProps = {
   nonce: number
   total: number
   isFetching: boolean
-  tier: 'free' | 'starter'
+  tier: EntitlementTier
 }
 
 export function ExportToolbar({

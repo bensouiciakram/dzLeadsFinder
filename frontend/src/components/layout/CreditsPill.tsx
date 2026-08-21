@@ -12,6 +12,7 @@ import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider
 import { usePlan } from '@/hooks/usePlan'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { entitlementTierOf } from '@/lib/entitlement'
 
 export function CreditsPill() {
   const t = useTranslations()
@@ -82,7 +83,8 @@ export function CreditsPill() {
   if (user === null || balance === null) return null
 
   const zeroCredits = balance === 0
-  const warning = !zeroCredits && balance <= 10 && user.tier === 'starter'
+  const warning =
+    !zeroCredits && balance <= 10 && entitlementTierOf(dispatchTier) === 'starter'
 
   const announcement =
     announceDecrease ? t('common.credits.updated', { balance: String(balance) }) : ''
