@@ -27,11 +27,9 @@ export function authRedirectFor(code: string): string | null {
 
 export function redirectTargetForError(error: unknown): string | null {
   if (!axios.isAxiosError(error)) return null
-  const status = error.response?.status
-  if (status !== 401) return null
-  const data = error.response?.data as { code?: unknown } | undefined
-  if (typeof data?.code !== 'string') return null
-  return authRedirectFor(data.code)
+  if (error.response?.status !== 401) return null
+  const code = errorCodeOf(error)
+  return code === null ? null : authRedirectFor(code)
 }
 
 export const navigator = {
@@ -48,7 +46,11 @@ export function applyAuthRedirect(target: string | null): boolean {
   return true
 }
 
-function errorCodeOf(error: AxiosError): string | null {
+// The single `code` extractor for API error bodies (the auth surfaces and
+// the 401 interceptor all read the same `{ code: string }` shape — one
+// duck-typing home instead of a copy per file).
+export function errorCodeOf(error: unknown): string | null {
+  if (!axios.isAxiosError(error)) return null
   const data = error.response?.data as { code?: unknown } | undefined
   if (typeof data?.code !== 'string') return null
   return data.code

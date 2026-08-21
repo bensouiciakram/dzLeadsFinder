@@ -2,23 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isAxiosError } from 'axios'
 import { useLocale, useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { settingsService, type FrozenStatus } from '@/lib/api/settings-service'
+import { errorCodeOf } from '@/lib/api/http-client'
 import { useUndeleteAccount } from '@/hooks/useAccountMutations'
 import { formatDate } from '@/lib/format'
 import { FrozenLogout } from './FrozenLogout'
 
 type PanelPhase = 'loading' | 'ready' | 'irreversible' | 'error'
-
-function errorCodeOf(error: unknown): string | null {
-  if (!isAxiosError(error)) return null
-  const data = error.response?.data as { code?: unknown } | undefined
-  if (typeof data?.code !== 'string') return null
-  return data.code
-}
 
 export function FrozenAccountPanel() {
   const t = useTranslations()
