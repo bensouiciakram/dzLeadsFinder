@@ -18,7 +18,7 @@ from django.db.models import Count, F
 from django.utils import timezone
 
 from apps.credits.models import Reveal
-from apps.credits.services import debit_export_rows
+from apps.credits.services import RE_REVEAL_WINDOW_DAYS, debit_export_rows
 from apps.exports.export_service import EXPORT_FORMATS, build_export_file
 from apps.exports.messages import EXPORT_CSV_HEADERS, WATERMARK_MESSAGES
 from apps.exports.models import Export
@@ -28,7 +28,6 @@ from apps.search.models import Company, DailyUsage, Person
 _FORMATS = frozenset(EXPORT_FORMATS)
 _MAX_IDS = EXPORT_DAILY_ROW_LIMIT
 _MAX_ID_LENGTH = 200
-_REVEALED_WINDOW_DAYS = 30
 # FR-19: the free-tier CSV cap — 5 rows, the FIRST 5 of the payload order
 # (the modal's payload order == current sort order; the server NEVER trusts
 # the client's list size).
@@ -173,7 +172,7 @@ def _revealed_ids(user: Any, record_type: str, record_ids: list[str]) -> set[str
             user_id=user.id,
             record_type=record_type,
             record_id__in=record_ids,
-            created_at__gte=timezone.now() - timedelta(days=_REVEALED_WINDOW_DAYS),
+            created_at__gte=timezone.now() - timedelta(days=RE_REVEAL_WINDOW_DAYS),
         ).values_list('record_id', flat=True)
     )
 

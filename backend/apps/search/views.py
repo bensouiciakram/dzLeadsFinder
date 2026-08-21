@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.credits.models import Reveal
+from apps.credits.services import RE_REVEAL_WINDOW_DAYS
 from apps.search import quota
 from apps.search.filters import (
     COMPANY_SORT_FIELDS,
@@ -53,7 +54,12 @@ _SIZE_BAND_ORDER = Case(
 
 
 def _revealed_ids(user: object, record_type: str, rows: list[object]) -> set[str]:
-    """Record ids with a ≤30d reveal for this user (any row — paid or free)."""
+    """Record ids revealed within the re-reveal window (any row — paid or free).
+
+    The window length is THE rule from credits.services (RE_REVEAL_WINDOW_DAYS)
+    — the same constant that gates the free re-reveal path, so the search
+    flag and the debit can never disagree.
+    """
     if not rows:
         return set()
     ids = [str(getattr(row, 'id')) for row in rows]
@@ -62,7 +68,7 @@ def _revealed_ids(user: object, record_type: str, rows: list[object]) -> set[str
             user_id=getattr(user, 'id'),
             record_type=record_type,
             record_id__in=ids,
-            created_at__gte=timezone.now() - timedelta(days=30),
+            created_at__gte=timezone.now() - timedelta(days=RE_REVEAL_WINDOW_DAYS),
         ).values_list('record_id', flat=True)
     )
 
