@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 
 import { Button } from '@/components/ui/button'
+import { ModalPanel } from '@/components/ui/dialog'
 import { formatBillingDate, type PlanResult } from '@/lib/api/billing-service'
 import type { BillingPhase } from '@/hooks/useBilling'
 
@@ -85,18 +86,14 @@ export function DangerZone({ plan, phase, cancel }: Props) {
           >
             {t('dzone.cancel_button')}
           </DialogPrimitive.Trigger>
-          <DialogPrimitive.Portal>
-            <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-            <DialogPrimitive.Popup
-              aria-modal="true"
-              // Safe-control-first focus (EXPERIENCE L187: destructive
-              // flows focus the safe control) — Base UI schedules this via
-              // rAF (its default focus would land on the popup itself).
-              initialFocus={() =>
-                document.querySelector<HTMLElement>('[data-billing-keep]')
-              }
-              className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg md:p-8"
-            >
+          {/* Safe-control-first focus (EXPERIENCE L187: destructive flows
+              focus the safe control) — Base UI schedules this via rAF. */}
+          <ModalPanel
+            className="md:p-8"
+            initialFocus={() =>
+              document.querySelector<HTMLElement>('[data-billing-keep]')
+            }
+          >
               <DialogPrimitive.Title className="text-title font-semibold text-foreground">
                 {t('dzone.dialog_title')}
               </DialogPrimitive.Title>
@@ -130,8 +127,7 @@ export function DangerZone({ plan, phase, cancel }: Props) {
                   {cancel.isPending ? t('dzone.confirming') : t('dzone.confirm')}
                 </Button>
               </div>
-            </DialogPrimitive.Popup>
-          </DialogPrimitive.Portal>
+          </ModalPanel>
         </DialogPrimitive.Root>
       </div>
     </section>

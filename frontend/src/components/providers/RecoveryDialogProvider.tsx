@@ -1,13 +1,15 @@
 'use client'
 
-import { Check, X } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 
 import { Button } from '@/components/ui/button'
+import { DialogCloseX, ModalPanel } from '@/components/ui/dialog'
 import { useSession } from '@/components/providers/SessionProvider'
 import { usePacks } from '@/hooks/usePacks'
+import { useFocusRestore } from '@/hooks/useFocusRestore'
 import { useCheckoutRedirect } from '@/hooks/useCheckoutRedirect'
 import { numerals } from '@/lib/api/billing-service'
 
@@ -31,14 +33,13 @@ const RecoveryDialogContext = createContext<RecoveryDialogContextValue | null>(n
 
 export function RecoveryDialogProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
-  const lastFocusRef = useRef<HTMLElement | null>(null)
+  const { lastFocusRef, captureFocus } = useFocusRestore()
 
   const open = useCallback(() => {
     if (isOpen) return
-    lastFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    captureFocus()
     setIsOpen(true)
-  }, [isOpen])
+  }, [isOpen, captureFocus])
 
   const close = useCallback(() => setIsOpen(false), [])
 
@@ -72,6 +73,7 @@ function RecoveryDialogBody({
   const actions = useTranslations('common.actions')
   const states = useTranslations('common.states')
   const { isOpen, close } = useRecoveryDialog()
+  const { finalFocus } = useFocusRestore(lastFocusRef)
   const { user } = useSession()
   const { packs, phase } = usePacks({ user, isOpen })
   const { redirecting, error, redirect } = useCheckoutRedirect()
@@ -95,38 +97,18 @@ function RecoveryDialogBody({
 
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(next) => { if (!next) close() }}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-recovery-backdrop
-          className="fixed inset-0 z-50 bg-black/40"
-        />
-        <DialogPrimitive.Popup
-          aria-modal="true"
-          data-testid="recovery-dialog"
-          initialFocus={() =>
-            document.querySelector<HTMLElement>('[data-recovery-first-buy]')
-          }
-          finalFocus={() => {
-            const target = lastFocusRef.current
-            if (target !== null && document.contains(target)) return target
-            return null
-          }}
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg"
-        >
+      <ModalPanel
+        testid="recovery-dialog"
+        backdropProps={{ 'data-recovery-backdrop': true }}
+        initialFocus={() =>
+          document.querySelector<HTMLElement>('[data-recovery-first-buy]')
+        }
+        finalFocus={finalFocus}
+      >
           <DialogPrimitive.Title className="text-headline font-semibold text-foreground">
             {t('packs.title')}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Close
-            render={
-              <button
-                type="button"
-                aria-label={actions('close')}
-                className="absolute top-2 end-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            }
-          >
-            <X className="size-4" aria-hidden="true" />
-          </DialogPrimitive.Close>
+          <DialogCloseX label={actions('close')} />
 
           {phase === 'loading' ? (
             <p className="mt-4 text-small text-muted-foreground">{states('loading')}</p>
@@ -176,8 +158,7 @@ function RecoveryDialogBody({
               ) : null}
             </div>
           )}
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
+        </ModalPanel>
     </DialogPrimitive.Root>
   )
 }

@@ -138,6 +138,64 @@ function DialogDescription({
   )
 }
 
+// The dark modal shell shared by the app-level dialogs (danger zones,
+// recovery/upgrade providers): black/40 backdrop + centered max-w-md card.
+// Composes with a caller-owned DialogPrimitive.Root (so Trigger keeps
+// working) — ModalPanel renders ONLY Portal+Backdrop+Popup. Width/padding
+// overrides merge via cn (tailwind-merge).
+const MODAL_PANEL_CLASS =
+  'fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg'
+
+function ModalPanel({
+  className,
+  testid,
+  initialFocus,
+  finalFocus,
+  backdropProps,
+  children,
+}: DialogPrimitive.Popup.Props & {
+  testid?: string
+  // Passthrough for call-site backdrop markers (e.g. the
+  // data-dialog-backdrop hook the upgrade-dialog tests query).
+  backdropProps?: Record<string, unknown>
+}) {
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Backdrop
+        className="fixed inset-0 z-50 bg-black/40"
+        {...(backdropProps as React.ComponentProps<typeof DialogPrimitive.Backdrop>)}
+      />
+      <DialogPrimitive.Popup
+        aria-modal="true"
+        data-testid={testid}
+        initialFocus={initialFocus}
+        finalFocus={finalFocus}
+        className={cn(MODAL_PANEL_CLASS, className)}
+      >
+        {children}
+      </DialogPrimitive.Popup>
+    </DialogPrimitive.Portal>
+  )
+}
+
+// The corner X close control (recovery/upgrade dialogs): identical markup
+// and hit area in both providers — owned here so an a11y fix lands once.
+function DialogCloseX({ label }: { label: string }) {
+  return (
+    <DialogPrimitive.Close
+      render={
+        <button
+          type="button"
+          aria-label={label}
+          className="absolute top-2 end-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      }
+    >
+      <XIcon className="size-4" aria-hidden="true" />
+    </DialogPrimitive.Close>
+  )
+}
+
 export {
   Dialog,
   DialogContent,
@@ -147,4 +205,6 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
+  ModalPanel,
+  DialogCloseX,
 }

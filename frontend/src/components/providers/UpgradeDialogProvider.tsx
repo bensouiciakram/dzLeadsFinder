@@ -1,12 +1,14 @@
 'use client'
 
-import { Check, X } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 
 import { Button } from '@/components/ui/button'
+import { DialogCloseX, ModalPanel } from '@/components/ui/dialog'
 import { useCheckoutRedirect } from '@/hooks/useCheckoutRedirect'
+import { useFocusRestore } from '@/hooks/useFocusRestore'
 import { SUBSCRIPTION_PRICE_DZD } from '@/lib/api/billing-service'
 
 // The single Upgrade Dialog (5.7 AC — "the same single Upgrade Dialog
@@ -49,7 +51,7 @@ export function UpgradeDialogProvider({ children }: { children: React.ReactNode 
   // buttons) is focusable at click time. Base UI's finalFocus restores it
   // on close in the correct internal ordering (rAF-scheduled — the
   // DangerZone precedent).
-  const lastFocusRef = useRef<HTMLElement | null>(null)
+  const { lastFocusRef, captureFocus } = useFocusRestore()
   // M7: the double-click guard must NOT read the state in the callback's
   // closure — `[isOpen]` in the deps made open() a NEW identity on every
   // dialog flip, so every consumer effect depending on it (ExportModal's
@@ -65,12 +67,11 @@ export function UpgradeDialogProvider({ children }: { children: React.ReactNode 
         return
       }
       isOpenRef.current = true
-      lastFocusRef.current =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null
+      captureFocus()
       setIntent(nextIntent)
       setIsOpen(true)
     },
-    [],
+    [captureFocus],
   )
 
   const close = useCallback(() => {
@@ -109,6 +110,7 @@ function UpgradeDialogBody({
   const actions = useTranslations('common.actions')
   const states = useTranslations('common.states')
   const { isOpen, close, intent } = useUpgradeDialog()
+  const { finalFocus } = useFocusRestore(lastFocusRef)
   const { redirecting, error, redirect } = useCheckoutRedirect()
 
   const subscribe = () => {
@@ -117,27 +119,15 @@ function UpgradeDialogBody({
 
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(next) => { if (!next) close() }}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-dialog-backdrop
-          className="fixed inset-0 z-50 bg-black/40"
-        />
-        <DialogPrimitive.Popup
-          aria-modal="true"
-          data-testid="upgrade-dialog"
-          // Initial focus on the CTA (Sally M4) — Base UI schedules via rAF.
-          initialFocus={() =>
-            document.querySelector<HTMLElement>('[data-upgrade-subscribe]')
-          }
-          // Focus returns to the invoking control on close (AC; Sally M4 —
-          // fall back to body when the host modal unmounted the control).
-          finalFocus={() => {
-            const target = lastFocusRef.current
-            if (target !== null && document.contains(target)) return target
-            return null
-          }}
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg"
-        >
+      <ModalPanel
+        testid="upgrade-dialog"
+        backdropProps={{ 'data-dialog-backdrop': true }}
+        // Initial focus on the CTA (Sally M4) — Base UI schedules via rAF.
+        initialFocus={() =>
+          document.querySelector<HTMLElement>('[data-upgrade-subscribe]')
+        }
+        finalFocus={finalFocus}
+      >
           <DialogPrimitive.Title className="text-headline font-semibold text-foreground">
             {/* Manual-review fix: state-aware title — a cancelled user's
                 dialog means REACTIVATION (the Subscribe CTA re-activates
@@ -145,17 +135,7 @@ function UpgradeDialogBody({
                 reused (zero new i18n keys). */}
             {intent === 'reactivate' ? t('plan.reactivate') : t('upgrade_dialog.title')}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Close
-            render={
-              <button
-                type="button"
-                aria-label={actions('close')}
-                className="absolute top-2 end-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            }
-          >
-            <X className="size-4" aria-hidden="true" />
-          </DialogPrimitive.Close>
+          <DialogCloseX label={actions('close')} />
 
           <div className="mt-4">
             <p className="text-headline font-semibold tabular-nums text-foreground">
@@ -193,8 +173,7 @@ function UpgradeDialogBody({
           >
             {redirecting ? t('packs.processing') : t('upgrade_dialog.cta')}
           </Button>
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
+        </ModalPanel>
     </DialogPrimitive.Root>
   )
 }
