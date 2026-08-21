@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { TextInput } from '@/components/ui/input'
 import { FormErrorSummary } from './FormErrorSummary'
 import { verifyEmailSchema, type VerifyEmailValues } from '@/lib/validation/auth'
 import { authService } from '@/lib/api/auth-service'
@@ -126,13 +127,12 @@ export function VerifyLinkHandler({ token }: Props) {
               <label htmlFor="expired-email" className="text-small font-medium text-foreground">
                 {t('auth.verify.email_label')}
               </label>
-              <input
+              <TextInput
                 id="expired-email"
                 type="email"
                 autoComplete="email"
                 aria-invalid={Boolean(errors.email)}
                 aria-describedby={errors.email ? 'expired-email-error' : undefined}
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30"
                 {...register('email')}
               />
               {errors.email?.message ? (

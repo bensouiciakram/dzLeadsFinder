@@ -17,4 +17,28 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   )
 }
 
-export { Input }
+// The form-field input (auth forms, saved-search naming): taller than the
+// compact Input above, uses the design-system text-body size and the
+// primary-tinted focus ring. One class string owned here — the seven
+// call sites used to hand-copy it, which is how a focus-ring tweak would
+// have had to land seven times.
+const TEXT_INPUT_CLASS =
+  'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
+
+// forwardRef: react-hook-form's register() spreads a ref — a plain
+// function component would drop it (React 18) and sever value tracking.
+const TextInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  function TextInput({ className, type, ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        type={type}
+        data-slot="text-input"
+        className={cn(TEXT_INPUT_CLASS, className)}
+        {...props}
+      />
+    )
+  },
+)
+
+export { Input, TextInput }

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
+import { TextInput } from '@/components/ui/input'
 import { FormErrorSummary } from './FormErrorSummary'
 import { signupSchema, type SignupValues } from '@/lib/validation/auth'
 import { authService, type SignupErrorBody } from '@/lib/api/auth-service'
@@ -61,9 +62,6 @@ export function SignupForm() {
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
-
   const summaryErrors = [
     errors.email?.message ? { id: 'signup-email-error', message: errors.email.message } : null,
     errors.password?.message
@@ -77,13 +75,12 @@ export function SignupForm() {
         <label htmlFor="signup-email" className="text-small font-medium text-foreground">
           {t('auth.signup.email_label')}
         </label>
-        <input
+        <TextInput
           id="signup-email"
           type="email"
           autoComplete="email"
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? 'signup-email-error' : undefined}
-          className={inputClass}
           {...register('email')}
         />
         {errors.email?.message ? (
@@ -97,7 +94,7 @@ export function SignupForm() {
         <label htmlFor="signup-password" className="text-small font-medium text-foreground">
           {t('auth.signup.password_label')}
         </label>
-        <input
+        <TextInput
           id="signup-password"
           type="password"
           autoComplete="new-password"
@@ -107,7 +104,6 @@ export function SignupForm() {
               ? 'signup-password-error signup-password-requirements'
               : 'signup-password-requirements'
           }
-          className={inputClass}
           {...register('password')}
         />
         {errors.password?.message ? (

@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
+import { TextInput } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -74,13 +75,12 @@ export function SavedSearchNameDialog({
           <label htmlFor="saved-search-name" className="text-small font-medium text-foreground">
             {t('search.saved.name_label')}
           </label>
-          <input
+          <TextInput
             id="saved-search-name"
             type="text"
             autoComplete="off"
             aria-invalid={Boolean(errors.name)}
             aria-describedby={errors.name ? 'saved-search-name-error' : undefined}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30"
             placeholder={t('search.saved.name_placeholder')}
             {...register('name')}
           />

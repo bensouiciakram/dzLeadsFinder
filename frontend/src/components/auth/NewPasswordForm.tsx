@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { FormErrorSummary } from '@/components/auth/FormErrorSummary'
+import { TextInput } from '@/components/ui/input'
 import { authService } from '@/lib/api/auth-service'
 import { newPasswordSchema, type NewPasswordValues } from '@/lib/validation/auth'
 
@@ -51,9 +52,6 @@ export function NewPasswordForm({ token, onDone, onUsed, onError }: NewPasswordF
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
-
   return (
     <div>
       <h1 className="text-title font-bold text-foreground">
@@ -64,7 +62,7 @@ export function NewPasswordForm({ token, onDone, onUsed, onError }: NewPasswordF
           <label htmlFor="reset-new-password" className="text-small font-medium text-foreground">
             {t('auth.password_reset.new_password_label')}
           </label>
-          <input
+          <TextInput
             id="reset-new-password"
             type="password"
             autoComplete="new-password"
@@ -74,7 +72,6 @@ export function NewPasswordForm({ token, onDone, onUsed, onError }: NewPasswordF
                 ? 'reset-new-password-error reset-new-password-requirements'
                 : 'reset-new-password-requirements'
             }
-            className={inputClass}
             {...register('password')}
           />
           {errors.password?.message ? (
@@ -98,7 +95,7 @@ export function NewPasswordForm({ token, onDone, onUsed, onError }: NewPasswordF
           >
             {t('auth.password_reset.confirm_password_label')}
           </label>
-          <input
+          <TextInput
             id="reset-confirm-password"
             type="password"
             autoComplete="new-password"
@@ -106,7 +103,6 @@ export function NewPasswordForm({ token, onDone, onUsed, onError }: NewPasswordF
             aria-describedby={
               errors.confirmPassword ? 'reset-confirm-password-error' : undefined
             }
-            className={inputClass}
             {...register('confirmPassword')}
           />
           {errors.confirmPassword?.message ? (

@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { TextInput } from '@/components/ui/input'
 import { FormErrorSummary } from './FormErrorSummary'
 import { authService } from '@/lib/api/auth-service'
 import { passwordResetSchema, type PasswordResetValues } from '@/lib/validation/auth'
@@ -43,9 +44,6 @@ export function PasswordResetForm() {
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
-
   if (submitted) {
     return (
       <div>
@@ -68,13 +66,12 @@ export function PasswordResetForm() {
         <label htmlFor="reset-email" className="text-small font-medium text-foreground">
           {t('auth.password_reset.email_label')}
         </label>
-        <input
+        <TextInput
           id="reset-email"
           type="email"
           autoComplete="email"
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? 'reset-email-error' : undefined}
-          className={inputClass}
           {...register('email')}
         />
         {errors.email?.message ? (

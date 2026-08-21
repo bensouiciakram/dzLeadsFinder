@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { FormErrorSummary } from './FormErrorSummary'
 import { useSession } from '@/components/providers/SessionProvider'
+import { TextInput } from '@/components/ui/input'
 import { authService } from '@/lib/api/auth-service'
 import { loginSchema, type LoginValues } from '@/lib/validation/auth'
 
@@ -55,9 +56,6 @@ export function LoginForm() {
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30'
-
   const summaryErrors = [
     errors.email?.message ? { id: 'login-email-error', message: errors.email.message } : null,
     errors.password?.message
@@ -82,13 +80,12 @@ export function LoginForm() {
         <label htmlFor="login-email" className="text-small font-medium text-foreground">
           {t('auth.login.email_label')}
         </label>
-        <input
+        <TextInput
           id="login-email"
           type="email"
           autoComplete="email"
           aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? 'login-email-error' : undefined}
-          className={inputClass}
           {...register('email')}
         />
         {errors.email?.message ? (
@@ -102,13 +99,12 @@ export function LoginForm() {
         <label htmlFor="login-password" className="text-small font-medium text-foreground">
           {t('auth.login.password_label')}
         </label>
-        <input
+        <TextInput
           id="login-password"
           type="password"
           autoComplete="current-password"
           aria-invalid={Boolean(errors.password)}
           aria-describedby={errors.password ? 'login-password-error' : undefined}
-          className={inputClass}
           {...register('password')}
         />
         {errors.password?.message ? (
