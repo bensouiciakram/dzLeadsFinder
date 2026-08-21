@@ -3,9 +3,11 @@
 from django.db import connection
 from django.utils import timezone
 
-SEARCH_DAILY_LIMITS: dict[str, int] = {'free': 30, 'starter': 100}
+from apps.accounts.models import TIER_FREE, TIER_STARTER
 
-SAVED_SEARCH_CAPS: dict[str, int] = {'free': 5, 'starter': 25}
+SEARCH_DAILY_LIMITS: dict[str, int] = {TIER_FREE: 30, TIER_STARTER: 100}
+
+SAVED_SEARCH_CAPS: dict[str, int] = {TIER_FREE: 5, TIER_STARTER: 25}
 
 PAGE_SIZE: int = 100
 MAX_NAVIGABLE_RESULTS: int = 1000
@@ -49,13 +51,13 @@ UPSERT_SEARCH_COUNT_SQL: str = (
 
 
 def daily_limit_for(user: object) -> int:
-    tier = getattr(user, 'tier', 'free')
-    return SEARCH_DAILY_LIMITS.get(tier, SEARCH_DAILY_LIMITS['free'])
+    tier = getattr(user, 'tier', TIER_FREE)
+    return SEARCH_DAILY_LIMITS.get(tier, SEARCH_DAILY_LIMITS[TIER_FREE])
 
 
 def saved_search_limit_for(user: object) -> int:
-    tier = getattr(user, 'tier', 'free')
-    return SAVED_SEARCH_CAPS.get(tier, SAVED_SEARCH_CAPS['free'])
+    tier = getattr(user, 'tier', TIER_FREE)
+    return SAVED_SEARCH_CAPS.get(tier, SAVED_SEARCH_CAPS[TIER_FREE])
 
 
 def daily_limit_reached(user: object) -> bool:

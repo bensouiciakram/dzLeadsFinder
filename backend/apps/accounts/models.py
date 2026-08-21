@@ -44,9 +44,14 @@ LOCALE_CHOICES = [
     ('fr', 'French'),
     ('en', 'English'),
 ]
+# The tier vocabulary as named constants — every entitlement read/write
+# imports these instead of re-spelling the raw strings (a third tier or a
+# rename then has exactly one address).
+TIER_FREE = 'free'
+TIER_STARTER = 'starter'
 TIER_CHOICES = [
-    ('free', 'Free'),
-    ('starter', 'Starter'),
+    (TIER_FREE, 'Free'),
+    (TIER_STARTER, 'Starter'),
 ]
 
 

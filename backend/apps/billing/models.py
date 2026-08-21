@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from apps.accounts.models import TIER_CHOICES
+from apps.accounts.models import TIER_CHOICES, TIER_STARTER
 
 
 class SubscriptionStatus(models.TextChoices):
@@ -38,7 +38,7 @@ class Subscription(models.Model):
         on_delete=models.SET_NULL,
         related_name='subscriptions',
     )
-    tier = models.CharField(max_length=10, choices=TIER_CHOICES, default='starter')
+    tier = models.CharField(max_length=10, choices=TIER_CHOICES, default=TIER_STARTER)
     status = models.CharField(
         max_length=20,
         choices=SubscriptionStatus.choices,

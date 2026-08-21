@@ -18,6 +18,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import TIER_FREE, TIER_STARTER
 from apps.credits.messages import INSUFFICIENT_CREDITS_MESSAGES
 from apps.credits.services import InsufficientCreditsError, user_balances
 from apps.exports.export_service import build_export_file, export_mime
@@ -57,12 +58,13 @@ class ExportView(APIView):
         # (5-row cap + watermark — enforced inside create_export via the
         # watermark flag); xlsx stays starter-only FOREVER (FR-18) — the 403
         # starter_only remains ONLY for free+xlsx.
-        if getattr(user, 'tier', 'free') != 'starter' and request.data.get('format') == 'xlsx':
+        tier = getattr(user, 'tier', TIER_FREE)
+        if tier != TIER_STARTER and request.data.get('format') == 'xlsx':
             return Response(
                 {'detail': STARTER_ONLY_MESSAGES[locale], 'code': 'starter_only'},
                 status=403,
             )
-        watermark = getattr(user, 'tier', 'free') == 'free'
+        watermark = tier == TIER_FREE
         try:
             export_row, revealed_count = create_export(
                 user, request.data, watermark=watermark

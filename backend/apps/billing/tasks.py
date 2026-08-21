@@ -252,8 +252,10 @@ def _update_user_cache(user: Any, final_ledger_total: int) -> None:
     caller. The tier write (5.3 — the deferred-work split-brain owner) is
     atomic with the grant.
     """
+    from apps.accounts.models import TIER_STARTER
+
     user.credits_balance = final_ledger_total
-    user.tier = 'starter'
+    user.tier = TIER_STARTER
     user.save(update_fields=['credits_balance', 'tier'])
 
 
@@ -599,6 +601,7 @@ def expire_failed_renewals() -> None:
     from django.db import transaction
     from django.utils import timezone
 
+    from apps.accounts.models import TIER_FREE
     from apps.billing.models import Subscription
     from apps.credits.models import CreditEventType, CreditLedger, CreditPool
 
@@ -657,7 +660,7 @@ def expire_failed_renewals() -> None:
                 if not Subscription.objects.filter(
                     user_id=locked.user_id, status='active'
                 ).exclude(pk=locked.pk).exists():
-                    user_model.objects.filter(pk=locked.user_id).update(tier='free')
+                    user_model.objects.filter(pk=locked.user_id).update(tier=TIER_FREE)
             locked.status = 'expired'
             # A cancelled row carries cancelled_at — the one-directional
             # subscriptions_cancel_state_check (cancelled_at IS NULL OR
