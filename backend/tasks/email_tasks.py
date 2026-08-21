@@ -39,7 +39,7 @@ def send_verification_email(user_id: int) -> None:
     from django.core.mail import EmailMultiAlternatives
     from django.utils import timezone
 
-    from apps.accounts.models import SingleUseToken
+    from apps.accounts.models import TOKEN_PURPOSE_VERIFY, SingleUseToken
 
     user_model = get_user_model()
     try:
@@ -50,7 +50,7 @@ def send_verification_email(user_id: int) -> None:
     token = (
         SingleUseToken.objects.filter(
             user=user,
-            purpose='verify',
+            purpose=TOKEN_PURPOSE_VERIFY,
             consumed_at__isnull=True,
             expires_at__gt=timezone.now(),
         )
@@ -104,7 +104,10 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
     from django.core.mail import EmailMultiAlternatives
     from django.utils import timezone
 
-    from apps.accounts.models import SingleUseToken
+    from apps.accounts.models import (
+        TOKEN_PURPOSE_RESET,
+        SingleUseToken,
+    )
 
     user_model = get_user_model()
     try:
@@ -119,7 +122,7 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
         return
     if (
         token.user_id != user_id
-        or token.purpose != 'reset'
+        or token.purpose != TOKEN_PURPOSE_RESET
         or token.consumed_at is not None
         or token.expires_at <= timezone.now()
     ):

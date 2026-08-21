@@ -27,9 +27,14 @@ from ..auth import (
     touch_activity,
     validate_user_token,
 )
-from ..models import LOCALE_CHOICES, SingleUseToken
+from ..models import LOCALE_CHOICES, TOKEN_PURPOSE_RESET, TOKEN_PURPOSE_VERIFY, SingleUseToken
 from ..serializers import SignupSerializer
-from ..tokens import RESET_TOKEN_TTL, create_single_use_token
+from ..tokens import (
+    RESET_TOKEN_TTL,
+    create_single_use_token,
+    get_token_entry,
+    invalidate_pending_tokens,
+)
 
 User = get_user_model()
 
@@ -188,7 +193,7 @@ class SignupView(APIView):
                     password=data['password'],
                     locale=locale,
                 )
-                create_single_use_token(user, purpose='verify')
+                create_single_use_token(user, purpose=TOKEN_PURPOSE_VERIFY)
                 send_verification_email.delay(user.pk)
         except IntegrityError:
             return Response(
@@ -206,17 +211,19 @@ class VerifyEmailView(APIView):
     authentication_classes: List[Any] = []
 
     def get(self, request: Request, token: str) -> Response:
-        try:
-            entry = SingleUseToken.objects.get(token=token, purpose='verify')
-        except SingleUseToken.DoesNotExist:
+        entry = get_token_entry(token, TOKEN_PURPOSE_VERIFY)
+        if entry is None:
             return Response(
                 {'detail': 'Invalid verification link', 'code': 'token_not_found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         with transaction.atomic():
-            entry = SingleUseToken.objects.select_for_update().get(pk=entry.pk)
+            locked_entry = cast(
+                SingleUseToken,
+                SingleUseToken.objects.select_for_update().get(pk=entry.pk),
+            )
             try:
-                user = User.objects.select_for_update().get(pk=entry.user_id)
+                user = User.objects.select_for_update().get(pk=locked_entry.user_id)
             except User.DoesNotExist:
                 return Response(
                     {'detail': 'Invalid verification link', 'code': 'token_not_found'},
@@ -227,7 +234,7 @@ class VerifyEmailView(APIView):
                     {'detail': 'Invalid verification link', 'code': 'token_not_found'},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            if entry.consumed_at is not None:
+            if locked_entry.consumed_at is not None:
                 if user.email_verified_at is not None:
                     return Response(
                         {'detail': 'Email already verified', 'code': 'already_verified'},
@@ -237,13 +244,13 @@ class VerifyEmailView(APIView):
                     {'detail': 'Verification link has already been used', 'code': 'token_used'},
                     status=status.HTTP_410_GONE,
                 )
-            if entry.expires_at <= timezone.now():
+            if locked_entry.expires_at <= timezone.now():
                 return Response(
                     {'detail': 'Verification link has expired', 'code': 'token_expired'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            entry.consumed_at = timezone.now()
-            entry.save(update_fields=['consumed_at'])
+            locked_entry.consumed_at = timezone.now()
+            locked_entry.save(update_fields=['consumed_at'])
             if user.email_verified_at is None:
                 user.email_verified_at = timezone.now()
                 user.credits_balance += FREE_SIGNUP_CREDITS
@@ -285,11 +292,8 @@ class ResendVerificationView(APIView):
             if email:
                 user = User.objects.filter(email=email, deleted_at__isnull=True).first()
                 if user is not None and user.email_verified_at is None:
-                    now = timezone.now()
-                    SingleUseToken.objects.filter(
-                        user=user, purpose='verify', consumed_at__isnull=True,
-                    ).update(consumed_at=now)
-                    create_single_use_token(user, purpose='verify')
+                    invalidate_pending_tokens(user, TOKEN_PURPOSE_VERIFY)
+                    create_single_use_token(user, purpose=TOKEN_PURPOSE_VERIFY)
                     send_verification_email.delay(user.pk)
         return Response(
             {'detail': 'If an account exists for this email, a verification link has been sent.'},
@@ -323,12 +327,9 @@ class PasswordResetRequestView(APIView):
                 if user is not None and (
                     not _account_blocked(user) or _in_deletion_grace(user)
                 ):
-                    now = timezone.now()
-                    SingleUseToken.objects.filter(
-                        user=user, purpose='reset', consumed_at__isnull=True,
-                    ).update(consumed_at=now)
+                    invalidate_pending_tokens(user, TOKEN_PURPOSE_RESET)
                     token = create_single_use_token(
-                        user, purpose='reset', ttl=RESET_TOKEN_TTL,
+                        user, purpose=TOKEN_PURPOSE_RESET, ttl=RESET_TOKEN_TTL,
                     )
                     send_password_reset_email.delay(user.pk, token.pk)
         return Response(
@@ -342,13 +343,7 @@ class PasswordResetConfirmView(APIView):
     authentication_classes: List[Any] = []
 
     def _get_token_entry(self, token: str) -> SingleUseToken | None:
-        try:
-            return cast(
-                SingleUseToken,
-                SingleUseToken.objects.get(token=token, purpose='reset'),
-            )
-        except SingleUseToken.DoesNotExist:
-            return None
+        return get_token_entry(token, TOKEN_PURPOSE_RESET)
 
     def _require_token_entry(self, token: str) -> SingleUseToken | Response:
         entry = self._get_token_entry(token)

@@ -100,9 +100,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return str(self.email)
 
 
+# The token-purpose vocabulary as named constants — issuance, validation and
+# the email tasks import these instead of re-spelling the raw strings.
+TOKEN_PURPOSE_VERIFY = 'verify'
+TOKEN_PURPOSE_RESET = 'reset'
 TOKEN_PURPOSE_CHOICES = [
-    ('verify', 'Email verification'),
-    ('reset', 'Password reset'),
+    (TOKEN_PURPOSE_VERIFY, 'Email verification'),
+    (TOKEN_PURPOSE_RESET, 'Password reset'),
 ]
 
 
