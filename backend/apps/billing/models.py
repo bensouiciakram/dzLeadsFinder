@@ -73,12 +73,13 @@ class Subscription(models.Model):
                 name='subscriptions_period_order_check',
             ),
             models.CheckConstraint(
-                check=models.Q(cancelled_at__isnull=True) | models.Q(status='cancelled'),
+                check=models.Q(cancelled_at__isnull=True)
+                | models.Q(status=SubscriptionStatus.CANCELLED),
                 name='subscriptions_cancel_state_check',
             ),
             models.UniqueConstraint(
                 fields=['user'],
-                condition=models.Q(status='active'),
+                condition=models.Q(status=SubscriptionStatus.ACTIVE),
                 name='subscriptions_active_unique',
             ),
             models.UniqueConstraint(
@@ -131,7 +132,7 @@ class PaymentTransaction(models.Model):
             # scans pending rows by age — the deferred-work 5.1 item, resolved here.
             models.Index(
                 fields=['created_at'],
-                condition=models.Q(status='pending'),
+                condition=models.Q(status=PaymentStatus.PENDING),
                 name='payments_pending_created_idx',
             ),
         ]

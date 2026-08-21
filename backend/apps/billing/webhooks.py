@@ -202,7 +202,7 @@ def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
     """
     from django.db.models import Q
 
-    from apps.billing.models import Subscription
+    from apps.billing.models import Subscription, SubscriptionStatus
 
     event_id = payload_data.get('id')
     metadata = _metadata_dict(payload_data)
@@ -219,7 +219,8 @@ def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
         if payload_sub_id is not None:
             matched = (
                 Subscription.objects.filter(
-                    chargily_subscription_id=payload_sub_id, status='active'
+                    chargily_subscription_id=payload_sub_id,
+                    status=SubscriptionStatus.ACTIVE,
                 )
                 .select_related('user')
                 .first()
@@ -233,7 +234,7 @@ def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
                     event_id,
                 )
                 return
-            matched.status = 'failed_renewal'
+            matched.status = SubscriptionStatus.FAILED_RENEWAL
             matched.save(update_fields=['status'])
             logger.warning(
                 'chargily subscription.payment_failed: subscription %s set to '
@@ -251,13 +252,13 @@ def _apply_payment_failed_state(payload_data: Dict[str, Any]) -> None:
         )
         return
 
-    queryset = Subscription.objects.filter(user=user, status='active')
+    queryset = Subscription.objects.filter(user=user, status=SubscriptionStatus.ACTIVE)
     if payload_sub_id is not None:
         queryset = queryset.filter(
             Q(chargily_subscription_id__isnull=True)
             | Q(chargily_subscription_id=payload_sub_id)
         )
-    updated = queryset.update(status='failed_renewal')
+    updated = queryset.update(status=SubscriptionStatus.FAILED_RENEWAL)
     if updated:
         logger.warning(
             'chargily subscription.payment_failed: user %s subscription set '

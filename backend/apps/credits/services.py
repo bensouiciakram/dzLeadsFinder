@@ -9,7 +9,7 @@ from django.db import connection, transaction
 from django.db.models import F, Q, Sum
 from django.utils import timezone
 
-from apps.credits.models import CreditEventType, CreditLedger, Reveal
+from apps.credits.models import CreditEventType, CreditLedger, CreditPool, Reveal
 
 RE_REVEAL_WINDOW_DAYS = 30
 RECORD_TYPE_PEOPLE = 'people'
@@ -70,8 +70,8 @@ def _contact_data(record_type: str, record: Any) -> dict[str, Any]:
 
 def _pool_balances(user: Any) -> tuple[int, int]:
     row = CreditLedger.objects.filter(user_id=user.id).aggregate(
-        subscription=Sum('amount', filter=Q(pool='subscription')),
-        pack=Sum('amount', filter=Q(pool='pack')),
+        subscription=Sum('amount', filter=Q(pool=CreditPool.SUBSCRIPTION)),
+        pack=Sum('amount', filter=Q(pool=CreditPool.PACK)),
     )
     return row['subscription'] or 0, row['pack'] or 0
 
@@ -139,7 +139,7 @@ def reveal_contact(user: Any, record_type: str, record_id: str) -> dict[str, Any
             raise InsufficientCreditsError(
                 f'User {user.id} has {total} credits — a reveal costs {_REVEAL_COST}'
             )
-        pool = 'subscription' if subscription_balance >= _REVEAL_COST else 'pack'
+        pool = CreditPool.SUBSCRIPTION if subscription_balance >= _REVEAL_COST else CreditPool.PACK
         paid_row = Reveal.objects.filter(
             user_id=user.id,
             record_type=record_type,
@@ -208,7 +208,7 @@ def debit_export_rows(user: Any, row_count: int, reference_id: str) -> int:
             f'User {user.id} has {total} credits — an export of '
             f'{row_count} rows costs {row_count}'
         )
-    pool = 'subscription' if subscription_balance >= row_count else 'pack'
+    pool = CreditPool.SUBSCRIPTION if subscription_balance >= row_count else CreditPool.PACK
     CreditLedger.objects.create(
         user=user,
         event_type=CreditEventType.EXPORT_ROW_DEBIT,

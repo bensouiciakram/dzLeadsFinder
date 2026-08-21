@@ -154,7 +154,7 @@ class CancelView(APIView):
         from django.db import transaction
         from django.utils import timezone
 
-        from apps.billing.models import Subscription
+        from apps.billing.models import Subscription, SubscriptionStatus
 
         with transaction.atomic():
             user_model = get_user_model()
@@ -176,7 +176,7 @@ class CancelView(APIView):
                     },
                     status=409,
                 )
-            if sub.status == 'cancelled':
+            if sub.status == SubscriptionStatus.CANCELLED:
                 # Idempotent 200 (John V2). The constraint is one-directional
                 # (subscriptions_cancel_state_check forbids cancelled_at on a
                 # non-cancelled row but ALLOWS a cancelled row with NULL
@@ -193,7 +193,7 @@ class CancelView(APIView):
                     },
                     status=200,
                 )
-            if sub.status != 'active':
+            if sub.status != SubscriptionStatus.ACTIVE:
                 return Response(
                     {
                         'detail': 'only an active subscription can be cancelled',
@@ -202,7 +202,7 @@ class CancelView(APIView):
                     status=409,
                 )
             now = timezone.now()
-            sub.status = 'cancelled'
+            sub.status = SubscriptionStatus.CANCELLED
             sub.cancelled_at = now
             sub.save(update_fields=['status', 'cancelled_at'])
             return Response(
@@ -370,10 +370,10 @@ class CreateCheckoutView(APIView):
                     },
                     status=400,
                 )
-            from apps.billing.models import Subscription
+            from apps.billing.models import Subscription, SubscriptionStatus
 
             if Subscription.objects.filter(
-                user=request.user, status='active'
+                user=request.user, status=SubscriptionStatus.ACTIVE
             ).exists():
                 return Response(
                     {

@@ -191,7 +191,7 @@ def send_payment_receipt(txn_id: str) -> None:
     from django.db import transaction
     from django.utils import timezone
 
-    from apps.billing.models import PaymentTransaction
+    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
 
     with transaction.atomic():
         try:
@@ -199,7 +199,7 @@ def send_payment_receipt(txn_id: str) -> None:
         except (PaymentTransaction.DoesNotExist, ValueError, TypeError, ValidationError):
             logger.warning('send_payment_receipt: transaction %s not found', txn_id)
             return
-        if row.status != 'succeeded':
+        if row.status != PaymentStatus.SUCCEEDED:
             # A refunded/failed row must never get a receipt (review RP7 —
             # latent until the 5.5 refunded path; the guard is the contract).
             logger.warning(
@@ -227,7 +227,7 @@ def send_payment_receipt(txn_id: str) -> None:
         # under queue backlog. Cleared on failure below.
         _set_receipt_marker(row)
 
-    is_renewal = row.type == 'subscription_renewal'
+    is_renewal = row.type == PaymentType.SUBSCRIPTION_RENEWAL
     locale = user.effective_locale
     variant = 'renewal' if is_renewal else 'creation'
     subject = PAYMENT_RECEIPT_SUBJECTS[locale][variant]
@@ -313,7 +313,7 @@ def send_pack_receipt(txn_id: str) -> None:
     from django.db import transaction
     from django.utils import timezone
 
-    from apps.billing.models import PaymentTransaction
+    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
 
     with transaction.atomic():
         try:
@@ -321,7 +321,7 @@ def send_pack_receipt(txn_id: str) -> None:
         except (PaymentTransaction.DoesNotExist, ValueError, TypeError, ValidationError):
             logger.warning('send_pack_receipt: transaction %s not found', txn_id)
             return
-        if row.status != 'succeeded':
+        if row.status != PaymentStatus.SUCCEEDED:
             logger.warning(
                 'send_pack_receipt: transaction %s status=%s — no receipt',
                 txn_id,
@@ -334,7 +334,7 @@ def send_pack_receipt(txn_id: str) -> None:
                 txn_id,
             )
             return
-        if row.type != 'pack_purchase':
+        if row.type != PaymentType.PACK_PURCHASE:
             _settle_receipt(row, f'type {row.type} is not a pack purchase')
             return
         if row.user_id is None:

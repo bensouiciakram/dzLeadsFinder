@@ -61,7 +61,7 @@ def grant_credits(event_id: str) -> None:
     from django.db import transaction
     from django.utils import timezone
 
-    from apps.billing.models import PaymentTransaction
+    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
 
     now = timezone.now()
     with transaction.atomic():
@@ -72,7 +72,7 @@ def grant_credits(event_id: str) -> None:
         except PaymentTransaction.DoesNotExist:
             logger.warning('grant_credits: no transaction row for event_id=%s', event_id)
             return
-        if row.status != 'pending':
+        if row.status != PaymentStatus.PENDING:
             logger.info(
                 'grant_credits: event_id=%s already %s — no-op',
                 event_id,
@@ -99,11 +99,14 @@ def grant_credits(event_id: str) -> None:
             )
             _settle_ungrantable(row, now, 'user deleted mid-flight (P5)')
             return
-        if row.type == 'pack_purchase':
+        if row.type == PaymentType.PACK_PURCHASE:
             granted = _grant_pack(user, row, now)
             if granted is None:
                 return
-        elif row.type in ('subscription_creation', 'subscription_renewal'):
+        elif row.type in (
+            PaymentType.SUBSCRIPTION_CREATION,
+            PaymentType.SUBSCRIPTION_RENEWAL,
+        ):
             # Review P2 (5.4): the subscription branch validates the stored
             # amount at grant time — a tampered/glitched webhook (provider
             # strips metadata.type, a wrong-amount event, the documented 5.2
@@ -126,7 +129,7 @@ def grant_credits(event_id: str) -> None:
                     f'{row.type} amount {row.amount_dzd} != {SUBSCRIPTION_PRICE_DZD}',
                 )
                 return
-            if row.type == 'subscription_creation':
+            if row.type == PaymentType.SUBSCRIPTION_CREATION:
                 granted = _grant_creation(user, row, now)
             else:
                 granted = _grant_renewal(user, row, now)
@@ -139,13 +142,15 @@ def grant_credits(event_id: str) -> None:
             _settle_ungrantable(row, now, f'unknown type {row.type!r}')
             return
 
-        row.status = 'succeeded'
+        row.status = PaymentStatus.SUCCEEDED
         row.credits_granted = granted
         row.reconciled_at = now
         row.save(update_fields=['status', 'credits_granted', 'reconciled_at'])
 
         receipt_task = (
-            'send_pack_receipt' if row.type == 'pack_purchase' else 'send_payment_receipt'
+            'send_pack_receipt'
+            if row.type == PaymentType.PACK_PURCHASE
+            else 'send_payment_receipt'
         )
 
         def _enqueue_receipt(txn_id: str, task_name: str) -> None:
@@ -182,7 +187,9 @@ def _settle_ungrantable(row: Any, now: Any, reason: str) -> None:
     surface) can refund/reconcile a row that was charged but could not be
     granted (anonymised user, unknown type).
     """
-    row.status = 'failed'
+    from apps.billing.models import PaymentStatus
+
+    row.status = PaymentStatus.FAILED
     row.reconciled_at = now
     row.save(update_fields=['status', 'reconciled_at'])
     logger.error(
@@ -195,11 +202,11 @@ def _settle_ungrantable(row: Any, now: Any, reason: str) -> None:
 def _ledger_totals(user_id: Any) -> tuple[int, int]:
     from django.db.models import Q, Sum
 
-    from apps.credits.models import CreditLedger
+    from apps.credits.models import CreditLedger, CreditPool
 
     row = CreditLedger.objects.filter(user_id=user_id).aggregate(
         total=Sum('amount'),
-        subscription=Sum('amount', filter=Q(pool='subscription')),
+        subscription=Sum('amount', filter=Q(pool=CreditPool.SUBSCRIPTION)),
     )
     return row['total'] or 0, row['subscription'] or 0
 
@@ -353,11 +360,11 @@ def _grant_creation(user: Any, row: Any, now: Any) -> int:
     Same-event replays never reach here (webhook ON CONFLICT guard + the
     txn status check under the row lock).
     """
-    from apps.billing.models import Subscription
+    from apps.billing.models import Subscription, SubscriptionStatus
     from apps.billing.pricing import _add_month
 
     latest = _latest_subscription(user)
-    if latest is not None and latest.status == 'active':
+    if latest is not None and latest.status == SubscriptionStatus.ACTIVE:
         logger.warning(
             'grant_credits: creation event %s for user %s arrives while an '
             'ACTIVE subscription exists — the LAST payment wins: re-anchoring '
@@ -385,11 +392,11 @@ def _grant_creation(user: Any, row: Any, now: Any) -> int:
         # boundary (the renewal anchor-preservation pattern, no gap/no
         # overlap). failed_renewal/expired keep the 5.3 now-anchor (a
         # broken cycle restarts; expired degenerates to now via max()).
-        if latest.status == 'cancelled':
+        if latest.status == SubscriptionStatus.CANCELLED:
             anchor = max(latest.current_period_end, now)
         else:
             anchor = now
-        latest.status = 'active'
+        latest.status = SubscriptionStatus.ACTIVE
         latest.cancelled_at = None
         latest.current_period_start = anchor
         latest.current_period_end = _add_month(anchor)
@@ -403,7 +410,7 @@ def _grant_creation(user: Any, row: Any, now: Any) -> int:
     else:
         created = Subscription.objects.create(
             user_id=user.id,
-            status='active',
+            status=SubscriptionStatus.ACTIVE,
             current_period_start=now,
             current_period_end=_add_month(now),
         )
@@ -415,11 +422,14 @@ def _grant_creation(user: Any, row: Any, now: Any) -> int:
 
 def _grant_renewal(user: Any, row: Any, now: Any) -> int:
     """subscription_renewal: extend the period (anchor-preserving) + grant."""
-    from apps.billing.models import Subscription
+    from apps.billing.models import Subscription, SubscriptionStatus
     from apps.billing.pricing import _add_month
 
     latest = _latest_subscription(user)
-    if latest is None or latest.status not in ('active', 'failed_renewal'):
+    if latest is None or latest.status not in (
+        SubscriptionStatus.ACTIVE,
+        SubscriptionStatus.FAILED_RENEWAL,
+    ):
         # Orphan renewal (Winston Q8): the money was collected — a paid event
         # is never silently skipped; create the row and alarm.
         logger.error(
@@ -430,7 +440,7 @@ def _grant_renewal(user: Any, row: Any, now: Any) -> int:
         )
         created = Subscription.objects.create(
             user_id=user.id,
-            status='active',
+            status=SubscriptionStatus.ACTIVE,
             current_period_start=now,
             current_period_end=_add_month(now),
         )
@@ -458,7 +468,7 @@ def _grant_renewal(user: Any, row: Any, now: Any) -> int:
     # Anchor preservation (5.3 D7): extend from max(previous end, now) — a
     # late webhook starts the new cycle now, an on-time one chains cleanly.
     anchor = max(latest.current_period_end, now)
-    latest.status = 'active'
+    latest.status = SubscriptionStatus.ACTIVE
     latest.current_period_start = anchor
     latest.current_period_end = _add_month(anchor)
     latest.save(
@@ -485,7 +495,7 @@ def reconcile_pending_payments() -> None:
 
     from django.utils import timezone
 
-    from apps.billing.models import PaymentTransaction
+    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
 
     cutoff = timezone.now() - timedelta(minutes=30)
     # Pack rows re-included (5.4 D22): the 5.3 P6 exclusion existed only
@@ -493,9 +503,13 @@ def reconcile_pending_payments() -> None:
     # grant task grants them, so the sweep re-enqueues them like any other
     # stale pending row.
     stale = PaymentTransaction.objects.filter(
-        status='pending',
+        status=PaymentStatus.PENDING,
         created_at__lt=cutoff,
-        type__in=('subscription_creation', 'subscription_renewal', 'pack_purchase'),
+        type__in=(
+            PaymentType.SUBSCRIPTION_CREATION,
+            PaymentType.SUBSCRIPTION_RENEWAL,
+            PaymentType.PACK_PURCHASE,
+        ),
     )
     for row in stale.iterator():
         if row.user_id is None:
@@ -535,11 +549,11 @@ def resend_missing_receipts() -> None:
 
     from django.utils import timezone
 
-    from apps.billing.models import PaymentTransaction
+    from apps.billing.models import PaymentStatus, PaymentTransaction, PaymentType
 
     cutoff = timezone.now() - timedelta(minutes=30)
     missing = PaymentTransaction.objects.filter(
-        status='succeeded',
+        status=PaymentStatus.SUCCEEDED,
         receipt_sent_at__isnull=True,
         credits_granted__isnull=False,
         created_at__lt=cutoff,
@@ -549,7 +563,7 @@ def resend_missing_receipts() -> None:
 
         task = (
             email_tasks.send_pack_receipt
-            if row.type == 'pack_purchase'
+            if row.type == PaymentType.PACK_PURCHASE
             else email_tasks.send_payment_receipt
         )
         try:
@@ -602,12 +616,16 @@ def expire_failed_renewals() -> None:
     from django.utils import timezone
 
     from apps.accounts.models import TIER_FREE
-    from apps.billing.models import Subscription
+    from apps.billing.models import Subscription, SubscriptionStatus
     from apps.credits.models import CreditEventType, CreditLedger, CreditPool
 
     now = timezone.now()
     due = Subscription.objects.filter(
-        status__in=('active', 'failed_renewal', 'cancelled'),
+        status__in=(
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.FAILED_RENEWAL,
+            SubscriptionStatus.CANCELLED,
+        ),
         current_period_end__lte=now,
     )
     user_model = get_user_model()
@@ -658,10 +676,10 @@ def expire_failed_renewals() -> None:
                 # self-matching guard would skip the downgrade and leave an
                 # expired subscription holding Starter quota forever.
                 if not Subscription.objects.filter(
-                    user_id=locked.user_id, status='active'
+                    user_id=locked.user_id, status=SubscriptionStatus.ACTIVE
                 ).exclude(pk=locked.pk).exists():
                     user_model.objects.filter(pk=locked.user_id).update(tier=TIER_FREE)
-            locked.status = 'expired'
+            locked.status = SubscriptionStatus.EXPIRED
             # A cancelled row carries cancelled_at — the one-directional
             # subscriptions_cancel_state_check (cancelled_at IS NULL OR
             # status='cancelled') demands the clear with the flip (the
