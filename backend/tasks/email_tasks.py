@@ -65,7 +65,7 @@ def send_verification_email(user_id: int) -> None:
     )
     html, plain_text = render_email(
         'signup_confirm',
-        user.locale,
+        user.effective_locale,
         {'verificationLink': verification_link},
     )
     message = EmailMultiAlternatives(
@@ -129,13 +129,14 @@ def send_password_reset_email(user_id: int, token_id: int) -> None:
         logger.warning('send_password_reset_email: token %s not usable', token_id)
         return
     reset_link = f'{settings.FRONTEND_PUBLIC_URL.rstrip("/")}/password-reset/{token.token}'
+    locale = user.effective_locale
     html, plain_text = render_email(
         'password_reset',
-        user.locale,
+        locale,
         {'resetLink': reset_link},
     )
     message = EmailMultiAlternatives(
-        subject=RESET_SUBJECTS.get(user.locale, RESET_SUBJECTS['en']),
+        subject=RESET_SUBJECTS.get(locale, RESET_SUBJECTS['en']),
         body=plain_text or html,
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
