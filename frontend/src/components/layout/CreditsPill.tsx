@@ -9,10 +9,9 @@ import { useCredits } from '@/components/providers/CreditProvider'
 import { useSession } from '@/components/providers/SessionProvider'
 import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
 import { useRecoveryDialog } from '@/components/providers/RecoveryDialogProvider'
-import { usePlan } from '@/hooks/usePlan'
+import { useDispatchTier } from '@/hooks/useDispatchTier'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { entitlementTierOf } from '@/lib/entitlement'
 
 export function CreditsPill() {
   const t = useTranslations()
@@ -20,14 +19,7 @@ export function CreditsPill() {
   const { balance, baselineNonce } = useCredits()
   const { open: openUpgradeDialog } = useUpgradeDialog()
   const { open: openRecoveryDialog } = useRecoveryDialog()
-  // Review P5 (5.7 full review): the 0-credit dispatch reads the PLAN
-  // query's tier — the SAME entitlement field, but refreshed via the
-  // window-focus refetch (the 5.7 expiry sync writes user.tier='free' in
-  // the DB; the SESSION tier is only refreshed at mount/login, so an open
-  // tab would keep dispatching an expired user to the Starter top-up).
-  // The plan cache is already warm on every authed page (the header chip).
-  const { plan } = usePlan({ user })
-  const dispatchTier = plan?.tier ?? user?.tier
+  const dispatchTier = useDispatchTier()
   const prevBalanceRef = useRef<number | null>(null)
   const userKeyRef = useRef<string | null>(null)
   const nonceRef = useRef<number>(baselineNonce)
@@ -83,8 +75,7 @@ export function CreditsPill() {
   if (user === null || balance === null) return null
 
   const zeroCredits = balance === 0
-  const warning =
-    !zeroCredits && balance <= 10 && entitlementTierOf(dispatchTier) === 'starter'
+  const warning = !zeroCredits && balance <= 10 && dispatchTier === 'starter'
 
   const announcement =
     announceDecrease ? t('common.credits.updated', { balance: String(balance) }) : ''

@@ -1,8 +1,7 @@
 'use client'
 
-import { useSession } from '@/components/providers/SessionProvider'
 import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
-import { usePlan } from '@/hooks/usePlan'
+import { useDispatchTier } from '@/hooks/useDispatchTier'
 
 type UseFilterApplyGateArgs = {
   busy: boolean
@@ -14,13 +13,8 @@ type UseFilterApplyGateArgs = {
 // panel). `closePanel` is the surface-specific side effect — the mobile
 // panel closes itself, the desktop aside has nothing to close.
 export function useFilterApplyGate({ busy, rateLimited, onApply }: UseFilterApplyGateArgs) {
-  const { user } = useSession()
   const { open: openUpgradeDialog } = useUpgradeDialog()
-  // Review P5 (5.7 full review): the daily-limit gate reads the plan
-  // query's tier (fresh via the window-focus refetch) with the session
-  // fallback — the 5.7 expiry sync never refreshes the open tab's session.
-  const { plan } = usePlan({ user })
-  const dispatchTier = plan?.tier ?? user?.tier
+  const dispatchTier = useDispatchTier()
 
   const runApply = (closePanel?: () => void) => {
     if (busy) return
