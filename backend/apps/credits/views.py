@@ -27,7 +27,7 @@ from apps.credits.messages import (
     INSUFFICIENT_CREDITS_MESSAGES,
     RECORD_NOT_FOUND_MESSAGES,
 )
-from apps.credits.models import CreditLedger
+from apps.credits.models import CreditLedger, RevealRecordType
 from apps.credits.services import (
     LEDGER_PAGE_SIZE,
     LEDGER_WINDOW_DAYS,
@@ -37,7 +37,7 @@ from apps.credits.services import (
     user_balances,
 )
 
-_RECORD_TYPES = frozenset({'people', 'company'})
+_RECORD_TYPES = frozenset(RevealRecordType.values)
 # 50m rows in a 90-day window is far beyond any real account; the cap keeps
 # the OFFSET arithmetic inside PostgreSQL's signed-64-bit range (a page past
 # it would raise OperationalError → 500 instead of the 400 contract).

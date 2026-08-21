@@ -21,9 +21,17 @@ class CreditPool(models.TextChoices):
     PACK = 'pack', 'Pack'
 
 
+# The record-type vocabulary as plain str constants — the single source the
+# services/views layer compares against (mypy-strict without casts); the
+# TextChoices enum derives FROM them so the DB-facing choices can never
+# drift from the constants.
+RECORD_TYPE_PEOPLE: str = 'people'
+RECORD_TYPE_COMPANY: str = 'company'
+
+
 class RevealRecordType(models.TextChoices):
-    PEOPLE = 'people', 'People'
-    COMPANY = 'company', 'Company'
+    PEOPLE = RECORD_TYPE_PEOPLE, 'People'
+    COMPANY = RECORD_TYPE_COMPANY, 'Company'
 
 
 class CreditLedger(models.Model):

@@ -20,6 +20,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import TIER_FREE, TIER_STARTER
 from apps.credits.messages import INSUFFICIENT_CREDITS_MESSAGES
+from apps.credits.models import RECORD_TYPE_PEOPLE
 from apps.credits.services import InsufficientCreditsError, user_balances
 from apps.exports.export_service import build_export_file, export_mime
 from apps.exports.messages import (
@@ -155,7 +156,7 @@ class ExportDownloadView(APIView):
         # regeneration: later label edits must never change what a
         # previously-paid file renders); the live dict is only the fallback
         # for exports created before the freeze landed.
-        record_type = export_row.rows_json.get('record_type', 'people')
+        record_type = export_row.rows_json.get('record_type', RECORD_TYPE_PEOPLE)
         headers = export_row.rows_json.get('headers') or {}
         if not headers:
             headers = EXPORT_CSV_HEADERS.get(

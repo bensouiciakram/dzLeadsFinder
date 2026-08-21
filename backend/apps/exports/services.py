@@ -17,7 +17,11 @@ from django.db import transaction
 from django.db.models import Count, F
 from django.utils import timezone
 
-from apps.credits.models import Reveal
+from apps.credits.models import (
+    RECORD_TYPE_COMPANY,
+    RECORD_TYPE_PEOPLE,
+    Reveal,
+)
 from apps.credits.services import RE_REVEAL_WINDOW_DAYS, debit_export_rows
 from apps.exports.export_service import EXPORT_FORMATS, build_export_file
 from apps.exports.messages import EXPORT_CSV_HEADERS, WATERMARK_MESSAGES
@@ -129,8 +133,8 @@ def _resolve_record_type(record_ids: list[str]) -> tuple[str, dict[str, Any]]:
             'All record ids must reference the same record type.'
         )
     if people_matched == len(record_ids):
-        return 'people', people_by_id
-    return 'company', companies_by_id
+        return RECORD_TYPE_PEOPLE, people_by_id
+    return RECORD_TYPE_COMPANY, companies_by_id
 
 
 def _wilaya_display(record: Any, locale: str) -> str:
@@ -224,7 +228,7 @@ def create_export(user: Any, payload: Any, watermark: bool = False) -> tuple[Exp
 
     locale = user.effective_locale
     headers = EXPORT_CSV_HEADERS[locale][record_type]
-    if record_type == 'people':
+    if record_type == RECORD_TYPE_PEOPLE:
         rows = [
             {
                 **dict(_people_row(records_by_id[record_id], locale)),

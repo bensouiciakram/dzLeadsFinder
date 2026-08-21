@@ -9,11 +9,16 @@ from django.db import connection, transaction
 from django.db.models import F, Q, Sum
 from django.utils import timezone
 
-from apps.credits.models import CreditEventType, CreditLedger, CreditPool, Reveal
+from apps.credits.models import (
+    RECORD_TYPE_COMPANY,
+    RECORD_TYPE_PEOPLE,
+    CreditEventType,
+    CreditLedger,
+    CreditPool,
+    Reveal,
+)
 
 RE_REVEAL_WINDOW_DAYS = 30
-RECORD_TYPE_PEOPLE = 'people'
-RECORD_TYPE_COMPANY = 'company'
 
 LEDGER_WINDOW_DAYS = 90
 LEDGER_PAGE_SIZE = 50

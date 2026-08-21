@@ -15,7 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.credits.models import Reveal
+from apps.credits.models import RECORD_TYPE_COMPANY, RECORD_TYPE_PEOPLE, Reveal
 from apps.credits.services import RE_REVEAL_WINDOW_DAYS
 from apps.search import quota
 from apps.search.filters import (
@@ -200,7 +200,7 @@ class PeopleSearchView(APIView):
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
         locale = request.user.effective_locale
-        revealed_ids = _revealed_ids(request.user, 'people', rows)
+        revealed_ids = _revealed_ids(request.user, RECORD_TYPE_PEOPLE, rows)
         payload: dict[str, object] = {
             'results': [_people_row(person, locale, revealed_ids) for person in rows],
         }
@@ -236,7 +236,7 @@ class CompanySearchView(APIView):
         rows = list(queryset[offset:offset + quota.PAGE_SIZE])
         quota.increment_search_count(request.user)
         locale = request.user.effective_locale
-        revealed_ids = _revealed_ids(request.user, 'company', rows)
+        revealed_ids = _revealed_ids(request.user, RECORD_TYPE_COMPANY, rows)
         payload: dict[str, object] = {
             'results': [_company_row(company, locale, revealed_ids) for company in rows],
         }
