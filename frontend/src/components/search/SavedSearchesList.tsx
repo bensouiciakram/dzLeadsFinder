@@ -24,6 +24,7 @@ import {
   type SavedSearchSnapshot,
 } from '@/lib/api/saved-search-service'
 import type { SearchTab } from '@/lib/api/search-service'
+import { entitlementTierOf } from '@/lib/entitlement'
 import { MaybeArabic } from '@/components/search/results-format'
 
 type SavedSearchesListProps = {
@@ -49,7 +50,7 @@ export function SavedSearchesList({
   const [renameRow, setRenameRow] = useState<SavedSearchRow | null>(null)
   const [deleteRow, setDeleteRow] = useState<SavedSearchRow | null>(null)
 
-  const tier = user?.tier ?? 'free'
+  const tier = entitlementTierOf(user?.tier)
   const cap = CAPS[tier] ?? CAPS.free
   const atCap = savedSearches.length >= cap
   const savedType = tabToSavedType(tab)

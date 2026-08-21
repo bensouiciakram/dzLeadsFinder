@@ -19,13 +19,13 @@ export function useFocusRestore(externalRef?: React.RefObject<HTMLElement | null
   const captureFocus = useCallback(() => {
     lastFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
-  }, [])
+  }, [lastFocusRef])
 
   const finalFocus = useCallback(() => {
     const target = lastFocusRef.current
     if (target !== null && document.contains(target)) return target
     return null
-  }, [])
+  }, [lastFocusRef])
 
   return { lastFocusRef, captureFocus, finalFocus }
 }
