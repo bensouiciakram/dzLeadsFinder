@@ -211,6 +211,28 @@ def _ledger_totals(user_id: Any) -> tuple[int, int]:
     return row['total'] or 0, row['subscription'] or 0
 
 
+def _write_expiry_entry(
+    user_id: Any, subscription: int, total: int, reference_id: str, description: str
+) -> int:
+    """The shared ``expiry`` ledger write (FR-24 no-rollover): zeroes the
+    remaining subscription pool and returns the new ledger total. The caller
+    owns the transaction/locks; the cache update stays with the caller (the
+    grant chains the returned total into its own cache write, the expiry beat
+    writes the cache directly)."""
+    from apps.credits.models import CreditEventType, CreditLedger, CreditPool
+
+    CreditLedger.objects.create(
+        user_id=user_id,
+        event_type=CreditEventType.EXPIRY,
+        amount=-subscription,
+        balance_after=total - subscription,
+        pool=CreditPool.SUBSCRIPTION,
+        reference_id=reference_id,
+        description=description,
+    )
+    return total - subscription
+
+
 def _grant_cycle(user: Any, reference_id: str, now: Any, *, reset_pool: bool) -> int:
     """Ledger writes + cache update for one grant cycle (5.3 D6).
 
@@ -227,16 +249,13 @@ def _grant_cycle(user: Any, reference_id: str, now: Any, *, reset_pool: bool) ->
 
     total, subscription = _ledger_totals(user.id)
     if reset_pool and subscription > 0:
-        CreditLedger.objects.create(
-            user_id=user.id,
-            event_type=CreditEventType.EXPIRY,
-            amount=-subscription,
-            balance_after=total - subscription,
-            pool=CreditPool.SUBSCRIPTION,
-            reference_id=reference_id,
-            description='Cycle rollover — unused credits do not roll over (FR-24)',
+        total = _write_expiry_entry(
+            user.id,
+            subscription,
+            total,
+            reference_id,
+            'Cycle rollover — unused credits do not roll over (FR-24)',
         )
-        total -= subscription
     CreditLedger.objects.create(
         user_id=user.id,
         event_type=CreditEventType.SUBSCRIPTION_GRANT,
@@ -617,7 +636,6 @@ def expire_failed_renewals() -> None:
 
     from apps.accounts.models import TIER_FREE
     from apps.billing.models import Subscription, SubscriptionStatus
-    from apps.credits.models import CreditEventType, CreditLedger, CreditPool
 
     now = timezone.now()
     due = Subscription.objects.filter(
@@ -652,17 +670,15 @@ def expire_failed_renewals() -> None:
             if locked.user_id is not None:
                 total, subscription = _ledger_totals(locked.user_id)
                 if subscription > 0:
-                    CreditLedger.objects.create(
-                        user_id=locked.user_id,
-                        event_type=CreditEventType.EXPIRY,
-                        amount=-subscription,
-                        balance_after=total - subscription,
-                        pool=CreditPool.SUBSCRIPTION,
-                        reference_id=str(locked.id),
-                        description='Subscription expired — renewal did not land',
+                    new_total = _write_expiry_entry(
+                        locked.user_id,
+                        subscription,
+                        total,
+                        str(locked.id),
+                        'Subscription expired — renewal did not land',
                     )
                     user_model.objects.filter(pk=locked.user_id).update(
-                        credits_balance=total - subscription
+                        credits_balance=new_total
                     )
                 # 5.7 tier sync (the split-brain close): entitlement reads
                 # user.tier — an expiring row downgrades to 'free'. Guarded:

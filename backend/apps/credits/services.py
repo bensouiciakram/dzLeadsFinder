@@ -81,6 +81,51 @@ def _pool_balances(user: Any) -> tuple[int, int]:
     return row['subscription'] or 0, row['pack'] or 0
 
 
+def _pool_drawdown_precheck(user: Any, cost: int) -> tuple[int, Any]:
+    """The shared drawdown precheck (AD-4 + AD-7): balance from the LEDGER
+    (never the cache), InsufficientCreditsError when short, and the ONE pool
+    that draws the whole cost (subscription-first — no mixed-drawdown split).
+    Caller owns the atomic block + user-row lock. (The pool is typed ``Any``:
+    a CreditPool member — this project runs no django-stubs plugin, so
+    TextChoices members are opaque to mypy in typed positions.)"""
+    subscription_balance, pack_balance = _pool_balances(user)
+    total = subscription_balance + pack_balance
+    if total < cost:
+        raise InsufficientCreditsError(
+            f'User {user.id} has {total} credits — insufficient for a {cost}-credit debit'
+        )
+    pool = (
+        CreditPool.SUBSCRIPTION if subscription_balance >= cost else CreditPool.PACK
+    )
+    return total, pool
+
+
+def _write_pool_debit(
+    user: Any,
+    cost: int,
+    total: int,
+    pool: Any,
+    *,
+    event_type: Any,
+    reference_id: str,
+) -> None:
+    """The shared debit write: the ledger row (balance_after chained from the
+    in-transaction total) plus the cache F()-update and in-memory decrement —
+    the cache is only valid WITH the matching ledger row (AD-4)."""
+    CreditLedger.objects.create(
+        user=user,
+        event_type=event_type,
+        amount=-cost,
+        balance_after=total - cost,
+        pool=pool,
+        reference_id=reference_id,
+    )
+    get_user_model().objects.filter(pk=user.id).update(
+        credits_balance=F('credits_balance') - cost
+    )
+    user.credits_balance -= cost
+
+
 def reveal_contact(user: Any, record_type: str, record_id: str) -> dict[str, Any]:
     """Unlock a record's contact data: debits 1 credit atomically, or serves
     the free re-reveal path within the 30-day window.
@@ -138,13 +183,7 @@ def reveal_contact(user: Any, record_type: str, record_id: str) -> dict[str, Any
             )
             return contact
 
-        subscription_balance, pack_balance = _pool_balances(user)
-        total = subscription_balance + pack_balance
-        if total < _REVEAL_COST:
-            raise InsufficientCreditsError(
-                f'User {user.id} has {total} credits — a reveal costs {_REVEAL_COST}'
-            )
-        pool = CreditPool.SUBSCRIPTION if subscription_balance >= _REVEAL_COST else CreditPool.PACK
+        total, pool = _pool_drawdown_precheck(user, _REVEAL_COST)
         paid_row = Reveal.objects.filter(
             user_id=user.id,
             record_type=record_type,
@@ -166,18 +205,14 @@ def reveal_contact(user: Any, record_type: str, record_id: str) -> dict[str, Any
             # stays the idempotency guard against concurrent double-charges).
             Reveal.objects.filter(pk=paid_row.pk).update(created_at=timezone.now())
             reference_id = str(paid_row.id)
-        CreditLedger.objects.create(
-            user=user,
+        _write_pool_debit(
+            user,
+            _REVEAL_COST,
+            total,
+            pool,
             event_type=CreditEventType.REVEAL_DEBIT,
-            amount=-_REVEAL_COST,
-            balance_after=total - _REVEAL_COST,
-            pool=pool,
             reference_id=reference_id,
         )
-        get_user_model().objects.filter(pk=user.id).update(
-            credits_balance=F('credits_balance') - _REVEAL_COST
-        )
-        user.credits_balance -= _REVEAL_COST
         return contact
 
 
@@ -206,24 +241,13 @@ def debit_export_rows(user: Any, row_count: int, reference_id: str) -> int:
         raise ValueError('row_count must be a positive integer.')
     _serializable_guard()
     get_user_model().objects.select_for_update().get(pk=user.id)
-    subscription_balance, pack_balance = _pool_balances(user)
-    total = subscription_balance + pack_balance
-    if total < row_count:
-        raise InsufficientCreditsError(
-            f'User {user.id} has {total} credits — an export of '
-            f'{row_count} rows costs {row_count}'
-        )
-    pool = CreditPool.SUBSCRIPTION if subscription_balance >= row_count else CreditPool.PACK
-    CreditLedger.objects.create(
-        user=user,
+    total, pool = _pool_drawdown_precheck(user, row_count)
+    _write_pool_debit(
+        user,
+        row_count,
+        total,
+        pool,
         event_type=CreditEventType.EXPORT_ROW_DEBIT,
-        amount=-row_count,
-        balance_after=total - row_count,
-        pool=pool,
         reference_id=reference_id,
     )
-    get_user_model().objects.filter(pk=user.id).update(
-        credits_balance=F('credits_balance') - row_count
-    )
-    user.credits_balance -= row_count
     return total - row_count
