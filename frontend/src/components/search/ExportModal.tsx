@@ -1,11 +1,15 @@
 'use client'
 
-import { Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { useToast } from '@/components/providers/ToastProvider'
 import { useUpgradeDialog } from '@/components/providers/UpgradeDialogProvider'
+import { ExportConfirmButton } from '@/components/search/ExportConfirmButton'
+import { ExportCostSummary } from '@/components/search/ExportCostSummary'
+import { ExportErrorRegion } from '@/components/search/ExportErrorRegion'
+import { ExportFormatToggle } from '@/components/search/ExportFormatToggle'
+import { ExportPreviewBox } from '@/components/search/ExportPreviewBox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useExport } from '@/hooks/useExport'
 import { useExportPreview } from '@/hooks/useExportPreview'
@@ -25,18 +29,6 @@ type ExportModalProps = {
   balance: number | null
 }
 
-const FORMAT_LABEL: Record<ExportFormat, string> = {
-  csv: 'CSV',
-  xlsx: 'Excel .xlsx',
-}
-
-function wilayaLabel(name: string | null, code: number | null): string {
-  if (name === null && code === null) return ''
-  if (name === null) return String(code)
-  if (code === null) return name
-  return `${name} (${code})`
-}
-
 export function ExportModal({
   open,
   onOpenChange,
@@ -53,7 +45,6 @@ export function ExportModal({
   const { open: openUpgradeDialog } = useUpgradeDialog()
   const [includeUnrevealed, setIncludeUnrevealed] = useState(true)
   const [format, setFormat] = useState<ExportFormat>('csv')
-  const regionRef = useRef<HTMLDivElement>(null)
 
   const { preview, isCollecting, error: previewError, retry } = useExportPreview({
     open,
@@ -112,6 +103,8 @@ export function ExportModal({
     preview.totalRows === 0 ||
     ids.length === 0 ||
     isPending
+  const confirmMuted =
+    insufficient || balance === null || preview === null || preview.totalRows === 0 || ids.length === 0
   const balanceAfter = balance === null ? null : balance - cost
 
   const regionError =
@@ -121,12 +114,6 @@ export function ExportModal({
     mutationError === 'generic'
       ? mutationError
       : undefined
-
-  useEffect(() => {
-    if (regionError !== undefined) {
-      regionRef.current?.focus()
-    }
-  }, [regionError])
 
   const handleConfirm = () => {
     if (insufficient) {
@@ -154,43 +141,6 @@ export function ExportModal({
     setFormat(next)
   }
 
-  const previewLines = useMemo(() => {
-    if (preview === null) return null
-    const header =
-      tab === 'people'
-        ? [
-            t('export.modal.header_name'),
-            t('export.modal.header_role'),
-            t('export.modal.header_company'),
-            t('export.modal.header_wilaya'),
-          ]
-        : [
-            t('export.modal.header_name'),
-            t('export.modal.header_industry'),
-            t('export.modal.header_wilaya'),
-            t('export.modal.header_people_count'),
-          ]
-    // Free tier: the preview IS the file — show exactly the rows that will
-    // export (the include_unrevealed filter applies to the preview too, so
-    // the preview never claims rows the file won't contain). Starter keeps
-    // the 2-row sample + ellipsis (its file is the full set).
-    const body = (freeTier
-      ? preview.rows.filter((row) => includeUnrevealed || row.revealed)
-      : preview.rows.slice(0, 2)
-    ).map((row) => {
-      const wilaya = wilayaLabel(row.wilaya_name, row.wilaya_code)
-      const cells =
-        tab === 'people'
-          ? [row.name, row.role ?? '', row.company_name ?? '', wilaya]
-          : [row.name, row.industry ?? '', wilaya, String(row.people_count)]
-      return { key: row.id, text: cells.join(',') }
-    })
-    return { header: header.join(','), body }
-  }, [preview, tab, t, freeTier, includeUnrevealed])
-
-  const regionClassName =
-    'rounded-md border border-border bg-muted/50 p-4 text-small text-muted-strong focus:outline-none'
-
   return (
     <Dialog
       open={open}
@@ -205,65 +155,19 @@ export function ExportModal({
           </DialogTitle>
         </DialogHeader>
 
-        {regionError === 'limit' ? (
-          <div ref={regionRef} tabIndex={-1} role="status" className={regionClassName}>
-            {t('export.modal.come_back_tomorrow')}
-          </div>
-        ) : regionError === 'credits' ? (
-          <div ref={regionRef} tabIndex={-1} role="alert" className={regionClassName}>
-            {t('export.modal.error_credits')}
-          </div>
-        ) : regionError === 'concurrent' ? (
-          <div ref={regionRef} tabIndex={-1} role="alert" className={regionClassName}>
-            <p>{t('export.modal.error_concurrent')}</p>
-            <button
-              type="button"
-              className="mt-3 min-h-11 rounded-md border border-border bg-card px-4 text-small text-muted-strong md:min-h-10"
-              onClick={handleRetry}
-            >
-              {t('search.results.retry')}
-            </button>
-          </div>
-        ) : regionError === 'generic' ? (
-          <div ref={regionRef} tabIndex={-1} role="alert" className={regionClassName}>
-            <p>{t('export.modal.error_generic')}</p>
-            <button
-              type="button"
-              className="mt-3 min-h-11 rounded-md border border-border bg-card px-4 text-small text-muted-strong md:min-h-10"
-              onClick={handleRetry}
-            >
-              {t('search.results.retry')}
-            </button>
-          </div>
-        ) : (
+        <ExportErrorRegion regionError={regionError} onRetry={handleRetry} />
+
+        {regionError === undefined && (
           <div className="flex flex-col gap-2.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b border-border pb-1.5">
-              <span className="text-small text-muted-foreground">
-                {t(freeTier ? 'export.modal.rows_capped' : 'export.modal.rows')}
-              </span>
-              <span className="text-data tabular-nums">
-                {isCollecting || preview === null ? '…' : String(preview.totalRows)}
-              </span>
-              <span className="text-small text-muted-foreground">
-                {t('export.modal.balance_after')}
-              </span>
-              <span className="text-data tabular-nums">
-                {balanceAfter === null ? '—' : String(balanceAfter)}
-              </span>
-              {isCollecting || preview === null ? (
-                <span className="w-full text-caption text-muted-foreground">
-                  {t('export.modal.calculating')}
-                </span>
-              ) : (
-                <span className="w-full text-caption tabular-nums text-muted-foreground">
-                  {t('export.modal.cost_breakdown', {
-                    revealed: String(preview.revealedCount),
-                    unrevealed: String(includeUnrevealed ? preview.unrevealedCount : 0),
-                    total: String(cost),
-                  })}
-                </span>
-              )}
-            </div>
+            <ExportCostSummary
+              freeTier={freeTier}
+              loading={isCollecting || preview === null}
+              totalRows={preview?.totalRows ?? null}
+              revealedCount={preview?.revealedCount ?? 0}
+              includedUnrevealed={includeUnrevealed ? (preview?.unrevealedCount ?? 0) : 0}
+              cost={cost}
+              balanceAfter={balanceAfter}
+            />
 
             <label className="flex min-h-10 items-center gap-2 text-small">
               <input
@@ -275,62 +179,15 @@ export function ExportModal({
               <span>{t('export.modal.include_unrevealed')}</span>
             </label>
 
-            <div className="flex flex-col gap-2">
-              <div
-                dir="ltr"
-                role="group"
-                aria-label={t('export.modal.preview_label')}
-                className="max-h-56 overflow-y-auto overflow-x-hidden rounded-md bg-muted p-3 text-small leading-5 text-muted-strong"
-              >
-                <p className="mb-1 border-b border-border/60 pb-1 text-caption text-muted-foreground">
-                  {t('export.modal.preview_notice')}
-                </p>
-                {freeTier && <p className="font-semibold text-danger">{t('export.watermark')}</p>}
-                <p className="break-words">{previewLines?.header}</p>
-                {previewLines?.body.map((line) => (
-                  <p key={line.key} className="break-words">
-                    {line.text}
-                  </p>
-                ))}
-                {(preview?.totalRows ?? 0) > 2 && !freeTier && <p>…</p>}
-                {freeTier && <p className="font-semibold text-danger">{t('export.watermark')}</p>}
-              </div>
-            </div>
+            <ExportPreviewBox
+              tab={tab}
+              freeTier={freeTier}
+              includeUnrevealed={includeUnrevealed}
+              preview={preview}
+            />
 
             <div className="flex flex-col gap-2">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  aria-pressed={format === 'csv'}
-                  onClick={() => handleFormatClick('csv')}
-                  className={`min-h-10 flex-1 rounded-md border px-4 text-small font-medium ${
-                    format === 'csv'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-card text-muted-foreground'
-                  }`}
-                >
-                  {FORMAT_LABEL.csv}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={format === 'xlsx'}
-                  aria-disabled={freeTier || undefined}
-                  aria-describedby={freeTier ? 'xlsx-upgrade-note' : undefined}
-                  onClick={() => handleFormatClick('xlsx')}
-                  className={`min-h-10 flex-1 rounded-md border px-4 text-small font-medium ${
-                    format === 'xlsx' && !freeTier
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-muted text-muted-strong'
-                  }`}
-                >
-                  {FORMAT_LABEL.xlsx}
-                </button>
-              </div>
-              {freeTier && (
-                <p id="xlsx-upgrade-note" className="text-caption text-muted-foreground">
-                  {t('export.modal.xlsx_upgrade')}
-                </p>
-              )}
+              <ExportFormatToggle format={format} freeTier={freeTier} onSelect={handleFormatClick} />
               {insufficient && balance !== null && (
                 <p id="export-insufficient-note" className="text-caption text-muted-foreground">
                   {t('export.modal.insufficient')}
@@ -344,38 +201,14 @@ export function ExportModal({
                   </button>
                 </p>
               )}
-              <button
-                type="button"
-                aria-busy={isPending || undefined}
-                aria-disabled={confirmLocked || undefined}
-                aria-describedby={
-                  insufficient && balance !== null
-                    ? 'export-insufficient-note'
-                    : undefined
-                }
-                onClick={handleConfirm}
-                className={`min-h-10 w-full min-w-[10rem] rounded-md px-4 text-small font-semibold ${
-                  insufficient ||
-                  balance === null ||
-                  preview === null ||
-                  preview.totalRows === 0 ||
-                  ids.length === 0
-                    ? 'border border-border bg-muted text-muted-strong'
-                    : 'bg-primary text-primary-foreground'
-                }`}
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="me-2 inline size-4 animate-spin" aria-hidden="true" />
-                    <span className="sr-only">{t('common.credits.exporting')}</span>
-                    <span aria-hidden="true">
-                      {t('export.modal.confirm', { count: String(cost) })}
-                    </span>
-                  </>
-                ) : (
-                  t('export.modal.confirm', { count: String(cost) })
-                )}
-              </button>
+              <ExportConfirmButton
+                cost={cost}
+                locked={confirmLocked}
+                muted={confirmMuted}
+                insufficient={insufficient && balance !== null}
+                isPending={isPending}
+                onConfirm={handleConfirm}
+              />
             </div>
           </div>
         )}
