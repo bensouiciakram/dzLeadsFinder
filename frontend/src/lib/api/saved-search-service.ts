@@ -40,19 +40,10 @@ export type SavedSearchSnapshot = {
   sort: SavedSearchSort | null
 }
 
-type SavedSearchApiError = {
-  response?: {
-    status?: number
-    data?: { detail?: string; code?: string; limit?: number }
-  }
-}
+import { isApiCodeError } from '@/lib/api/api-error'
 
-export function isSavedSearchLimitError(
-  error: unknown,
-): error is SavedSearchApiError & { response: { status: 400; data: { code: string } } } {
-  if (typeof error !== 'object' || error === null) return false
-  const response = (error as SavedSearchApiError).response
-  return response?.status === 400 && response.data?.code === 'saved_search_limit_exceeded'
+export function isSavedSearchLimitError(error: unknown): boolean {
+  return isApiCodeError(error, 400, 'saved_search_limit_exceeded')
 }
 
 export class SavedSearchService extends HttpClient {

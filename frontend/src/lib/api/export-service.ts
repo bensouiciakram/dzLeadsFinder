@@ -16,36 +16,22 @@ export type CreateExportResponse = {
   balances: CreditBalances
 }
 
-type ExportApiError = {
-  response?: { status?: number; data?: { code?: string } }
-}
-
-function isCodeError(
-  error: unknown,
-  status: number,
-  code: string,
-): error is ExportApiError & { response: { status: number } } {
-  if (typeof error !== 'object' || error === null) return false
-  const apiError = error as ExportApiError
-  return (
-    apiError.response?.status === status && apiError.response?.data?.code === code
-  )
-}
+import { isApiCodeError } from '@/lib/api/api-error'
 
 export function isExportLimitError(error: unknown): boolean {
-  return isCodeError(error, 429, 'export_limit_exceeded')
+  return isApiCodeError(error, 429, 'export_limit_exceeded')
 }
 
 export function isStarterOnlyError(error: unknown): boolean {
-  return isCodeError(error, 403, 'starter_only')
+  return isApiCodeError(error, 403, 'starter_only')
 }
 
 export function isConcurrentExportError(error: unknown): boolean {
-  return isCodeError(error, 409, 'concurrent_export')
+  return isApiCodeError(error, 409, 'concurrent_export')
 }
 
 export function isRecordNotFoundError(error: unknown): boolean {
-  return isCodeError(error, 404, 'record_not_found')
+  return isApiCodeError(error, 404, 'record_not_found')
 }
 
 export class ExportService extends HttpClient {

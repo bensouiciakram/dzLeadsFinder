@@ -34,16 +34,10 @@ export type RevealResult = {
   balances: CreditBalances
 }
 
-type RevealApiError = {
-  response?: { status?: number; data?: { code?: string } }
-}
+import { isApiCodeError } from '@/lib/api/api-error'
 
-export function isInsufficientCreditsError(
-  error: unknown,
-): error is RevealApiError & { response: { status: 402 } } {
-  if (typeof error !== 'object' || error === null) return false
-  const apiError = error as RevealApiError
-  return apiError.response?.status === 402 && apiError.response?.data?.code === 'insufficient_credits'
+export function isInsufficientCreditsError(error: unknown): boolean {
+  return isApiCodeError(error, 402, 'insufficient_credits')
 }
 
 export class RevealService extends HttpClient {

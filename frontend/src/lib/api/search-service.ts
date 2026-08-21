@@ -111,18 +111,12 @@ export type SearchResult<T> = {
   refine_prompt: string | null
 }
 
-type SearchApiError = {
-  response?: {
-    status?: number
-    data?: { detail?: string }
-  }
-}
+import { isApiStatusError } from '@/lib/api/api-error'
 
 export function isRateLimitError(
   error: unknown,
-): error is SearchApiError & { response: { status: 429 } } {
-  if (typeof error !== 'object' || error === null) return false
-  return (error as SearchApiError).response?.status === 429
+): error is { response: { status: 429; data?: { detail?: string } } } {
+  return isApiStatusError<{ detail?: string }>(error, 429)
 }
 
 export class SearchService extends HttpClient {

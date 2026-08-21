@@ -79,28 +79,14 @@ export const PAYMENT_POLL_INTERVAL_MS = 5_000
 // alarm, 5.3 D5). Same value as apps/billing/pricing.py SUBSCRIPTION_PRICE_DZD.
 export const SUBSCRIPTION_PRICE_DZD = 1500
 
-type BillingApiError = {
-  response?: { status?: number; data?: { code?: string } }
-}
-
-function isCodeError(
-  error: unknown,
-  status: number,
-  code: string,
-): error is BillingApiError & { response: { status: number } } {
-  if (typeof error !== 'object' || error === null) return false
-  const apiError = error as BillingApiError
-  return (
-    apiError.response?.status === status && apiError.response?.data?.code === code
-  )
-}
+import { isApiCodeError } from '@/lib/api/api-error'
 
 export function isSubscriptionNotActiveError(error: unknown): boolean {
-  return isCodeError(error, 409, 'subscription_not_active')
+  return isApiCodeError(error, 409, 'subscription_not_active')
 }
 
 export function isSubscriptionNotFoundError(error: unknown): boolean {
-  return isCodeError(error, 409, 'subscription_not_found')
+  return isApiCodeError(error, 409, 'subscription_not_found')
 }
 
 // The failed-row support contact (Payment History explanatory line — Sally
