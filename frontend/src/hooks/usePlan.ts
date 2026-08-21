@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import type { PlanResult } from '@/lib/api/billing-service'
 import { planQueryOptions } from '@/lib/queryOptions/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type PlanPhase = 'idle' | 'loading' | 'error' | 'success'
+type PlanPhase = QueryPhase
 
 type UsePlanResult = {
   plan: PlanResult | null
@@ -35,8 +36,7 @@ export function usePlan({ user }: { user: SessionUser | null }): UsePlanResult {
     refetchOnWindowFocus: true,
   })
 
-  const phase: PlanPhase =
-    user === null ? 'idle' : query.isError ? 'error' : query.isPending ? 'loading' : 'success'
+  const phase: PlanPhase = queryPhase(user !== null, query)
 
   return { plan: query.data ?? null, phase }
 }

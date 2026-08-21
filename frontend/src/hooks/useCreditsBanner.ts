@@ -7,8 +7,9 @@ import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
 import { userKey } from '@/lib/user-key'
 import { entitlementTierOf } from '@/lib/entitlement'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type CreditsBannerPhase = 'idle' | 'loading' | 'error' | 'success'
+type CreditsBannerPhase = QueryPhase
 
 type UseCreditsBannerResult = {
   dismissed: boolean
@@ -30,14 +31,7 @@ export function useCreditsBanner({
     enabled: user !== null && entitlementTierOf(user.tier) === 'free',
   })
 
-  const phase: CreditsBannerPhase =
-    user === null
-      ? 'idle'
-      : query.isError
-        ? 'error'
-        : query.isPending
-          ? 'loading'
-          : 'success'
+  const phase: CreditsBannerPhase = queryPhase(user !== null, query)
 
   return {
     dismissed: query.data?.dismissed ?? false,

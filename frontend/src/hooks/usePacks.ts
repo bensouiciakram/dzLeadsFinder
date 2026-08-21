@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import type { PacksResult } from '@/lib/api/billing-service'
 import { packsQueryOptions } from '@/lib/queryOptions/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type PacksPhase = 'idle' | 'loading' | 'error' | 'success'
+type PacksPhase = QueryPhase
 
 type UsePacksResult = {
   packs: PacksResult | null
@@ -33,14 +34,7 @@ export function usePacks({
 }): UsePacksResult {
   const query = useQuery(packsQueryOptions(user, isOpen))
 
-  const phase: PacksPhase =
-    user === null || !isOpen
-      ? 'idle'
-      : query.isError
-        ? 'error'
-        : query.isPending
-          ? 'loading'
-          : 'success'
+  const phase: PacksPhase = queryPhase(user !== null && isOpen, query)
 
   return { packs: query.data ?? null, phase }
 }

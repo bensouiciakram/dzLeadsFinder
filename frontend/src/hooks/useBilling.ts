@@ -17,8 +17,9 @@ import {
 } from '@/lib/queryOptions/billing'
 import type { SessionUser } from '@/lib/api/auth-service'
 import { userKey } from '@/lib/user-key'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-export type BillingPhase = 'idle' | 'loading' | 'error' | 'success'
+export type BillingPhase = QueryPhase
 
 type UseBillingResult = {
   plan: PlanResult | null
@@ -58,7 +59,7 @@ export function useBilling({ user }: { user: SessionUser | null }): UseBillingRe
   })
 
   const phaseOf = (query: { isError: boolean; isPending: boolean }): BillingPhase =>
-    user === null ? 'idle' : query.isError ? 'error' : query.isPending ? 'loading' : 'success'
+    queryPhase(user !== null, query)
 
   return {
     plan: planQuery.data ?? null,

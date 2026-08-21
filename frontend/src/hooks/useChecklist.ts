@@ -11,8 +11,9 @@ import {
 } from '@/lib/api/checklist-service'
 import { checklistKeys } from '@/lib/queryKeys/checklist'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type ChecklistPhase = 'idle' | 'loading' | 'error' | 'success'
+type ChecklistPhase = QueryPhase
 
 type UseChecklistResult = {
   state: ChecklistState | null
@@ -39,8 +40,7 @@ export function useChecklist({ user }: { user: SessionUser | null }): UseCheckli
     staleTime: 60_000,
   })
 
-  const phase: ChecklistPhase =
-    user === null ? 'idle' : query.isError ? 'error' : query.isPending ? 'loading' : 'success'
+  const phase: ChecklistPhase = queryPhase(user !== null, query)
 
   const refetch = useCallback(() => {
     void query.refetch()

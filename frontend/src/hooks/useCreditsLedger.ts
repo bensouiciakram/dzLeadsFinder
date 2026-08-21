@@ -8,8 +8,9 @@ import type { LedgerRow } from '@/lib/api/credits-service'
 import { creditsKeys } from '@/lib/queryKeys/credits'
 import type { SessionUser } from '@/lib/api/auth-service'
 import { userKey } from '@/lib/user-key'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type CreditsLedgerPhase = 'idle' | 'loading' | 'error' | 'success'
+type CreditsLedgerPhase = QueryPhase
 
 type UseCreditsLedgerResult = {
   rows: LedgerRow[]
@@ -37,14 +38,7 @@ export function useCreditsLedger({
     enabled: user !== null,
   })
 
-  const phase: CreditsLedgerPhase =
-    user === null
-      ? 'idle'
-      : query.isError
-        ? 'error'
-        : query.isPending
-          ? 'loading'
-          : 'success'
+  const phase: CreditsLedgerPhase = queryPhase(user !== null, query)
 
   const refetch = useCallback(() => {
     void query.refetch()

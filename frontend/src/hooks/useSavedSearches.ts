@@ -6,8 +6,9 @@ import { useCallback } from 'react'
 import { savedSearchService, type SavedSearchRow } from '@/lib/api/saved-search-service'
 import { savedSearchesKeys } from '@/lib/queryKeys/savedSearches'
 import type { SessionUser } from '@/lib/api/auth-service'
+import { queryPhase, type QueryPhase } from '@/lib/queryPhase'
 
-type SavedSearchesPhase = 'idle' | 'loading' | 'error' | 'success'
+type SavedSearchesPhase = QueryPhase
 
 type UseSavedSearchesResult = {
   savedSearches: SavedSearchRow[]
@@ -33,8 +34,7 @@ export function useSavedSearches({ user }: { user: SessionUser | null }): UseSav
     staleTime: 60_000,
   })
 
-  const phase: SavedSearchesPhase =
-    user === null ? 'idle' : query.isError ? 'error' : query.isPending ? 'loading' : 'success'
+  const phase: SavedSearchesPhase = queryPhase(user !== null, query)
 
   const refetch = useCallback(() => {
     void query.refetch()
